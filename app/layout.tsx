@@ -13,16 +13,30 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Finanzas",
-  description: "Finanzas personales y en pareja",
-};
+  title: 'Finanzas',
+  description: 'Finanzas personales y en pareja',
+  // iOS ignora buena parte del manifest y usa sus propias etiquetas.
+  appleWebApp: {
+    capable: true,
+    title: 'Finanzas',
+    statusBarStyle: 'black-translucent',
+  },
+  icons: {
+    icon: '/icons/icon-192.png',
+    apple: '/icons/icon-192.png',
+  },
+}
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-};
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
+  ],
+}
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

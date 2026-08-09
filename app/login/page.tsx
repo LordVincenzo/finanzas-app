@@ -10,54 +10,88 @@ export default function LoginPage() {
   const [estado, accion, enviando] = useActionState(iniciarSesion, estadoInicial)
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-semibold mb-1">Iniciar sesión</h1>
-        <p className="text-sm text-neutral-500 mb-6">Accede a tus finanzas</p>
+    <main className="flex min-h-screen flex-col justify-center px-6 py-12">
+      <div className="mx-auto w-full max-w-sm">
+        {/* La marca: una cifra. Es lo que la app hace y lo primero que ves. */}
+        <p className="text-[15px] uppercase tracking-[0.2em] text-muted-foreground">
+          Finanzas
+        </p>
+        <p className="mt-2 text-[18px] font-semibold leading-none tracking-tight
+                      tabular-nums text-muted-foreground/30 select-none">
+          "Una meta sin un plan es solo un deseo"
+        </p>
 
-        <form action={accion} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm mb-1.5">Correo</label>
-            <input
-              id="email" name="email" type="email" required autoComplete="email"
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2.5
-                         focus:outline-none focus:ring-2 focus:ring-neutral-900"
-            />
-          </div>
+        <h1 className="mt-10 text-[22px] font-semibold leading-tight">
+          Bienvenido de vuelta
+        </h1>
 
-          <div>
-            <label htmlFor="password" className="block text-sm mb-1.5">Contraseña</label>
-            <input
-              id="password" name="password" type="password" required
-              autoComplete="current-password"
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2.5
-                         focus:outline-none focus:ring-2 focus:ring-neutral-900"
-            />
-          </div>
+        <form action={accion} className="mt-8 space-y-5">
+          <Campo
+            id="email" label="Correo" type="email" autoComplete="email"
+          />
+          <Campo
+            id="password" label="Contraseña" type="password"
+            autoComplete="current-password"
+          />
 
           {estado.error && (
-            <p className="text-sm text-red-600" role="alert">{estado.error}</p>
+            <p className="text-[13px] text-destructive" role="alert">
+              {estado.error}
+            </p>
           )}
 
           <button
             type="submit" disabled={enviando}
-            className="w-full rounded-lg bg-neutral-900 text-white py-2.5
-                       font-medium disabled:opacity-50"
+            className="w-full rounded-full bg-foreground py-3 text-[15px]
+                       font-medium text-background transition
+                       active:scale-[0.99] disabled:opacity-40"
           >
             {enviando ? 'Entrando…' : 'Entrar'}
           </button>
         </form>
 
-        <p className="text-sm text-neutral-500 mt-6 text-center">
-          ¿No tienes cuenta?{' '}
-          <Link href="/registro" className="text-neutral-900 underline">Regístrate</Link>
-        </p>
-        <p className="mt-3 text-center text-sm">
+        <div className="mt-8 flex items-center justify-between text-[12px]">
           <Link href="/recuperar" className="text-muted-foreground underline">
-            ¿Olvidaste tu contraseña?
+            Olvidé mi contraseña
           </Link>
-        </p>
+          <Link href="/registro" className="font-medium underline">
+            Crear cuenta
+          </Link>
+        </div>
       </div>
     </main>
+  )
+}
+
+/**
+ * Campo con la etiqueta encima de una línea, sin caja.
+ * Menos bordes = menos ruido, y el foco se ve mejor.
+ */
+function Campo({
+  id, label, type, autoComplete, minLength, ayuda,
+}: {
+  id: string
+  label: string
+  type: string
+  autoComplete: string
+  minLength?: number
+  ayuda?: string
+}) {
+  return (
+    <div>
+      <label htmlFor={id}
+             className="text-[11px] uppercase tracking-wider text-muted-foreground">
+        {label}
+      </label>
+      <input
+        id={id} name={id} type={type} required
+        autoComplete={autoComplete} minLength={minLength}
+        className="mt-1 w-full border-b bg-transparent pb-2 text-[15px]
+                   outline-none transition focus:border-foreground"
+      />
+      {ayuda && (
+        <p className="mt-1.5 text-[11px] text-muted-foreground">{ayuda}</p>
+      )}
+    </div>
   )
 }

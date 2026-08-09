@@ -128,3 +128,51 @@
     @apply font-sans;
   }
 }
+
+/* ---------------------------------------------------------------
+   Modo oscuro automático: sigue la configuración del celular.
+   Sin librerías: solo una media query que redefine las variables.
+   --------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 12%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+  }
+}
+
+/* ---------------------------------------------------------------
+   Color con significado. En una app de dinero el color es un dato,
+   no decoración: solo lo usamos para el SIGNO de una cifra.
+   --------------------------------------------------------------- */
+:root {
+  --positivo: oklch(0.52 0.13 155);
+  --negativo: oklch(0.55 0.19 25);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --positivo: oklch(0.75 0.15 155);
+    --negativo: oklch(0.72 0.17 25);
+  }
+}
+
+@theme inline {
+  --color-positivo: var(--positivo);
+  --color-negativo: var(--negativo);
+}

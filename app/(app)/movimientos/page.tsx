@@ -1,17 +1,18 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { formatearCOP, formatearFecha } from '@/lib/format'
+import { formatearFecha } from '@/lib/format'
 import { FilaMovimiento, type Movimiento } from '@/components/fila-movimiento'
+import { Seccion, Lista } from '@/components/seccion'
+import { SelectorMes } from '@/components/selector-mes'
 
 const FILTROS = [
   { valor: '',           etiqueta: 'Todos' },
   { valor: 'expense',    etiqueta: 'Gastos' },
   { valor: 'income',     etiqueta: 'Ingresos' },
-  { valor: 'transfer',   etiqueta: 'Transferencias' },
+  { valor: 'transfer',   etiqueta: 'Traslados' },
   { valor: 'adjustment', etiqueta: 'Ajustes' },
 ]
 
-/** Mes actual en Bogotá, formato "2026-08". */
 function mesActual(): string {
   return new Intl.DateTimeFormat('sv-SE', {
     timeZone: 'America/Bogota', year: 'numeric', month: '2-digit',
@@ -26,8 +27,6 @@ export default async function MovimientosPage({
   const { tipo = '', mes = mesActual() } = await searchParams
   const supabase = await createClient()
 
-  // Rango del mes. Comparamos contra occurred_on (día contable en
-  // Bogotá), no contra occurred_at, para que agosto sea agosto.
   const desde = `${mes}-01`
   const [anio, m] = mes.split('-').map(Number)
   const hasta = new Date(Date.UTC(anio, m, 0)).toISOString().slice(0, 10)
@@ -35,8 +34,7 @@ export default async function MovimientosPage({
   let consulta = supabase
     .from('movimientos_detalle')
     .select('id, type, description, occurred_at, occurred_on, monto, cuenta_origen, cuenta_destino, clase_origen, clase_destino')
-    .gte('occurred_on', desde)
-    .lte('occurred_on', hasta)
+    .gte('occurred_on', desde).lte('occurred_on', hasta)
     .order('occurred_at', { ascending: false })
 
   if (tipo) consulta = consulta.eq('type', tipo)
@@ -44,7 +42,6 @@ export default async function MovimientosPage({
   const { data } = await consulta
   const movimientos = (data ?? []) as (Movimiento & { occurred_on: string })[]
 
-  // Agrupamos por día
   const porDia = new Map<string, typeof movimientos>()
   for (const mov of movimientos) {
     const lista = porDia.get(mov.occurred_on) ?? []
@@ -53,19 +50,22 @@ export default async function MovimientosPage({
   }
 
   return (
-    <main className="px-5 pt-8">
-      <h1 className="text-2xl font-semibold">Movimientos</h1>
+    <main className="px-4 pt-6">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold">Movimientos</h1>
+        <SelectorMes mes={mes} tipo={tipo} />
+      </div>
 
-      {/* Filtros por tipo */}
-      <div className="-mx-5 mt-4 flex gap-2 overflow-x-auto px-5 pb-1">
+      {/* Filtros: chips que caben en una sola línea deslizable */}
+      <div className="-mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4 pb-1">
         {FILTROS.map((f) => (
           <Link
             key={f.valor}
             href={`/movimientos?mes=${mes}${f.valor ? `&tipo=${f.valor}` : ''}`}
-            className={`shrink-0 rounded-full border px-3 py-1.5 text-xs transition ${
+            className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] transition ${
               tipo === f.valor
                 ? 'bg-foreground text-background'
-                : 'text-muted-foreground'
+                : 'border text-muted-foreground'
             }`}
           >
             {f.etiqueta}
@@ -73,50 +73,27 @@ export default async function MovimientosPage({
         ))}
       </div>
 
-      {/* Selector de mes */}
-      <form className="mt-3">
-        {tipo && <input type="hidden" name="tipo" value={tipo} />}
-        <input
-          type="month" name="mes" defaultValue={mes}
-          className="rounded-lg border bg-transparent px-3 py-1.5 text-xs"
-        />
-        <button
-          type="submit"
-          className="ml-2 rounded-lg border px-3 py-1.5 text-xs"
-        >
-          Ver
-        </button>
-      </form>
-
       {movimientos.length === 0 ? (
-        <div className="mt-10 rounded-2xl border border-dashed p-8 text-center">
-          <p className="text-sm text-muted-foreground">
+        <div className="mt-8 rounded-xl border border-dashed p-6 text-center">
+          <p className="text-[13px] text-muted-foreground">
             No hay movimientos en este periodo.
           </p>
-          <Link
-            href="/movimientos/nuevo"
-            className="mt-4 inline-block rounded-lg bg-foreground px-4 py-2
-                       text-sm font-medium text-background"
-          >
+          <Link href="/movimientos/nuevo"
+                className="mt-3 inline-block rounded-lg bg-foreground px-3 py-1.5
+                           text-[13px] font-medium text-background">
             Registrar uno
           </Link>
         </div>
       ) : (
-        <div className="mt-6 space-y-5">
-          {[...porDia.entries()].map(([dia, lista]) => (
-            <section key={dia}>
-              <h2 className="mb-2 text-xs font-medium uppercase tracking-wide
-                             text-muted-foreground">
-                {formatearFecha(dia)}
-              </h2>
-              <div className="divide-y rounded-2xl border">
-                {lista.map((mov) => (
-                  <FilaMovimiento key={mov.id} mov={mov} />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
+        [...porDia.entries()].map(([dia, lista]) => (
+          <Seccion key={dia} titulo={formatearFecha(dia)}>
+            <Lista>
+              {lista.map((mov) => (
+                <FilaMovimiento key={mov.id} mov={mov} />
+              ))}
+            </Lista>
+          </Seccion>
+        ))
       )}
     </main>
   )

@@ -170,7 +170,7 @@ export function FormularioGastoCompartido({
         <p className="text-sm text-destructive" role="alert">{estado.error}</p>
       )}
       {estado.ok && (
-        <p className="text-sm text-emerald-600" role="status">{estado.ok}</p>
+        <p className="text-sm text-positivo" role="status">{estado.ok}</p>
       )}
 
       <button type="submit" disabled={enviando || total <= 0}

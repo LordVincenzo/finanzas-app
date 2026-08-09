@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatearCOP } from '@/lib/format'
 import { ETIQUETAS_TIPO } from '@/lib/tipos'
+import { Seccion, Lista, Fila } from '@/components/seccion'
 
 type Fila = {
   account_id: string
@@ -34,58 +35,45 @@ export default async function CuentasPage() {
   }
 
   return (
-    <main className="px-5 pt-8">
-      <div className="flex items-start justify-between">
+    <main className="px-4 pt-6">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Cuentas</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Total: <span className="tabular-nums">{formatearCOP(total)}</span>
+          <h1 className="text-xl font-semibold">Cuentas</h1>
+          <p className="mt-0.5 text-[13px] text-muted-foreground tabular-nums">
+            {formatearCOP(total)}
           </p>
         </div>
-        <Link
-          href="/cuentas/nueva"
-          aria-label="Nueva cuenta"
-          className="flex size-10 items-center justify-center rounded-full border"
-        >
-          <Plus className="size-5" />
+        <Link href="/cuentas/nueva" aria-label="Nueva cuenta"
+              className="flex size-8 items-center justify-center rounded-full border">
+          <Plus className="size-4" />
         </Link>
       </div>
 
       {cuentas.length === 0 ? (
-        <div className="mt-12 rounded-2xl border border-dashed p-8 text-center">
-          <p className="text-sm text-muted-foreground">
+        <div className="mt-8 rounded-xl border border-dashed p-6 text-center">
+          <p className="text-[13px] text-muted-foreground">
             Aún no tienes cuentas registradas.
           </p>
-          <Link
-            href="/cuentas/nueva"
-            className="mt-4 inline-block rounded-lg bg-foreground px-4 py-2
-                       text-sm font-medium text-background"
-          >
+          <Link href="/cuentas/nueva"
+                className="mt-3 inline-block rounded-lg bg-foreground px-3 py-1.5
+                           text-[13px] font-medium text-background">
             Crear la primera
           </Link>
         </div>
       ) : (
-        <div className="mt-6 space-y-6">
-          {[...grupos.entries()].map(([tipo, lista]) => (
-            <section key={tipo}>
-              <h2 className="mb-2 text-xs font-medium uppercase tracking-wide
-                             text-muted-foreground">
-                {ETIQUETAS_TIPO[tipo] ?? 'Otras'}
-              </h2>
-              <div className="divide-y rounded-2xl border">
-                {lista.map((c) => (
-                  <div key={c.account_id} className="flex items-center
-                                                     justify-between gap-3 px-4 py-3.5">
-                    <span className="truncate text-sm">{c.name}</span>
-                    <span className="text-sm font-medium tabular-nums">
-                      {formatearCOP(Number(c.balance))}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
+        [...grupos.entries()].map(([tipo, lista]) => (
+          <Seccion key={tipo} titulo={ETIQUETAS_TIPO[tipo] ?? 'Otras'}>
+            <Lista>
+              {lista.map((c) => (
+                <Fila
+                  key={c.account_id}
+                  titulo={c.name}
+                  valor={formatearCOP(Number(c.balance))}
+                />
+              ))}
+            </Lista>
+          </Seccion>
+        ))
       )}
     </main>
   )

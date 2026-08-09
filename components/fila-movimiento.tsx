@@ -24,7 +24,7 @@ function presentar(m: Movimiento) {
       return { signo: '-', color: 'text-foreground',
                contexto: `${m.cuenta_origen} · ${m.cuenta_destino}` }
     case 'income':
-      return { signo: '+', color: 'text-emerald-600',
+      return { signo: '+', color: 'text-positivo',
                contexto: `${m.cuenta_destino} · ${m.cuenta_origen}` }
     case 'transfer':
       return { signo: '', color: 'text-muted-foreground',
@@ -45,15 +45,15 @@ export function FilaMovimiento({ mov }: { mov: Movimiento }) {
   const esApertura = mov.type === 'opening'
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3.5">
+    <div className="flex items-center gap-2.5 px-3.5 py-2.5">
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm">{mov.description}</p>
-        <p className="truncate text-xs text-muted-foreground">
+        <p className="truncate text-[13px] leading-tight">{mov.description}</p>
+        <p className="truncate text-[11px] leading-tight text-muted-foreground">
           {formatearHora(mov.occurred_at)} · {contexto}
         </p>
       </div>
 
-      <span className={`shrink-0 text-sm font-medium tabular-nums ${color}`}>
+      <span className={`shrink-0 text-[13px] font-medium tabular-nums ${color}`}>
         {signo}{formatearCOP(Math.abs(Number(mov.monto)))}
       </span>
 

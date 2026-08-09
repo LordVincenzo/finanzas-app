@@ -51,11 +51,17 @@ export function formatearFecha(fecha: string | Date): string {
   }).format(d)
 }
 
-/** "12:32 p. m." */
+/** "12:32 p. m." — con espacios normales, iguales en servidor y cliente. */
 export function formatearHora(instante: string | Date): string {
   const d = typeof instante === 'string' ? new Date(instante) : instante
   return new Intl.DateTimeFormat('es-CO', {
     hour: 'numeric', minute: '2-digit', hour12: true,
     timeZone: 'America/Bogota',
-  }).format(d)
+  })
+    .format(d)
+    // Normalizamos los espacios especiales (U+202F, U+00A0) a espacios
+    // normales. Node y el navegador usan versiones distintas de ICU y
+    // producen caracteres invisiblemente diferentes, lo que rompe la
+    // hidratación de React.
+    .replace(/[\u202F\u00A0]/g, ' ')
 }

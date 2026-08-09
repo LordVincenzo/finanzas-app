@@ -5,6 +5,7 @@ import { ToggleVisibilidad } from '@/components/toggle-visibilidad'
 import { aceptar, rechazar, cancelar, salir, eliminarGastoCompartido } from './actions'
 import { FormularioGastoCompartido } from '@/components/formulario-gasto-compartido'
 import { FormularioLiquidar } from '@/components/formulario-liquidar'
+import { Seccion, Lista, Fila } from '@/components/seccion'
 
 export default async function ParejaPage() {
   const supabase = await createClient()
@@ -112,44 +113,44 @@ export default async function ParejaPage() {
   }).format(new Date())
 
   return (
-    <main className="px-5 pt-8">
-      <h1 className="text-2xl font-semibold">Pareja</h1>
+    <main className="px-4 pt-6">
+      <h1 className="text-xl font-semibold">Pareja</h1>
 
       {/* --- Invitaciones recibidas --- */}
       {(recibidas ?? []).length > 0 && (
-        <section className="mt-6 space-y-3">
+        <div className="mt-5 space-y-2">
           {(recibidas ?? []).map((inv: { id: string; inviter_name: string }) => (
-            <div key={inv.id} className="rounded-2xl border p-4">
-              <p className="text-sm">
+            <div key={inv.id} className="rounded-xl border p-3.5">
+              <p className="text-[13px]">
                 <span className="font-medium">{inv.inviter_name}</span> quiere
                 vincularse contigo.
               </p>
-              <div className="mt-3 flex gap-2">
+              <div className="mt-2.5 flex gap-2">
                 <form action={aceptar}>
                   <input type="hidden" name="id" value={inv.id} />
                   <button className="rounded-lg bg-foreground px-3 py-1.5
-                                     text-xs font-medium text-background">
+                                     text-[11px] font-medium text-background">
                     Aceptar
                   </button>
                 </form>
                 <form action={rechazar}>
                   <input type="hidden" name="id" value={inv.id} />
-                  <button className="rounded-lg border px-3 py-1.5 text-xs">
+                  <button className="rounded-lg border px-3 py-1.5 text-[11px]">
                     Rechazar
                   </button>
                 </form>
               </div>
             </div>
           ))}
-        </section>
+        </div>
       )}
 
       {/* --- Sin pareja --- */}
       {!pareja && (
-        <section className="mt-6">
-          <div className="rounded-2xl border p-5">
-            <p className="text-sm font-medium">Vincula tu cuenta</p>
-            <p className="mt-1 text-xs text-muted-foreground">
+        <>
+          <div className="mt-5 rounded-xl border p-4">
+            <p className="text-[13px] font-medium">Vincula tu cuenta</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
               Vincularse no comparte nada automáticamente. Tú eliges cuenta
               por cuenta qué puede ver la otra persona.
             </p>
@@ -157,177 +158,169 @@ export default async function ParejaPage() {
           </div>
 
           {(enviadas ?? []).length > 0 && (
-            <div className="mt-4 divide-y rounded-2xl border">
-              {(enviadas ?? []).map((inv) => (
-                <div key={inv.id} className="flex items-center justify-between
-                                             gap-3 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm">{inv.invitee_email}</p>
-                    <p className="text-xs text-muted-foreground">Pendiente</p>
-                  </div>
-                  <form action={cancelar}>
-                    <input type="hidden" name="id" value={inv.id} />
-                    <button className="shrink-0 text-xs text-destructive underline">
-                      Cancelar
-                    </button>
-                  </form>
-                </div>
-              ))}
-            </div>
+            <Seccion titulo="Invitaciones enviadas">
+              <Lista>
+                {(enviadas ?? []).map((inv) => (
+                  <Fila
+                    key={inv.id}
+                    titulo={inv.invitee_email}
+                    detalle="Pendiente"
+                    valor={
+                      <form action={cancelar}>
+                        <input type="hidden" name="id" value={inv.id} />
+                        <button className="text-[11px] text-destructive underline">
+                          Cancelar
+                        </button>
+                      </form>
+                    }
+                  />
+                ))}
+              </Lista>
+            </Seccion>
           )}
-        </section>
+        </>
       )}
-
-      
 
       {/* --- Con pareja --- */}
       {pareja && (
         <>
-          <section className="mt-6 rounded-2xl border p-5">
-            <p className="text-sm text-muted-foreground">Vinculado con</p>
-            <p className="mt-0.5 text-lg font-medium">{pareja.nombre}</p>
-          </section>
-
-          {/* --- Balance --- */}
-          <section className="mt-4 rounded-2xl border p-5">
-            <p className="text-sm text-muted-foreground">Balance</p>
+          {/* El balance es lo único que se consulta a diario:
+              va suelto y grande, como el patrimonio en Inicio. */}
+          <div className="mt-5">
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Balance con {pareja.nombre}
+            </p>
             {balance === 0 ? (
-              <p className="mt-1 text-lg font-medium">Están a mano</p>
-            ) : balance > 0 ? (
-              <>
-                <p className="mt-1 text-sm">{pareja.nombre} te debe</p>
-                <p className="text-2xl font-semibold tabular-nums text-emerald-600">
-                  {formatearCOP(balance)}
-                </p>
-              </>
+              <p className="mt-1 text-[22px] font-semibold leading-none">
+                Están a mano
+              </p>
             ) : (
               <>
-                <p className="mt-1 text-sm">Le debes a {pareja.nombre}</p>
-                <p className="text-2xl font-semibold tabular-nums text-destructive">
+                <p className={`mt-1 text-[30px] font-semibold leading-none
+                               tracking-tight tabular-nums ${
+                                 balance > 0 ? 'text-positivo' : 'text-negativo'
+                               }`}>
                   {formatearCOP(Math.abs(balance))}
+                </p>
+                <p className="mt-1 text-[13px] text-muted-foreground">
+                  {balance > 0
+                    ? `${pareja.nombre} te debe`
+                    : `Le debes a ${pareja.nombre}`}
                 </p>
               </>
             )}
 
             {balance !== 0 && (misCuentasPago ?? []).length > 0 && (
-              <details className="mt-3">
-                <summary className="cursor-pointer text-xs underline
-                                    text-muted-foreground">
+              <details className="mt-3 rounded-xl border">
+                <summary className="cursor-pointer px-4 py-2.5 text-[13px] font-medium">
                   Liquidar
                 </summary>
-                <FormularioLiquidar
-                  cuentas={misCuentasPago ?? []}
-                  balance={balance}
-                  nombrePareja={pareja.nombre}
-                  hoy={hoy}
-                />
+                <div className="border-t px-4 pb-4">
+                  <FormularioLiquidar
+                    cuentas={misCuentasPago ?? []}
+                    balance={balance}
+                    nombrePareja={pareja.nombre}
+                    hoy={hoy}
+                  />
+                </div>
               </details>
             )}
-          </section>
+          </div>
 
           {/* --- Nuevo gasto compartido --- */}
           {(misCuentasPago ?? []).length > 0 && (
-            <section className="mt-4 rounded-2xl border p-5">
-              <p className="text-sm font-medium">Gasto compartido</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Lo pagas tú y se reparte entre los dos.
-              </p>
-              <FormularioGastoCompartido
-                cuentas={misCuentasPago ?? []}
-                categorias={misCategorias ?? []}
-                nombrePareja={pareja.nombre}
-                hoy={hoy}
-              />
-            </section>
+            <details className="mt-5 rounded-xl border">
+              <summary className="cursor-pointer px-4 py-2.5 text-[13px] font-medium">
+                Registrar gasto compartido
+              </summary>
+              <div className="border-t px-4 pb-4">
+                <FormularioGastoCompartido
+                  cuentas={misCuentasPago ?? []}
+                  categorias={misCategorias ?? []}
+                  nombrePareja={pareja.nombre}
+                  hoy={hoy}
+                />
+              </div>
+            </details>
           )}
 
           {/* --- Historial compartido --- */}
           {(compartidos ?? []).length > 0 && (
-            <section className="mt-6">
-              <h2 className="mb-2 text-xs font-medium uppercase tracking-wide
-                             text-muted-foreground">
-                Gastos compartidos
-              </h2>
-              <div className="divide-y rounded-2xl border">
+            <Seccion titulo="Gastos compartidos">
+              <Lista>
                 {(compartidos ?? []).map((g) => (
-                  <div key={g.id} className="flex items-center gap-3 px-4 py-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm">{g.description}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Pagó {g.payer_id === yo ? 'tú' : g.payer_name} ·{' '}
-                        {formatearFecha(g.occurred_on)}
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-sm tabular-nums">
-                      {formatearCOP(Number(g.total_amount))}
-                    </span>
-                    {g.payer_id === yo && (
-                      <form action={eliminarGastoCompartido}>
-                        <input type="hidden" name="id" value={g.id} />
-                        <button className="shrink-0 text-xs text-destructive underline">
-                          Quitar
-                        </button>
-                      </form>
-                    )}
-                  </div>
+                  <Fila
+                    key={g.id}
+                    titulo={g.description}
+                    detalle={`Pagó ${g.payer_id === yo ? 'tú' : g.payer_name} · ${formatearFecha(g.occurred_on)}`}
+                    valor={formatearCOP(Number(g.total_amount))}
+                    extra={
+                      g.payer_id === yo ? (
+                        <form action={eliminarGastoCompartido}>
+                          <input type="hidden" name="id" value={g.id} />
+                          <button className="shrink-0 text-[11px] text-destructive
+                                             underline">
+                            Quitar
+                          </button>
+                        </form>
+                      ) : undefined
+                    }
+                  />
                 ))}
-              </div>
-            </section>
+              </Lista>
+            </Seccion>
           )}
 
-          <section className="mt-6">
-            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide
-                           text-muted-foreground">
+          {/* Lo que se configura una vez, plegado */}
+          <details className="mt-5 rounded-xl border">
+            <summary className="cursor-pointer px-4 py-2.5 text-[13px] font-medium">
               Qué compartes
-            </h2>
-            <div className="divide-y rounded-2xl border">
+            </summary>
+            <div className="divide-y border-t">
               {(misCuentas ?? []).map((c) => (
                 <div key={c.id} className="flex items-center justify-between
-                                           gap-3 px-4 py-3">
-                  <span className="truncate text-sm">{c.name}</span>
+                                           gap-3 px-3.5 py-2.5">
+                  <span className="truncate text-[13px]">{c.name}</span>
                   <ToggleVisibilidad id={c.id} visibilidad={c.visibility} />
                 </div>
               ))}
+              <p className="px-3.5 py-2.5 text-[11px] text-muted-foreground">
+                Compartida = puede verla, no editarla.
+              </p>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Compartida = puede verla, no editarla.
-            </p>
-          </section>
+          </details>
 
-          <section className="mt-6">
-            <h2 className="mb-2 text-xs font-medium uppercase tracking-wide
-                           text-muted-foreground">
+          <details className="mt-2.5 rounded-xl border">
+            <summary className="cursor-pointer px-4 py-2.5 text-[13px] font-medium">
               Qué comparte contigo
-            </h2>
-            {(suyas ?? []).length === 0 ? (
-              <div className="rounded-2xl border border-dashed p-6 text-center">
-                <p className="text-xs text-muted-foreground">
-                  Todavía no comparte ninguna cuenta.
-                </p>
-              </div>
+            </summary>
+            {suyas.length === 0 ? (
+              <p className="border-t px-3.5 py-3 text-[11px] text-muted-foreground">
+                Todavía no comparte ninguna cuenta.
+              </p>
             ) : (
-              <div className="divide-y rounded-2xl border">
-                {(suyas ?? []).map((c) => (
+              <div className="divide-y border-t">
+                {suyas.map((c) => (
                   <div key={c.account_id} className="flex items-center
-                                                     justify-between gap-3 px-4 py-3">
-                    <span className="truncate text-sm">{c.name}</span>
-                    <span className="shrink-0 text-sm tabular-nums">
+                                                     justify-between gap-3
+                                                     px-3.5 py-2.5">
+                    <span className="truncate text-[13px]">{c.name}</span>
+                    <span className="shrink-0 text-[13px] tabular-nums">
                       {formatearCOP(Number(c.balance))}
                     </span>
                   </div>
                 ))}
               </div>
             )}
-          </section>
+          </details>
 
           <form action={salir} className="mt-8">
-            <button className="text-sm text-destructive underline">
+            <button className="text-[11px] text-destructive underline">
               Desvincular
             </button>
           </form>
         </>
       )}
-      
     </main>
   )
 }

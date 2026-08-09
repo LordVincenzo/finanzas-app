@@ -62,7 +62,7 @@ export default async function PrestamosPage() {
                   </div>
                   <div className="shrink-0 text-right">
                     {p.status === 'paid' ? (
-                      <span className="text-xs font-medium text-emerald-600">
+                      <span className="text-xs font-medium text-positivo">
                         Pagado
                       </span>
                     ) : (

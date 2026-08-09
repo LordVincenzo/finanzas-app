@@ -15,7 +15,7 @@ function hoyEnBogota(): string {
 }
 
 const ICONO = {
-  pagada:    { Icono: Check,       color: 'text-emerald-600' },
+  pagada:    { Icono: Check,       color: 'text-positivo' },
   vencida:   { Icono: AlertCircle, color: 'text-destructive' },
   pendiente: { Icono: Clock,       color: 'text-muted-foreground' },
 }
@@ -92,7 +92,7 @@ export default async function DetallePrestamoPage({
         </div>
 
         {prestamo.status === 'paid' && (
-          <p className="mt-3 border-t pt-3 text-sm font-medium text-emerald-600">
+          <p className="mt-3 border-t pt-3 text-sm font-medium text-positivo">
             Préstamo saldado
           </p>
         )}
@@ -162,7 +162,7 @@ export default async function DetallePrestamoPage({
             {(abonos ?? []).map((a) => (
               <div key={a.id} className="flex items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm tabular-nums text-emerald-600">
+                  <p className="text-sm tabular-nums text-positivo">
                     +{formatearCOP(Number(a.amount))}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">

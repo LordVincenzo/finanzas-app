@@ -11,6 +11,8 @@ export default async function PrestamosPage() {
     .from('prestamos_resumen')
     .select('*')
     .neq('status', 'cancelled')
+    .neq('type', 'receivable')
+    .neq('type', 'partner_receivable')
     .order('loan_date', { ascending: false })
 
   const prestamos = data ?? []

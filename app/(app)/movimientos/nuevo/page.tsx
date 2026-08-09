@@ -18,13 +18,21 @@ export default async function NuevoMovimientoPage() {
 
   const { data } = await supabase
     .from('accounts')
-    .select('id, name, class')
+    .select('id, name, class, type')
     .eq('is_active', true)
     .eq('is_opening', false)
     .order('name')
 
   const todas = data ?? []
-  const cuentas = todas.filter((a) => a.class === 'asset' || a.class === 'liability')
+
+  // Las cuentas por cobrar y el balance de pareja NO son de gasto libre:
+  // se mueven desde Préstamos y desde Pareja, con su propio seguimiento.
+  const EXCLUIDAS = ['receivable', 'partner_receivable']
+
+  const cuentas = todas.filter(
+    (a) => (a.class === 'asset' || a.class === 'liability')
+        && !EXCLUIDAS.includes(a.type)
+  )
   const categoriasGasto = todas.filter((a) => a.class === 'expense')
   const categoriasIngreso = todas.filter((a) => a.class === 'income')
 

@@ -17,7 +17,7 @@ export function NavInferior() {
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 border-t bg-background pb-[env(safe-area-inset-bottom)]">
-      <div className="mx-auto flex max-w-md items-center justify-around px-2">
+            <div className="mx-auto flex w-full max-w-lg items-center justify-around px-2 sm:max-w-md">
         {enlaces.slice(0, 2).map((e) => (
           <ItemNav key={e.href} {...e} activo={ruta.startsWith(e.href)} />
         ))}

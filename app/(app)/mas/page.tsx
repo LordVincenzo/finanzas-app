@@ -3,6 +3,7 @@ import { ChevronRight, Wallet, HeartHandshake, HandCoins, User } from 'lucide-re
 import { createClient } from '@/lib/supabase/server'
 import { cerrarSesion } from '@/app/auth/actions'
 import { Seccion, Lista } from '@/components/seccion'
+import { SelectorTema } from '@/components/selector-tema'
 
 const ENLACES = [
   { href: '/cuentas',   icono: Wallet,         etiqueta: 'Cuentas',
@@ -43,6 +44,7 @@ export default async function MasPage() {
 
       <Seccion titulo="Cuenta">
         <Lista>
+          <SelectorTema />
           <div className="flex items-center gap-3 px-3.5 py-2.5">
             <User className="size-4 shrink-0 text-muted-foreground" />
             <div className="min-w-0 flex-1">

@@ -82,6 +82,7 @@ export default async function PrestamosPage() {
                   <span>
                     {p.cuotas_pagadas}/{p.cuotas_total} cuotas
                   </span>
+                  {' '}
                   {Number(p.cuotas_vencidas) > 0 ? (
                     <span className="flex items-center gap-1 text-destructive">
                       <AlertCircle className="size-3.5" />

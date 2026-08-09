@@ -13,7 +13,7 @@ export default async function LayoutApp({
   if (!user) redirect('/login')
 
   return (
-    <div className="mx-auto min-h-screen max-w-md pb-24">
+    <div className="mx-auto min-h-screen w-full max-w-lg pb-24 sm:max-w-md">
       {children}
       <NavInferior />
     </div>

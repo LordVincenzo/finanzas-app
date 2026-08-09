@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { parsearCOP } from '@/lib/format'
 
 export type EstadoMovimiento = { error?: string }
+export type EstadoEliminar = { error?: string }
 
 const esquema = z.object({
   tipo: z.enum(['expense', 'income', 'transfer', 'adjustment']),
@@ -26,6 +27,16 @@ const esquema = z.object({
  */
 function aInstanteBogota(valorLocal: string): string {
   return `${valorLocal}:00-05:00`
+}
+
+/** Las pantallas cuyos números dependen del ledger. */
+function revalidarTodo() {
+  revalidatePath('/movimientos')
+  revalidatePath('/cuentas')
+  revalidatePath('/inicio')
+  revalidatePath('/ahorros')
+  revalidatePath('/prestamos')
+  revalidatePath('/pareja')
 }
 
 export async function registrarMovimiento(
@@ -67,9 +78,7 @@ export async function registrarMovimiento(
     })
     if (error) return { error: traducir(error.message) }
 
-    revalidatePath('/movimientos')
-    revalidatePath('/cuentas')
-    revalidatePath('/inicio')
+    revalidarTodo()
     redirect('/movimientos')
   }
 
@@ -83,6 +92,12 @@ export async function registrarMovimiento(
     }
   }
   if (!descripcion) return { error: 'Escribe una descripción' }
+
+  // Una transferencia a la misma cuenta produciría dos líneas que se anulan:
+  // válida para el trigger de suma cero, pero sin sentido para el usuario.
+  if (tipo === 'transfer' && cuenta === contraparte) {
+    return { error: 'El origen y el destino no pueden ser la misma cuenta' }
+  }
 
   // El servidor decide qué cuenta es origen y cuál destino según
   // el tipo. El formulario nunca envía esa decisión.
@@ -104,9 +119,7 @@ export async function registrarMovimiento(
 
   if (error) return { error: traducir(error.message) }
 
-  revalidatePath('/movimientos')
-  revalidatePath('/cuentas')
-  revalidatePath('/inicio')
+  revalidarTodo()
   redirect('/movimientos')
 }
 
@@ -115,16 +128,25 @@ function traducir(mensaje: string): string {
   return mensaje.replace(/^.*?:\s*/, '').trim() || 'No se pudo registrar el movimiento'
 }
 
-export async function eliminarMovimiento(formData: FormData) {
+/**
+ * Antes lanzaba una excepción: el mensaje del RPC se perdía y el usuario
+ * veía la pantalla de error de Next.js en vez de saber qué pasó.
+ * Ahora devuelve estado, igual que el resto de acciones.
+ */
+export async function eliminarMovimiento(
+  _previo: EstadoEliminar,
+  formData: FormData
+): Promise<EstadoEliminar> {
   const id = String(formData.get('id') ?? '')
-  if (!id) return
+  if (!id) return { error: 'No se identificó el movimiento' }
 
   const supabase = await createClient()
   const { error } = await supabase.rpc('eliminar_movimiento', { p_tx: id })
 
-  if (error) throw new Error(traducir(error.message))
+  if (error) {
+    return { error: traducir(error.message) || 'No se pudo eliminar' }
+  }
 
-  revalidatePath('/movimientos')
-  revalidatePath('/cuentas')
-  revalidatePath('/inicio')
+  revalidarTodo()
+  return {}
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { registrarMovimiento, type EstadoMovimiento } from '@/app/(app)/movimientos/actions'
 
 type Cuenta = { id: string; name: string }
@@ -16,6 +17,32 @@ type Tipo = (typeof TIPOS)[number]['valor']
 
 const estadoInicial: EstadoMovimiento = {}
 
+/**
+ * "2026-08-09T16:09" → "Hoy, 4:09 p. m."
+ * Se parsea a mano: `new Date("2026-08-09T16:09")` interpreta la cadena en la
+ * zona del navegador, y en un celular configurado fuera de Colombia eso
+ * mostraría una hora distinta a la que se va a guardar.
+ */
+function resumenFecha(valor: string, ahora: string): string {
+  const [fecha, hora] = valor.split('T')
+  if (!fecha || !hora) return 'Sin fecha'
+
+  const [h, min] = hora.split(':').map(Number)
+  const sufijo = h < 12 ? 'a. m.' : 'p. m.'
+  const h12 = h % 12 === 0 ? 12 : h % 12
+  const reloj = `${h12}:${String(min).padStart(2, '0')} ${sufijo}`
+
+  const hoy = ahora.split('T')[0]
+  if (fecha === hoy) return `Hoy, ${reloj}`
+
+  const [a, m, d] = fecha.split('-').map(Number)
+  const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun',
+                 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+  const anioHoy = Number(hoy.split('-')[0])
+  const anio = a === anioHoy ? '' : ` ${a}`
+  return `${d} ${MESES[m - 1]}${anio}, ${reloj}`
+}
+
 export function FormularioMovimiento({
   cuentas, categoriasGasto, categoriasIngreso, ahora,
 }: {
@@ -25,6 +52,8 @@ export function FormularioMovimiento({
   ahora: string
 }) {
   const [tipo, setTipo] = useState<Tipo>('expense')
+  const [fecha, setFecha] = useState(ahora)
+  const [editarFecha, setEditarFecha] = useState(false)
   const [estado, accion, enviando] = useActionState(registrarMovimiento, estadoInicial)
 
   const esAjuste = tipo === 'adjustment'
@@ -42,7 +71,8 @@ export function FormularioMovimiento({
             key={t.valor}
             type="button"
             onClick={() => setTipo(t.valor)}
-            className={`rounded-lg py-2 text-xs font-medium transition ${
+            aria-pressed={tipo === t.valor}
+            className={`min-h-10 rounded-lg text-[13px] font-medium transition ${
               tipo === t.valor
                 ? 'bg-background shadow-sm'
                 : 'text-muted-foreground'
@@ -53,19 +83,26 @@ export function FormularioMovimiento({
         ))}
       </div>
 
-      {/* Monto */}
+      {/* Monto: el campo protagonista, con el signo de peso siempre visible */}
       <div>
         <label htmlFor="monto" className="mb-1.5 block text-sm font-medium">
           {esAjuste ? 'Saldo real de la cuenta' : 'Monto'}
         </label>
-        <input
-          id="monto" name="monto" inputMode="numeric" required
-          placeholder={esAjuste ? '1.500.000' : '20.000'}
-          autoFocus
-          className="w-full rounded-lg border bg-transparent px-3 py-3 text-2xl
-                     font-semibold tabular-nums focus:outline-none
-                     focus:ring-2 focus:ring-ring"
-        />
+        <div className="flex items-center rounded-lg border
+                        focus-within:ring-2 focus-within:ring-ring">
+          <span className="pl-3.5 text-2xl font-semibold text-muted-foreground">
+            $
+          </span>
+          <input
+            id="monto" name="monto" inputMode="numeric" required
+            placeholder={esAjuste ? '1.500.000' : '20.000'}
+            autoFocus
+            className="min-h-14 w-full rounded-lg bg-transparent pl-1.5 pr-3.5
+                       text-2xl font-semibold tabular-nums
+                       placeholder:text-muted-foreground/50
+                       focus:outline-none"
+          />
+        </div>
         <p className="mt-1.5 text-xs text-muted-foreground">
           {esAjuste
             ? 'Cuánto dinero hay realmente. Registraremos la diferencia.'
@@ -74,78 +111,91 @@ export function FormularioMovimiento({
       </div>
 
       {/* Cuenta */}
-      <div>
-        <label htmlFor="cuenta" className="mb-1.5 block text-sm font-medium">
-          {tipo === 'income' ? 'Entra a' : esTransferencia ? 'Sale de' : 'Cuenta'}
-        </label>
-        <select
-          id="cuenta" name="cuenta" required
-          className="w-full rounded-lg border bg-transparent px-3 py-2.5
-                     focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          {cuentas.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-      </div>
+      <Campo
+        id="cuenta"
+        etiqueta={tipo === 'income' ? 'Entra a' : esTransferencia ? 'Sale de' : 'Cuenta'}
+      >
+        <Selector id="cuenta" nombre="cuenta" opciones={cuentas} />
+      </Campo>
 
       {/* Contraparte: categoría o cuenta destino */}
       {!esAjuste && (
-        <div>
-          <label htmlFor="contraparte" className="mb-1.5 block text-sm font-medium">
-            {esTransferencia ? 'Entra a' : 'Categoría'}
-          </label>
-          <select
-            id="contraparte" name="contraparte" required
-            className="w-full rounded-lg border bg-transparent px-3 py-2.5
-                       focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            {(esTransferencia ? cuentas : categorias).map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
+        <Campo
+          id="contraparte"
+          etiqueta={esTransferencia ? 'Entra a' : 'Categoría'}
+        >
+          <Selector
+            id="contraparte" nombre="contraparte"
+            opciones={esTransferencia ? cuentas : categorias}
+          />
+        </Campo>
       )}
 
       {/* Descripción */}
       {!esAjuste && (
-        <div>
-          <label htmlFor="descripcion" className="mb-1.5 block text-sm font-medium">
-            Descripción
-          </label>
+        <Campo id="descripcion" etiqueta="Descripción">
           <input
             id="descripcion" name="descripcion" required maxLength={200}
             placeholder="Almuerzo"
-            className="w-full rounded-lg border bg-transparent px-3 py-2.5
+            className="min-h-12 w-full rounded-lg border bg-transparent px-3.5
+                       text-[15px] placeholder:text-muted-foreground/50
+                       focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </Campo>
+      )}
+
+      {/* Fecha y hora.
+          Casi siempre es "ahora", así que por defecto solo se resume.
+          El input no se desmonta al colapsar: si lo hiciera, el campo `fecha`
+          llegaría vacío al Server Action. */}
+      <div>
+        <div className="flex items-baseline justify-between">
+          <span className="text-sm font-medium">Fecha y hora</span>
+          {!editarFecha && (
+            <button
+              type="button"
+              onClick={() => setEditarFecha(true)}
+              className="text-[13px] text-muted-foreground underline"
+            >
+              Cambiar
+            </button>
+          )}
+        </div>
+
+        {!editarFecha && (
+          <p className="mt-1.5 text-[15px] tabular-nums">
+            {resumenFecha(fecha, ahora)}
+          </p>
+        )}
+
+        <div className={editarFecha ? 'mt-1.5' : 'hidden'}>
+          <input
+            id="fecha" name="fecha" type="datetime-local" required
+            value={fecha}
+            onChange={(e) => setFecha(e.target.value)}
+            className="min-h-12 w-full rounded-lg border bg-transparent px-3.5
+                       text-[15px] tabular-nums
                        focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
-      )}
-
-      {/* Fecha y hora */}
-      <div>
-        <label htmlFor="fecha" className="mb-1.5 block text-sm font-medium">
-          Fecha y hora
-        </label>
-        <input
-          id="fecha" name="fecha" type="datetime-local" required
-          defaultValue={ahora}
-          className="w-full rounded-lg border bg-transparent px-3 py-2.5
-                     focus:outline-none focus:ring-2 focus:ring-ring"
-        />
       </div>
 
       {/* Notas */}
-      <div>
-        <label htmlFor="notas" className="mb-1.5 block text-sm font-medium">
-          Notas <span className="font-normal text-muted-foreground">(opcional)</span>
-        </label>
+      <Campo
+        id="notas"
+        etiqueta={
+          <>
+            Notas{' '}
+            <span className="font-normal text-muted-foreground">(opcional)</span>
+          </>
+        }
+      >
         <textarea
           id="notas" name="notas" rows={2} maxLength={500}
-          className="w-full rounded-lg border bg-transparent px-3 py-2.5
-                     focus:outline-none focus:ring-2 focus:ring-ring"
+          className="w-full rounded-lg border bg-transparent px-3.5 py-3
+                     text-[15px] focus:outline-none focus:ring-2 focus:ring-ring"
         />
-      </div>
+      </Campo>
 
       {estado.error && (
         <p className="text-sm text-destructive" role="alert">{estado.error}</p>
@@ -153,11 +203,62 @@ export function FormularioMovimiento({
 
       <button
         type="submit" disabled={enviando}
-        className="w-full rounded-lg bg-foreground py-3 font-medium
-                   text-background disabled:opacity-50"
+        className="min-h-12 w-full rounded-lg bg-foreground font-medium
+                   text-background transition disabled:opacity-50"
       >
         {enviando ? 'Registrando…' : 'Registrar'}
       </button>
     </form>
+  )
+}
+
+/** Etiqueta + control. Mantiene el mismo ritmo en todos los campos. */
+function Campo({
+  id, etiqueta, children,
+}: {
+  id: string
+  etiqueta: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1.5 block text-sm font-medium">
+        {etiqueta}
+      </label>
+      {children}
+    </div>
+  )
+}
+
+/**
+ * Select nativo con apariencia propia.
+ * Sigue siendo un <select>: envía su valor solo, abre el selector del sistema
+ * en el celular y es accesible sin que tengamos que reimplementarlo.
+ */
+function Selector({
+  id, nombre, opciones,
+}: {
+  id: string
+  nombre: string
+  opciones: Cuenta[]
+}) {
+  return (
+    <div className="relative">
+      <select
+        id={id} name={nombre} required
+        className="min-h-12 w-full appearance-none rounded-lg border
+                   bg-transparent pl-3.5 pr-10 text-[15px]
+                   focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        {opciones.map((o) => (
+          <option key={o.id} value={o.id}>{o.name}</option>
+        ))}
+      </select>
+      <ChevronDown
+        aria-hidden
+        className="pointer-events-none absolute right-3.5 top-1/2 size-4
+                   -translate-y-1/2 text-muted-foreground"
+      />
+    </div>
   )
 }

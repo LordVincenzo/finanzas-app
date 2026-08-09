@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { Trash2 } from 'lucide-react'
+import { useActionState, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { formatearCOP, formatearHora } from '@/lib/format'
-import { eliminarMovimiento } from '@/app/(app)/movimientos/actions'
+import { eliminarMovimiento, type EstadoEliminar } from '@/app/(app)/movimientos/actions'
 
 export type Movimiento = {
   id: string
@@ -17,7 +17,26 @@ export type Movimiento = {
   monto: number
 }
 
-/** Cómo se ve el movimiento según su tipo. */
+const estadoInicial: EstadoEliminar = {}
+
+const NOMBRE_TIPO: Record<string, string> = {
+  expense: 'Gasto',
+  income: 'Ingreso',
+  transfer: 'Transferencia',
+  adjustment: 'Ajuste de saldo',
+  opening: 'Saldo inicial',
+  loan_out: 'Préstamo',
+  loan_repay: 'Cobro de préstamo',
+  settlement: 'Liquidación',
+}
+
+/**
+ * Cómo se ve el movimiento según su tipo.
+ *
+ * Los gastos van en color neutro a propósito: en una lista donde casi todo
+ * son gastos, pintarlos todos de rojo deja de ser información. El signo "−"
+ * ya dice que el dinero salió.
+ */
 function presentar(m: Movimiento) {
   switch (m.type) {
     case 'expense':
@@ -41,46 +60,102 @@ function presentar(m: Movimiento) {
 }
 
 export function FilaMovimiento({ mov }: { mov: Movimiento }) {
+  const [abierta, setAbierta] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
+  const [estado, accion, borrando] = useActionState(eliminarMovimiento, estadoInicial)
+
   const { signo, color, contexto } = presentar(mov)
   const esApertura = mov.type === 'opening'
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] leading-tight">{mov.description}</p>
-        <p className="mt-0.5 truncate text-[12px] leading-tight
-                      text-muted-foreground">
-          {formatearHora(mov.occurred_at)} · {contexto}
-        </p>
-      </div>
+    <div>
+      {/* La fila entera abre el detalle. Antes había un icono de basura
+          permanente: 16px de área táctil, a un toque del borrado, en una
+          lista que se recorre con el pulgar. */}
+      <button
+        type="button"
+        onClick={() => { setAbierta(!abierta); setConfirmando(false) }}
+        aria-expanded={abierta}
+        className="flex w-full min-h-14 items-center gap-3 px-4 py-3 text-left"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] leading-tight">{mov.description}</p>
+          <p className="mt-0.5 truncate text-[12px] leading-tight
+                        text-muted-foreground">
+            {formatearHora(mov.occurred_at)} · {contexto}
+          </p>
+        </div>
 
-      <span className={`shrink-0 text-[15px] font-medium tabular-nums ${color}`}>
-        {signo}{formatearCOP(Math.abs(Number(mov.monto)))}
-      </span>
+        <span className={`shrink-0 text-[15px] font-medium tabular-nums ${color}`}>
+          {signo}{formatearCOP(Math.abs(Number(mov.monto)))}
+        </span>
 
-      {!esApertura && (
-        confirmando ? (
-          <form action={eliminarMovimiento} className="flex shrink-0 gap-1">
-            <input type="hidden" name="id" value={mov.id} />
-            <button type="submit"
-                    className="rounded-md bg-destructive px-2 py-1 text-[12px]
-                               font-medium text-white">
-              Borrar
+        <ChevronDown
+          aria-hidden
+          className={`size-4 shrink-0 text-muted-foreground transition-transform
+                      ${abierta ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {abierta && (
+        <div className="border-t bg-muted/40 px-4 py-3">
+          <dl className="space-y-1.5 text-[13px]">
+            <Detalle etiqueta="Tipo" valor={NOMBRE_TIPO[mov.type] ?? mov.type} />
+            <Detalle etiqueta="Sale de" valor={mov.cuenta_origen} />
+            <Detalle etiqueta="Entra a" valor={mov.cuenta_destino} />
+            <Detalle etiqueta="Hora" valor={formatearHora(mov.occurred_at)} />
+          </dl>
+
+          {estado.error && (
+            <p className="mt-3 text-[13px] text-destructive" role="alert">
+              {estado.error}
+            </p>
+          )}
+
+          {esApertura ? (
+            <p className="mt-3 text-[12px] text-muted-foreground">
+              El saldo inicial no se puede eliminar. Para corregirlo, registra
+              un ajuste de saldo.
+            </p>
+          ) : confirmando ? (
+            <form action={accion} className="mt-3 flex gap-2">
+              <input type="hidden" name="id" value={mov.id} />
+              <button
+                type="submit" disabled={borrando}
+                className="min-h-10 flex-1 rounded-lg bg-destructive
+                           text-[13px] font-medium text-background
+                           disabled:opacity-50"
+              >
+                {borrando ? 'Eliminando…' : 'Sí, eliminar'}
+              </button>
+              <button
+                type="button" onClick={() => setConfirmando(false)}
+                className="min-h-10 flex-1 rounded-lg border text-[13px]"
+              >
+                Cancelar
+              </button>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmando(true)}
+              className="mt-3 min-h-10 w-full rounded-lg border text-[13px]
+                         text-destructive"
+            >
+              Eliminar movimiento
             </button>
-            <button type="button" onClick={() => setConfirmando(false)}
-                    className="rounded-md border px-2 py-1 text-[12px]">
-              No
-            </button>
-          </form>
-        ) : (
-          <button type="button" onClick={() => setConfirmando(true)}
-                  aria-label={`Eliminar ${mov.description}`}
-                  className="shrink-0 text-muted-foreground">
-            <Trash2 className="size-4" />
-          </button>
-        )
+          )}
+        </div>
       )}
+    </div>
+  )
+}
+
+function Detalle({ etiqueta, valor }: { etiqueta: string; valor: string }) {
+  return (
+    <div className="flex gap-3">
+      <dt className="w-20 shrink-0 text-muted-foreground">{etiqueta}</dt>
+      <dd className="min-w-0 flex-1 truncate">{valor}</dd>
     </div>
   )
 }

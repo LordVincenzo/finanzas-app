@@ -1,8 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
-import { formatearCOP } from '@/lib/format'
+import { formatearCOP, formatearFecha } from '@/lib/format'
 import { InvitarPareja } from '@/components/invitar-pareja'
 import { ToggleVisibilidad } from '@/components/toggle-visibilidad'
-import { aceptar, rechazar, cancelar, salir } from './actions'
+import { aceptar, rechazar, cancelar, salir, eliminarGastoCompartido } from './actions'
+import { FormularioGastoCompartido } from '@/components/formulario-gasto-compartido'
+import { FormularioLiquidar } from '@/components/formulario-liquidar'
 
 export default async function ParejaPage() {
   const supabase = await createClient()
@@ -59,7 +61,7 @@ export default async function ParejaPage() {
     .order('name')
 
   // Lo que mi pareja comparte conmigo
-  // Lo que mi pareja comparte conmigo
+  
   const { data: cuentasSuyas } = pareja
     ? await supabase
         .from('accounts')
@@ -77,6 +79,37 @@ export default async function ParejaPage() {
       return { account_id: c.id, name: c.name, balance: Number(saldo ?? 0) }
     })
   )
+
+  // Balance con la pareja y datos para los formularios
+  const { data: balanceRow } = pareja
+    ? await supabase.from('account_balances')
+        .select('balance')
+        .eq('owner_id', yo)
+        .eq('type', 'partner_receivable')
+        .maybeSingle()
+    : { data: null }
+
+  const balance = Number(balanceRow?.balance ?? 0)
+
+  const { data: misCuentasPago } = await supabase
+    .from('accounts').select('id, name')
+    .eq('owner_id', yo).eq('class', 'asset').eq('is_active', true)
+    .eq('is_partner_balance', false).eq('is_opening', false)
+    .neq('type', 'receivable').order('name')
+
+  const { data: misCategorias } = await supabase
+    .from('accounts').select('id, name')
+    .eq('owner_id', yo).eq('class', 'expense').order('name')
+
+  const { data: compartidos } = pareja
+    ? await supabase.from('gastos_compartidos_detalle')
+        .select('*').order('occurred_on', { ascending: false }).limit(20)
+    : { data: null }
+
+  const hoy = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'America/Bogota',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date())
 
   return (
     <main className="px-5 pt-8">
@@ -145,6 +178,8 @@ export default async function ParejaPage() {
         </section>
       )}
 
+      
+
       {/* --- Con pareja --- */}
       {pareja && (
         <>
@@ -152,6 +187,93 @@ export default async function ParejaPage() {
             <p className="text-sm text-muted-foreground">Vinculado con</p>
             <p className="mt-0.5 text-lg font-medium">{pareja.nombre}</p>
           </section>
+
+          {/* --- Balance --- */}
+          <section className="mt-4 rounded-2xl border p-5">
+            <p className="text-sm text-muted-foreground">Balance</p>
+            {balance === 0 ? (
+              <p className="mt-1 text-lg font-medium">Están a mano</p>
+            ) : balance > 0 ? (
+              <>
+                <p className="mt-1 text-sm">{pareja.nombre} te debe</p>
+                <p className="text-2xl font-semibold tabular-nums text-emerald-600">
+                  {formatearCOP(balance)}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mt-1 text-sm">Le debes a {pareja.nombre}</p>
+                <p className="text-2xl font-semibold tabular-nums text-destructive">
+                  {formatearCOP(Math.abs(balance))}
+                </p>
+              </>
+            )}
+
+            {balance !== 0 && (misCuentasPago ?? []).length > 0 && (
+              <details className="mt-3">
+                <summary className="cursor-pointer text-xs underline
+                                    text-muted-foreground">
+                  Liquidar
+                </summary>
+                <FormularioLiquidar
+                  cuentas={misCuentasPago ?? []}
+                  balance={balance}
+                  nombrePareja={pareja.nombre}
+                  hoy={hoy}
+                />
+              </details>
+            )}
+          </section>
+
+          {/* --- Nuevo gasto compartido --- */}
+          {(misCuentasPago ?? []).length > 0 && (
+            <section className="mt-4 rounded-2xl border p-5">
+              <p className="text-sm font-medium">Gasto compartido</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Lo pagas tú y se reparte entre los dos.
+              </p>
+              <FormularioGastoCompartido
+                cuentas={misCuentasPago ?? []}
+                categorias={misCategorias ?? []}
+                nombrePareja={pareja.nombre}
+                hoy={hoy}
+              />
+            </section>
+          )}
+
+          {/* --- Historial compartido --- */}
+          {(compartidos ?? []).length > 0 && (
+            <section className="mt-6">
+              <h2 className="mb-2 text-xs font-medium uppercase tracking-wide
+                             text-muted-foreground">
+                Gastos compartidos
+              </h2>
+              <div className="divide-y rounded-2xl border">
+                {(compartidos ?? []).map((g) => (
+                  <div key={g.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm">{g.description}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Pagó {g.payer_id === yo ? 'tú' : g.payer_name} ·{' '}
+                        {formatearFecha(g.occurred_on)}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-sm tabular-nums">
+                      {formatearCOP(Number(g.total_amount))}
+                    </span>
+                    {g.payer_id === yo && (
+                      <form action={eliminarGastoCompartido}>
+                        <input type="hidden" name="id" value={g.id} />
+                        <button className="shrink-0 text-xs text-destructive underline">
+                          Quitar
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="mt-6">
             <h2 className="mb-2 text-xs font-medium uppercase tracking-wide
@@ -205,6 +327,7 @@ export default async function ParejaPage() {
           </form>
         </>
       )}
+      
     </main>
   )
 }

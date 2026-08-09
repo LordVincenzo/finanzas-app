@@ -1,0 +1,61 @@
+/**
+ * Utilidades de dinero.
+ *
+ * REGLA: internamente el dinero SIEMPRE es un entero de pesos.
+ * 20000 significa $20.000. Nunca usamos decimales en cálculos.
+ */
+
+/** 20000 -> "$20.000" */
+export function formatearCOP(pesos: number): string {
+  const signo = pesos < 0 ? '-' : ''
+  const absoluto = Math.abs(Math.round(pesos))
+  return `${signo}$${new Intl.NumberFormat('es-CO').format(absoluto)}`
+}
+
+/** 20000 -> "$20.000"  ·  1250000 -> "$1,25 M" */
+export function formatearCOPCompacto(pesos: number): string {
+  const absoluto = Math.abs(pesos)
+  if (absoluto < 1_000_000) return formatearCOP(pesos)
+  const signo = pesos < 0 ? '-' : ''
+  const millones = (absoluto / 1_000_000).toFixed(2).replace('.', ',')
+  return `${signo}$${millones} M`
+}
+
+/**
+ * Convierte lo que escribe la persona en un entero de pesos.
+ * Acepta "20.000", "20000", "$20.000", "20k", "1,5m".
+ */
+export function parsearCOP(entrada: string): number | null {
+  const texto = entrada.trim().toLowerCase().replace(/[$\s]/g, '')
+  if (!texto) return null
+
+  const atajo = texto.match(/^([\d.,]+)(k|m)$/)
+  if (atajo) {
+    const base = Number(atajo[1].replace(/\./g, '').replace(',', '.'))
+    if (Number.isNaN(base)) return null
+    return Math.round(base * (atajo[2] === 'k' ? 1_000 : 1_000_000))
+  }
+
+  const limpio = texto.replace(/\./g, '').replace(',', '.')
+  const valor = Number(limpio)
+  if (Number.isNaN(valor)) return null
+  return Math.round(valor)
+}
+
+/** "9 de agosto de 2026" */
+export function formatearFecha(fecha: string | Date): string {
+  const d = typeof fecha === 'string' ? new Date(fecha + 'T12:00:00') : fecha
+  return new Intl.DateTimeFormat('es-CO', {
+    day: 'numeric', month: 'long', year: 'numeric',
+    timeZone: 'America/Bogota',
+  }).format(d)
+}
+
+/** "12:32 p. m." */
+export function formatearHora(instante: string | Date): string {
+  const d = typeof instante === 'string' ? new Date(instante) : instante
+  return new Intl.DateTimeFormat('es-CO', {
+    hour: 'numeric', minute: '2-digit', hour12: true,
+    timeZone: 'America/Bogota',
+  }).format(d)
+}

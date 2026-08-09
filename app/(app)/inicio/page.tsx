@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { formatearCOP } from '@/lib/format'
+import { ResumenCategorias, type GastoCategoria } from '@/components/resumen-categorias'
 
 function mesActual(): string {
   return new Intl.DateTimeFormat('sv-SE', {
@@ -22,7 +23,7 @@ export default async function InicioPage() {
       supabase.from('profiles').select('display_name').eq('id', user!.id).single(),
       supabase.from('net_worth').select('net_worth').eq('owner_id', user!.id).maybeSingle(),
       supabase.from('movimientos_detalle')
-        .select('type, monto')
+        .select('type, monto, cuenta_origen, cuenta_destino')
         .gte('occurred_on', desde).lte('occurred_on', hasta)
         .in('type', ['expense', 'income']),
     ])
@@ -36,6 +37,20 @@ export default async function InicioPage() {
   const ingresos = movs
     .filter((x) => x.type === 'income')
     .reduce((s, x) => s + Number(x.monto), 0)
+
+  // Agrupamos los gastos por categoría de destino.
+  // En un gasto, cuenta_destino ES la categoría (Alimentación, etc.).
+  const acumulado = new Map<string, number>()
+  for (const mov of movs) {
+    if (mov.type !== 'expense') continue
+    const categoria = mov.cuenta_destino
+    acumulado.set(categoria, (acumulado.get(categoria) ?? 0) + Number(mov.monto))
+  }
+
+  const categorias: GastoCategoria[] = [...acumulado.entries()]
+    .map(([nombre, total]) => ({ nombre, total }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5)   // solo las 5 principales: el dashboard no se satura
 
   const nombreMes = new Intl.DateTimeFormat('es-CO', {
     month: 'long', timeZone: 'America/Bogota',
@@ -63,6 +78,8 @@ export default async function InicioPage() {
           </div>
         </dl>
       </section>
+
+      <ResumenCategorias categorias={categorias} totalGastos={gastos} />
 
       <Link
         href="/movimientos"

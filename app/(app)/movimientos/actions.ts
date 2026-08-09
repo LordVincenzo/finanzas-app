@@ -114,3 +114,17 @@ export async function registrarMovimiento(
 function traducir(mensaje: string): string {
   return mensaje.replace(/^.*?:\s*/, '').trim() || 'No se pudo registrar el movimiento'
 }
+
+export async function eliminarMovimiento(formData: FormData) {
+  const id = String(formData.get('id') ?? '')
+  if (!id) return
+
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('eliminar_movimiento', { p_tx: id })
+
+  if (error) throw new Error(traducir(error.message))
+
+  revalidatePath('/movimientos')
+  revalidatePath('/cuentas')
+  revalidatePath('/inicio')
+}

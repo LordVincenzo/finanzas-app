@@ -8,6 +8,7 @@ export default function MasPage() {
 
       <nav className="mt-6 divide-y rounded-2xl border">
         <Link href="/cuentas" className="block px-4 py-3.5 text-sm">Cuentas</Link>
+        <Link href="/pareja" className="block px-4 py-3.5 text-sm">Pareja</Link>
       </nav>
 
       <p className="mt-4 text-xs text-muted-foreground">

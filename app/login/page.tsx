@@ -52,6 +52,11 @@ export default function LoginPage() {
           ¿No tienes cuenta?{' '}
           <Link href="/registro" className="text-neutral-900 underline">Regístrate</Link>
         </p>
+        <p className="mt-3 text-center text-sm">
+          <Link href="/recuperar" className="text-muted-foreground underline">
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </p>
       </div>
     </main>
   )

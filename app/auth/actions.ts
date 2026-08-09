@@ -82,3 +82,35 @@ export async function cerrarSesion() {
   revalidatePath('/', 'layout')
   redirect('/login')
 }
+
+export async function recuperarPassword(
+  _previo: EstadoAuth,
+  formData: FormData
+): Promise<EstadoAuth> {
+  const email = String(formData.get('email') ?? '').trim()
+  if (!email.includes('@')) return { error: 'Escribe un correo válido' }
+
+  const supabase = await createClient()
+  await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'}/auth/nueva-password`,
+  })
+
+  // Mensaje idéntico exista o no el correo: no revelamos quién está registrado.
+  return { error: 'Si ese correo está registrado, te enviamos un enlace.' }
+}
+
+export async function cambiarPassword(
+  _previo: EstadoAuth,
+  formData: FormData
+): Promise<EstadoAuth> {
+  const password = String(formData.get('password') ?? '')
+  if (password.length < 8) {
+    return { error: 'La contraseña debe tener al menos 8 caracteres' }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.updateUser({ password })
+  if (error) return { error: error.message }
+
+  redirect('/inicio')
+}

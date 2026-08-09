@@ -12,13 +12,10 @@ export default function RegistroPage() {
   return (
     <main className="flex min-h-screen flex-col justify-center px-6 py-12">
       <div className="mx-auto w-full max-w-sm">
-        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+        <p className="text-[15px] uppercase tracking-[0.2em] text-muted-foreground">
           Finanzas
         </p>
-        <p className="mt-2 text-[34px] font-semibold leading-none tracking-tight
-                      tabular-nums text-muted-foreground/25 select-none">
-          $0.000.000
-        </p>
+        
 
         <h1 className="mt-10 text-[22px] font-semibold leading-tight">
           Crea tu espacio

@@ -18,22 +18,25 @@ export default async function InicioPage() {
   const [anio, m] = mes.split('-').map(Number)
   const hasta = new Date(Date.UTC(anio, m, 0)).toISOString().slice(0, 10)
 
-  const [{ data: perfil }, { data: patrimonio }, { data: delMes }, { data: cuentas }] =
+  const [{ data: perfil }, { data: detalle }, { data: delMes }] =
     await Promise.all([
       supabase.from('profiles')
         .select('display_name').eq('id', user!.id).single(),
-      supabase.from('net_worth')
-        .select('net_worth').eq('owner_id', user!.id).maybeSingle(),
+      supabase.from('patrimonio_detalle')
+        .select('liquido, ahorros, inversiones, por_cobrar, deudas, patrimonio')
+        .eq('owner_id', user!.id).maybeSingle(),
       supabase.from('movimientos_detalle')
         .select('type, monto, cuenta_destino')
         .gte('occurred_on', desde).lte('occurred_on', hasta)
         .in('type', ['expense', 'income']),
-      supabase.from('cuentas_disponible')
-        .select('disponible').eq('owner_id', user!.id),
     ])
 
-  const total = Number(patrimonio?.net_worth ?? 0)
-  const libre = (cuentas ?? []).reduce((s, c) => s + Number(c.disponible), 0)
+  const total = Number(detalle?.patrimonio ?? 0)
+  const disponible =
+    Number(detalle?.liquido ?? 0) +
+    Number(detalle?.ahorros ?? 0) +
+    Number(detalle?.inversiones ?? 0)
+  const porCobrar = Number(detalle?.por_cobrar ?? 0)
 
   const movs = delMes ?? []
   const gastos = movs.filter((x) => x.type === 'expense')
@@ -41,7 +44,6 @@ export default async function InicioPage() {
   const ingresos = movs.filter((x) => x.type === 'income')
     .reduce((s, x) => s + Number(x.monto), 0)
 
-  // Agrupamos los gastos por categoría de destino.
   const acumulado = new Map<string, number>()
   for (const mov of movs) {
     if (mov.type !== 'expense') continue
@@ -59,22 +61,33 @@ export default async function InicioPage() {
 
   return (
     <main className="px-4 pt-6">
-      {/* El patrimonio es lo más importante: va suelto y grande.
-          La jerarquía se hace con escala, no metiéndolo en una caja. */}
       <header>
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-[14px] text-muted-foreground">
           Hola, {perfil?.display_name}
         </p>
-        <p className="mt-3 text-[11px] uppercase tracking-wider text-muted-foreground">
+        <p className="mt-3 text-[12px] uppercase tracking-wider text-muted-foreground">
           Patrimonio
         </p>
         <p className="mt-0.5 text-[38px] font-semibold leading-none tracking-tight
                       tabular-nums">
           {formatearCOP(total)}
         </p>
-        <p className="mt-1.5 text-[11px] text-muted-foreground tabular-nums">
-          {formatearCOP(libre)} disponibles sin comprometer
-        </p>
+
+        {/* El patrimonio no es lo que puedes gastar: hay que separarlo. */}
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="rounded-xl border p-3">
+            <p className="text-[12px] text-muted-foreground">Disponible</p>
+            <p className="mt-0.5 text-[17px] font-medium tabular-nums">
+              {formatearCOP(disponible)}
+            </p>
+          </div>
+          <div className="rounded-xl border p-3">
+            <p className="text-[12px] text-muted-foreground">Por cobrar</p>
+            <p className="mt-0.5 text-[17px] font-medium tabular-nums">
+              {formatearCOP(porCobrar)}
+            </p>
+          </div>
+        </div>
       </header>
 
       <Seccion titulo={nombreMes}>
@@ -92,7 +105,7 @@ export default async function InicioPage() {
           titulo="En qué gastaste"
           accion={
             <Link href="/movimientos"
-                  className="text-[11px] text-muted-foreground underline">
+                  className="text-[12px] text-muted-foreground underline">
               Ver todo
             </Link>
           }
@@ -131,8 +144,8 @@ function Dato({
 }) {
   return (
     <div>
-      <p className="text-[11px] text-muted-foreground">{etiqueta}</p>
-      <p className={`mt-0.5 text-[13px] leading-tight tabular-nums
+      <p className="text-[12px] text-muted-foreground">{etiqueta}</p>
+      <p className={`mt-0.5 text-[14px] leading-tight tabular-nums
                      ${destacado ? 'font-semibold' : ''} ${color ?? ''}`}>
         {formatearCOP(valor)}
       </p>
@@ -143,7 +156,7 @@ function Dato({
 function Atajo({ href, etiqueta }: { href: string; etiqueta: string }) {
   return (
     <Link href={href}
-          className="rounded-xl border px-3 py-2.5 text-center text-[11px]">
+          className="rounded-xl border px-3 py-3 text-center text-[13px]">
       {etiqueta}
     </Link>
   )

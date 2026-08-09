@@ -10,6 +10,7 @@ export default async function LayoutApp({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Un solo sitio protege TODAS las páginas de dentro.
   if (!user) redirect('/login')
 
   return (

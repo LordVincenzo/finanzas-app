@@ -16,8 +16,10 @@ export function NavInferior() {
   const ruta = usePathname()
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 border-t bg-background pb-[env(safe-area-inset-bottom)]">
-            <div className="mx-auto flex w-full max-w-lg items-center justify-around px-2 sm:max-w-md">
+    <nav className="fixed bottom-0 inset-x-0 z-40 border-t bg-background
+                    pb-[env(safe-area-inset-bottom)]">
+      <div className="mx-auto flex w-full max-w-lg items-center justify-around
+                      px-2 sm:max-w-md">
         {enlaces.slice(0, 2).map((e) => (
           <ItemNav key={e.href} {...e} activo={ruta.startsWith(e.href)} />
         ))}
@@ -25,7 +27,9 @@ export function NavInferior() {
         <Link
           href="/movimientos/nuevo"
           aria-label="Registrar movimiento"
-          className="-mt-5 flex size-14 shrink-0 items-center justify-center rounded-full bg-foreground text-background shadow-lg transition active:scale-95"
+          className="-mt-5 flex size-14 shrink-0 items-center justify-center
+                     rounded-full bg-foreground text-background shadow-lg
+                     transition active:scale-95"
         >
           <Plus className="size-6" />
         </Link>

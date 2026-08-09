@@ -44,9 +44,8 @@ export async function crearPrestamo(
     return { error: 'Escribe un monto válido' }
   }
 
-  // Las cuotas llegan como JSON desde el componente cliente, que ya
-  // las generó visualmente. Aquí las validamos otra vez: el servidor
-  // no confía en lo que le manda el navegador.
+  // Las cuotas llegan como JSON desde el componente cliente.
+  // Las validamos otra vez: el servidor no confía en el navegador.
   let cuotas: { fecha: string; monto: number }[] = []
   const crudo = String(formData.get('cuotas') ?? '')
   if (crudo) {
@@ -60,7 +59,9 @@ export async function crearPrestamo(
   if (cuotas.length > 0) {
     const suma = cuotas.reduce((s, c) => s + Number(c.monto), 0)
     if (suma !== monto) {
-      return { error: `Las cuotas suman ${suma.toLocaleString('es-CO')} y el préstamo es ${monto.toLocaleString('es-CO')}` }
+      return {
+        error: `Las cuotas suman ${suma.toLocaleString('es-CO')} y el préstamo es ${monto.toLocaleString('es-CO')}`,
+      }
     }
   }
 
@@ -116,10 +117,18 @@ export async function eliminarAbono(formData: FormData) {
   revalidar(prestamo)
 }
 
-export async function cancelarPrestamo(formData: FormData) {
+/**
+ * Borra el préstamo por completo: cuotas, abonos, transacciones del
+ * ledger y la cuenta "Por cobrar". Como si nunca se hubiera registrado.
+ *
+ * Es lo que se necesita cuando registras algo por error. "Perdonar una
+ * deuda" sería otra cosa: ahí el dinero debería convertirse en un gasto.
+ */
+export async function eliminarPrestamo(formData: FormData) {
   const id = String(formData.get('id') ?? '')
   const supabase = await createClient()
-  await supabase.rpc('cancelar_prestamo', { p_prestamo: id })
-  revalidar(id)
+  const { error } = await supabase.rpc('eliminar_prestamo', { p_prestamo: id })
+  if (error) throw new Error(traducir(error.message))
+  revalidar()
   redirect('/prestamos')
 }

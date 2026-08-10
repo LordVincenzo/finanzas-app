@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { registrarAbono, type EstadoPrestamo } from '@/app/(app)/prestamos/actions'
 import { formatearCOP, formatearFecha } from '@/lib/format'
 
@@ -8,6 +9,14 @@ type Cuenta = { id: string; name: string }
 type Cuota = { id: string; number: number; due_date: string; pendiente: number }
 
 const estadoInicial: EstadoPrestamo = {}
+
+const CAMPO = `min-h-12 w-full rounded-xl border bg-transparent px-3.5
+               text-[15px] placeholder:text-muted-foreground/50
+               focus:outline-none focus:ring-2 focus:ring-ring`
+
+const SELECT = `min-h-12 w-full appearance-none rounded-xl border
+                bg-transparent pl-3.5 pr-10 text-[15px]
+                focus:outline-none focus:ring-2 focus:ring-ring`
 
 export function FormularioAbono({
   prestamoId, cuentas, cuotas, hoy,
@@ -21,81 +30,127 @@ export function FormularioAbono({
   const [cuotaId, setCuotaId] = useState(cuotas[0]?.id ?? '')
 
   const cuotaSel = cuotas.find((c) => c.id === cuotaId)
-  const clase = 'w-full rounded-lg border bg-transparent px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-ring'
 
   return (
-    <section className="mt-4 rounded-2xl border p-5">
-      <p className="text-sm font-medium">Registrar abono</p>
+    <section className="mt-3 rounded-2xl bg-card p-4 shadow-card
+                        ring-1 ring-border/70">
+      <p className="text-[15px] font-medium">Registrar abono</p>
 
-      <form action={accion} className="mt-4 space-y-3">
+      <form action={accion} className="mt-4 space-y-3.5">
         <input type="hidden" name="prestamo" value={prestamoId} />
 
         {cuotas.length > 0 && (
           <div>
-            <label htmlFor="cuota" className="mb-1 block text-xs text-muted-foreground">
+            <label htmlFor="cuota-ab"
+                   className="mb-1.5 block text-[13px] font-medium">
               ¿A qué cuota se aplica?
             </label>
-            <select
-              id="cuota" name="cuota" value={cuotaId}
-              onChange={(e) => setCuotaId(e.target.value)}
-              className={clase}
-            >
-              {cuotas.map((c) => (
-                <option key={c.id} value={c.id}>
-                  Cuota {c.number} — {formatearFecha(c.due_date)} —
-                  {' '}faltan {formatearCOP(c.pendiente)}
-                </option>
-              ))}
-              <option value="">Sin asignar a una cuota</option>
-            </select>
+            <div className="relative">
+              <select
+                id="cuota-ab" name="cuota" value={cuotaId}
+                onChange={(e) => setCuotaId(e.target.value)}
+                className={SELECT}
+              >
+                {cuotas.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    Cuota {c.number} — {formatearFecha(c.due_date)} —
+                    {' '}faltan {formatearCOP(c.pendiente)}
+                  </option>
+                ))}
+                <option value="">Sin asignar a una cuota</option>
+              </select>
+              <ChevronDown
+                aria-hidden
+                className="pointer-events-none absolute right-3.5 top-1/2 size-4
+                           -translate-y-1/2 text-muted-foreground"
+              />
+            </div>
           </div>
         )}
 
         <div>
-          <label htmlFor="monto" className="mb-1 block text-xs text-muted-foreground">
+          <label htmlFor="monto-ab"
+                 className="mb-1.5 block text-[13px] font-medium">
             Cuánto abonó
           </label>
-          <input
-            id="monto" name="monto" inputMode="numeric" required
-            placeholder={cuotaSel ? String(cuotaSel.pendiente) : '400.000'}
-            className={`${clase} tabular-nums`}
-          />
+          <div className="flex items-center rounded-xl border
+                          focus-within:ring-2 focus-within:ring-ring">
+            <span className="pl-3.5 text-[20px] font-semibold
+                             text-muted-foreground">
+              $
+            </span>
+            <input
+              id="monto-ab" name="monto" inputMode="numeric" required
+              /* Antes esto era String(pendiente): salía "130000" en un
+                 formulario donde todo lo demás va con puntos de millar. */
+              placeholder={cuotaSel
+                ? formatearCOP(cuotaSel.pendiente).replace('$', '').trim()
+                : '400.000'}
+              className="min-h-12 w-full rounded-xl bg-transparent pl-1.5 pr-3.5
+                         text-[20px] font-semibold tabular-nums
+                         placeholder:text-muted-foreground/50
+                         focus:outline-none"
+            />
+          </div>
           {cuotaSel && (
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1.5 text-[12px] text-muted-foreground">
               Puede ser menos: quedará como abono parcial.
             </p>
           )}
         </div>
 
         <div>
-          <label htmlFor="cuenta" className="mb-1 block text-xs text-muted-foreground">
+          <label htmlFor="cuenta-ab"
+                 className="mb-1.5 block text-[13px] font-medium">
             ¿A qué cuenta entró el dinero?
           </label>
-          <select id="cuenta" name="cuenta" required className={clase}>
-            {cuentas.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+          <div className="relative">
+            <select id="cuenta-ab" name="cuenta" required className={SELECT}>
+              {cuentas.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <ChevronDown
+              aria-hidden
+              className="pointer-events-none absolute right-3.5 top-1/2 size-4
+                         -translate-y-1/2 text-muted-foreground"
+            />
+          </div>
         </div>
 
         <div>
-          <label htmlFor="fecha" className="mb-1 block text-xs text-muted-foreground">
+          <label htmlFor="fecha-ab"
+                 className="mb-1.5 block text-[13px] font-medium">
             Fecha
           </label>
-          <input id="fecha" name="fecha" type="date" defaultValue={hoy}
-                 className={clase} />
+          <input id="fecha-ab" name="fecha" type="date" defaultValue={hoy}
+                 className={`${CAMPO} tabular-nums`} />
         </div>
 
-        <input name="nota" maxLength={200} placeholder="Nota (opcional)"
-               className={clase} />
+        <div>
+          {/* Antes este campo solo tenía placeholder, que desaparece al
+              escribir y no lo anuncia un lector de pantalla. */}
+          <label htmlFor="nota-ab"
+                 className="mb-1.5 block text-[13px] font-medium">
+            Nota{' '}
+            <span className="font-normal text-muted-foreground">(opcional)</span>
+          </label>
+          <input id="nota-ab" name="nota" maxLength={200}
+                 placeholder="Transferencia Nequi" className={CAMPO} />
+        </div>
 
         {estado.error && (
-          <p className="text-sm text-destructive" role="alert">{estado.error}</p>
+          <p className="text-[13px] text-destructive" role="alert">
+            {estado.error}
+          </p>
         )}
 
-        <button type="submit" disabled={enviando}
-                className="w-full rounded-lg bg-foreground py-2.5 text-sm
-                           font-medium text-background disabled:opacity-50">
+        <button
+          type="submit" disabled={enviando}
+          className="min-h-12 w-full rounded-xl bg-primary text-[15px]
+                     font-medium text-primary-foreground shadow-card
+                     transition active:scale-[0.99] disabled:opacity-50"
+        >
           {enviando ? 'Registrando…' : 'Registrar abono'}
         </button>
       </form>

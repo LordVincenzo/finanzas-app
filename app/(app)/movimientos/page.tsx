@@ -33,7 +33,10 @@ export default async function MovimientosPage({
 
   let consulta = supabase
     .from('movimientos_detalle')
-    .select('id, type, description, occurred_at, occurred_on, monto, cuenta_origen, cuenta_destino, clase_origen, clase_destino')
+    // monto_total es el dinero que se movió; monto es lo que de verdad
+    // gastaste. Solo difieren en un gasto compartido, donde parte del
+    // pago no es tuyo sino algo que te deben.
+    .select('id, type, description, occurred_at, occurred_on, monto, monto_total, cuenta_origen, cuenta_destino, clase_origen, clase_destino')
     .gte('occurred_on', desde).lte('occurred_on', hasta)
     .order('occurred_at', { ascending: false })
 
@@ -50,9 +53,9 @@ export default async function MovimientosPage({
   }
 
   return (
-    <main className="px-4 pt-6">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Movimientos</h1>
+    <main className="px-4 pb-28 pt-4">
+      <div className="flex items-center justify-between gap-3 px-1">
+        <h1 className="text-[22px] font-semibold tracking-tight">Movimientos</h1>
         <SelectorMes mes={mes} tipo={tipo} />
       </div>
 
@@ -62,10 +65,11 @@ export default async function MovimientosPage({
           <Link
             key={f.valor}
             href={`/movimientos?mes=${mes}${f.valor ? `&tipo=${f.valor}` : ''}`}
-            className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] transition ${
+            className={`flex h-9 shrink-0 items-center rounded-full px-3.5
+                        text-[13px] font-medium transition ${
               tipo === f.valor
-                ? 'bg-foreground text-background'
-                : 'border text-muted-foreground'
+                ? 'bg-primary text-primary-foreground shadow-card'
+                : 'bg-card text-muted-foreground ring-1 ring-border/70'
             }`}
           >
             {f.etiqueta}
@@ -74,13 +78,19 @@ export default async function MovimientosPage({
       </div>
 
       {movimientos.length === 0 ? (
-        <div className="mt-8 rounded-xl border border-dashed p-6 text-center">
-          <p className="text-[13px] text-muted-foreground">
-            No hay movimientos en este periodo.
+        <div className="mt-8 rounded-2xl border border-dashed border-border
+                        px-5 py-7 text-center">
+          <p className="text-[15px] font-medium">
+            No hay movimientos en este periodo
+          </p>
+          <p className="mx-auto mt-1.5 max-w-[28ch] text-[13px] leading-snug
+                        text-muted-foreground">
+            Prueba con otro mes o registra el primero.
           </p>
           <Link href="/movimientos/nuevo"
-                className="mt-3 inline-block rounded-lg bg-foreground px-3 py-1.5
-                           text-[13px] font-medium text-background">
+                className="mt-4 inline-flex min-h-11 items-center rounded-xl
+                           bg-primary px-5 text-[14px] font-medium
+                           text-primary-foreground shadow-card">
             Registrar uno
           </Link>
         </div>

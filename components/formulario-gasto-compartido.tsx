@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { crearGastoCompartido, type EstadoPareja } from '@/app/(app)/pareja/actions'
 import { formatearCOP, parsearCOP } from '@/lib/format'
 
@@ -15,6 +16,10 @@ const MODOS = [
 ] as const
 
 type Modo = (typeof MODOS)[number]['valor']
+
+const CAMPO = `min-h-12 w-full rounded-xl border bg-transparent px-3.5
+               text-[15px] placeholder:text-muted-foreground/50
+               focus:outline-none focus:ring-2 focus:ring-ring`
 
 export function FormularioGastoCompartido({
   cuentas, categorias, nombrePareja, hoy,
@@ -46,42 +51,59 @@ export function FormularioGastoCompartido({
   }
   const suParte = total - miParte
 
-  const clase = 'w-full rounded-lg border bg-transparent px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-ring'
+  /* Con el modo "Monto" y el campo vacío, tu parte sale 0: registraría
+     que tu pareja paga el gasto entero y te lo debe todo. Es una
+     operación legítima, pero no debería ocurrir por descuido. */
+  const faltaExacto = modo === 'exacto' && (parsearCOP(exacto) ?? 0) <= 0
 
   return (
     <form action={accion} className="mt-4 space-y-4">
       <input type="hidden" name="miParte" value={miParte} />
 
       <div>
-        <label htmlFor="total" className="mb-1.5 block text-sm font-medium">
+        <label htmlFor="total-gc" className="mb-1.5 block text-[13px] font-medium">
           Monto total
         </label>
-        <input
-          id="total" name="total" inputMode="numeric" required
-          value={totalTexto} onChange={(e) => setTotalTexto(e.target.value)}
-          placeholder="120.000"
-          className={`${clase} tabular-nums`}
-        />
+        <div className="flex items-center rounded-xl border
+                        focus-within:ring-2 focus-within:ring-ring">
+          <span className="pl-3.5 text-[20px] font-semibold
+                           text-muted-foreground">
+            $
+          </span>
+          <input
+            id="total-gc" name="total" inputMode="numeric" required
+            value={totalTexto} onChange={(e) => setTotalTexto(e.target.value)}
+            placeholder="120.000"
+            className="min-h-12 w-full rounded-xl bg-transparent pl-1.5 pr-3.5
+                       text-[20px] font-semibold tabular-nums
+                       placeholder:text-muted-foreground/50
+                       focus:outline-none"
+          />
+        </div>
       </div>
 
       <div>
-        <label htmlFor="descripcion" className="mb-1.5 block text-sm font-medium">
+        <label htmlFor="desc-gc" className="mb-1.5 block text-[13px] font-medium">
           Descripción
         </label>
-        <input id="descripcion" name="descripcion" required maxLength={200}
-               placeholder="Cena" className={clase} />
+        <input id="desc-gc" name="descripcion" required maxLength={200}
+               placeholder="Cena" className={CAMPO} />
       </div>
 
       {/* --- División --- */}
-      <div className="rounded-xl border p-4">
-        <p className="text-sm font-medium">Cómo se divide</p>
+      <div className="rounded-xl bg-muted/50 p-3">
+        <p className="text-[13px] font-medium">Cómo se divide</p>
 
-        <div className="mt-3 grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+        <div className="mt-2.5 grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
           {MODOS.map((m) => (
             <button
               key={m.valor} type="button" onClick={() => setModo(m.valor)}
-              className={`rounded-md py-1.5 text-xs font-medium transition ${
-                modo === m.valor ? 'bg-background shadow-sm' : 'text-muted-foreground'
+              aria-pressed={modo === m.valor}
+              className={`min-h-10 rounded-md text-[13px] font-medium
+                          transition ${
+                modo === m.valor
+                  ? 'bg-card shadow-card'
+                  : 'text-muted-foreground'
               }`}
             >
               {m.etiqueta}
@@ -91,44 +113,53 @@ export function FormularioGastoCompartido({
 
         {modo === 'porcentaje' && (
           <div className="mt-3">
-            <label htmlFor="pct" className="mb-1 block text-xs text-muted-foreground">
+            <label htmlFor="pct-gc"
+                   className="mb-1.5 block text-[12px] text-muted-foreground">
               Tu porcentaje: {porcentaje}%
             </label>
             <input
-              id="pct" type="range" min={0} max={100} step={5}
+              id="pct-gc" type="range" min={0} max={100} step={5}
               value={porcentaje}
               onChange={(e) => setPorcentaje(Number(e.target.value))}
-              className="w-full"
+              className="w-full accent-[var(--primary)]"
             />
           </div>
         )}
 
         {modo === 'exacto' && (
           <div className="mt-3">
-            <label htmlFor="ex" className="mb-1 block text-xs text-muted-foreground">
+            <label htmlFor="ex-gc"
+                   className="mb-1.5 block text-[12px] text-muted-foreground">
               Cuánto te corresponde a ti
             </label>
             <input
-              id="ex" inputMode="numeric" value={exacto}
+              id="ex-gc" inputMode="numeric" value={exacto}
               onChange={(e) => setExacto(e.target.value)}
               placeholder="60.000"
-              className={`${clase} tabular-nums`}
+              className={`${CAMPO} bg-card tabular-nums`}
             />
           </div>
         )}
 
-        {total > 0 && (
-          <dl className="mt-4 space-y-1.5 border-t pt-3 text-sm">
+        {total > 0 && !faltaExacto && (
+          <dl className="mt-3 space-y-1.5 border-t border-border/70 pt-2.5
+                         text-[14px]">
             <div className="flex justify-between">
               <dt className="text-muted-foreground">Tu parte</dt>
-              <dd className="tabular-nums">{formatearCOP(miParte)}</dd>
+              <dd className="font-medium tabular-nums">
+                {formatearCOP(miParte)}
+              </dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-muted-foreground">Parte de {nombrePareja}</dt>
-              <dd className="tabular-nums">{formatearCOP(suParte)}</dd>
+              <dt className="text-muted-foreground">
+                Parte de {nombrePareja}
+              </dt>
+              <dd className="font-medium tabular-nums">
+                {formatearCOP(suParte)}
+              </dd>
             </div>
             {suParte > 0 && (
-              <p className="pt-1 text-xs text-muted-foreground">
+              <p className="pt-1 text-[12px] text-muted-foreground tabular-nums">
                 {nombrePareja} te deberá {formatearCOP(suParte)}.
               </p>
             )}
@@ -137,47 +168,77 @@ export function FormularioGastoCompartido({
       </div>
 
       <div>
-        <label htmlFor="cuenta" className="mb-1.5 block text-sm font-medium">
+        <label htmlFor="cuenta-gc" className="mb-1.5 block text-[13px] font-medium">
           Pagaste desde
         </label>
-        <select id="cuenta" name="cuenta" required className={clase}>
-          {cuentas.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+        <div className="relative">
+          <select id="cuenta-gc" name="cuenta" required
+                  className="min-h-12 w-full appearance-none rounded-xl border
+                             bg-transparent pl-3.5 pr-10 text-[15px]
+                             focus:outline-none focus:ring-2 focus:ring-ring">
+            {cuentas.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <ChevronDown
+            aria-hidden
+            className="pointer-events-none absolute right-3.5 top-1/2 size-4
+                       -translate-y-1/2 text-muted-foreground"
+          />
+        </div>
       </div>
 
       <div>
-        <label htmlFor="categoria" className="mb-1.5 block text-sm font-medium">
+        <label htmlFor="cat-gc" className="mb-1.5 block text-[13px] font-medium">
           Categoría
         </label>
-        <select id="categoria" name="categoria" required className={clase}>
-          {categorias.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+        <div className="relative">
+          <select id="cat-gc" name="categoria" required
+                  className="min-h-12 w-full appearance-none rounded-xl border
+                             bg-transparent pl-3.5 pr-10 text-[15px]
+                             focus:outline-none focus:ring-2 focus:ring-ring">
+            {categorias.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <ChevronDown
+            aria-hidden
+            className="pointer-events-none absolute right-3.5 top-1/2 size-4
+                       -translate-y-1/2 text-muted-foreground"
+          />
+        </div>
       </div>
 
       <div>
-        <label htmlFor="fecha" className="mb-1.5 block text-sm font-medium">
+        <label htmlFor="fecha-gc" className="mb-1.5 block text-[13px] font-medium">
           Fecha
         </label>
-        <input id="fecha" name="fecha" type="date" defaultValue={hoy}
-               className={clase} />
+        <input id="fecha-gc" name="fecha" type="date" defaultValue={hoy}
+               className={`${CAMPO} tabular-nums`} />
       </div>
 
       {estado.error && (
-        <p className="text-sm text-destructive" role="alert">{estado.error}</p>
+        <p className="text-[13px] text-destructive" role="alert">
+          {estado.error}
+        </p>
       )}
       {estado.ok && (
-        <p className="text-sm text-positivo" role="status">{estado.ok}</p>
+        <p className="text-[13px] text-positivo" role="status">{estado.ok}</p>
       )}
 
-      <button type="submit" disabled={enviando || total <= 0}
-              className="w-full rounded-lg bg-foreground py-2.5 text-sm
-                         font-medium text-background disabled:opacity-50">
+      <button
+        type="submit" disabled={enviando || total <= 0 || faltaExacto}
+        className="min-h-12 w-full rounded-xl bg-primary text-[15px]
+                   font-medium text-primary-foreground shadow-card
+                   transition active:scale-[0.99] disabled:opacity-50"
+      >
         {enviando ? 'Registrando…' : 'Registrar gasto compartido'}
       </button>
+
+      <p className="text-[11px] leading-snug text-muted-foreground">
+        Se escriben dos movimientos: uno en tu historial y otro en el de{' '}
+        {nombrePareja}, cada uno con su parte.
+      </p>
     </form>
   )
 }

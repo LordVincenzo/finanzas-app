@@ -16,10 +16,12 @@ export default async function PrestamosPage() {
   // Si algo falla en la consulta, mejor verlo que quedarse en blanco.
   if (error) {
     return (
-      <main className="px-4 pt-6">
-        <h1 className="text-xl font-semibold">Préstamos</h1>
-        <p className="mt-4 rounded-xl border border-destructive/40 p-4
-                      text-[13px] text-destructive">
+      <main className="px-4 pb-28 pt-4">
+        <h1 className="px-1 text-[22px] font-semibold tracking-tight">
+          Préstamos
+        </h1>
+        <p className="mt-4 rounded-2xl bg-card p-4 text-[13px] text-destructive
+                      shadow-card ring-1 ring-destructive/30">
           No se pudieron cargar: {error.message}
         </p>
       </main>
@@ -31,54 +33,74 @@ export default async function PrestamosPage() {
   const porCobrar = activos.reduce((s, p) => s + Number(p.pendiente), 0)
 
   return (
-    <main className="px-4 pt-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">Préstamos</h1>
-          <p className="mt-0.5 text-[13px] text-muted-foreground tabular-nums">
-            Por cobrar: {formatearCOP(porCobrar)}
-          </p>
-        </div>
+    <main className="px-4 pb-28 pt-4">
+      <div className="flex items-center justify-between gap-3 px-1">
+        <h1 className="text-[22px] font-semibold tracking-tight">Préstamos</h1>
         <Link href="/prestamos/nuevo" aria-label="Nuevo préstamo"
-              className="flex size-8 items-center justify-center rounded-full border">
-          <Plus className="size-4" />
+              className="flex size-10 items-center justify-center rounded-full
+                         bg-card shadow-card ring-1 ring-border/70 transition
+                         active:scale-95">
+          <Plus className="size-[18px]" />
         </Link>
       </div>
 
+      {prestamos.length > 0 && (
+        <section className="mt-3 rounded-2xl bg-card px-4 py-3 shadow-elevada
+                            ring-1 ring-border/70">
+          <p className="text-[12px] text-muted-foreground">
+            Por cobrar en {activos.length}{' '}
+            {activos.length === 1 ? 'préstamo activo' : 'préstamos activos'}
+          </p>
+          <p className="mt-0.5 text-[26px] font-semibold leading-none
+                        tracking-tight tabular-nums">
+            {formatearCOP(porCobrar)}
+          </p>
+        </section>
+      )}
+
       {prestamos.length === 0 ? (
-        <div className="mt-8 rounded-xl border border-dashed p-6 text-center">
-          <p className="text-[14px] text-muted-foreground">
-            No has registrado préstamos.
+        <div className="mt-8 rounded-2xl border border-dashed border-border
+                        px-5 py-7 text-center">
+          <p className="text-[15px] font-medium">No has registrado préstamos</p>
+          <p className="mx-auto mt-1.5 max-w-[30ch] text-[13px] leading-snug
+                        text-muted-foreground">
+            Prestar dinero no reduce tu patrimonio: lo mueve a "por cobrar".
           </p>
           <Link href="/prestamos/nuevo"
-                className="mt-3 inline-block rounded-lg bg-foreground px-3 py-1.5
-                           text-[14px] font-medium text-background">
+                className="mt-4 inline-flex min-h-11 items-center rounded-xl
+                           bg-primary px-5 text-[14px] font-medium
+                           text-primary-foreground shadow-card">
             Registrar uno
           </Link>
         </div>
       ) : (
-        <div className="mt-5 space-y-2">
+        <div className="mt-3 space-y-2">
           {prestamos.map((p) => {
             const principal = Number(p.principal) || 1
             const progreso = Math.round((Number(p.pagado) * 100) / principal)
+            const cuotas = Number(p.cuotas_total ?? 0)
+            const vencidas = Number(p.cuotas_vencidas ?? 0)
+            const pagado = p.status === 'paid'
 
             return (
               <Link key={p.id} href={`/prestamos/${p.id}`}
-                    className="block rounded-xl border p-3.5">
+                    className="block rounded-2xl bg-card px-4 py-3 shadow-card
+                               ring-1 ring-border/70 transition
+                               active:scale-[0.99]">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-[15px] font-medium leading-tight">
                       {p.person_name}
                     </p>
-                    <p className="mt-0.5 text-[12px] leading-tight
+                    <p className="mt-0.5 truncate text-[12px] leading-tight
                                   text-muted-foreground tabular-nums">
                       {formatearCOP(Number(p.pagado))} de{' '}
                       {formatearCOP(principal)}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
-                    {p.status === 'paid' ? (
-                      <span className="text-[12px] font-medium text-positivo">
+                    {pagado ? (
+                      <span className="text-[13px] font-medium text-positivo">
                         Pagado
                       </span>
                     ) : (
@@ -93,21 +115,28 @@ export default async function PrestamosPage() {
                   <BarraProgreso progreso={progreso} />
                 </div>
 
-                <div className="mt-2 flex items-center justify-between gap-2
-                                text-[12px] text-muted-foreground">
-                  <span>
-                    {p.cuotas_pagadas ?? 0}/{p.cuotas_total ?? 0} cuotas
-                  </span>
-                  {Number(p.cuotas_vencidas) > 0 ? (
-                    <span className="flex items-center gap-1 text-destructive">
-                      <AlertCircle className="size-3.5" />
-                      {p.cuotas_vencidas} vencida
-                      {Number(p.cuotas_vencidas) > 1 ? 's' : ''}
+                {/* El contador de cuotas solo aparece si de verdad hay
+                    cuotas que contar: "0/1 cuotas" no informa de nada. */}
+                {(cuotas > 1 || vencidas > 0 || p.proxima_fecha) && !pagado && (
+                  <div className="mt-2 flex items-center justify-between gap-2
+                                  text-[12px] text-muted-foreground">
+                    <span className="tabular-nums">
+                      {cuotas > 1
+                        ? `${p.cuotas_pagadas ?? 0} de ${cuotas} cuotas`
+                        : 'Pago único'}
                     </span>
-                  ) : p.proxima_fecha ? (
-                    <span>Próxima: {formatearFecha(p.proxima_fecha)}</span>
-                  ) : null}
-                </div>
+                    {vencidas > 0 ? (
+                      <span className="flex items-center gap-1 text-destructive">
+                        <AlertCircle className="size-3.5" />
+                        {vencidas} vencida{vencidas > 1 ? 's' : ''}
+                      </span>
+                    ) : p.proxima_fecha ? (
+                      <span className="tabular-nums">
+                        {formatearFecha(p.proxima_fecha)}
+                      </span>
+                    ) : null}
+                  </div>
+                )}
               </Link>
             )
           })}

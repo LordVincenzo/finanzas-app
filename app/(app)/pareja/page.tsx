@@ -1,3 +1,4 @@
+import { ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatearCOP, formatearFecha } from '@/lib/format'
 import { InvitarPareja } from '@/components/invitar-pareja'
@@ -61,17 +62,29 @@ export default async function ParejaPage() {
     .eq('is_active', true)
     .order('name')
 
-  // Lo que mi pareja comparte conmigo
-  
+  /* Lo que mi pareja comparte conmigo.
+     Antes esta consulta pedía TODAS las cuentas ajenas y confiaba en que
+     el RLS recortara el resultado. Dos filtros faltaban:
+       - class: sin él, una categoría de gasto suya podría acabar en esta
+         lista. Las categorías dicen en qué gasta, y el modelo de
+         privacidad promete mostrar el saldo, no los movimientos.
+       - visibility: la sección se llama "qué comparte contigo", así que
+         debe pedir exactamente eso.
+     El RLS sigue siendo la última línea de defensa, pero deja de ser la
+     única: una consulta debe pedir lo que quiere. */
   const { data: cuentasSuyas } = pareja
     ? await supabase
         .from('accounts')
         .select('id, name')
         .neq('owner_id', yo)
+        .in('class', ['asset', 'liability'])
+        .in('visibility', ['shared_view', 'joint'])
         .eq('is_active', true)
+        .order('name')
     : { data: null }
 
   // El saldo se pide con la función, que valida el permiso aparte.
+  // En paralelo: antes era una llamada detrás de otra, una por cuenta.
   const suyas = await Promise.all(
     (cuentasSuyas ?? []).map(async (c) => {
       const { data: saldo } = await supabase.rpc('saldo_cuenta_visible', {
@@ -113,29 +126,32 @@ export default async function ParejaPage() {
   }).format(new Date())
 
   return (
-    <main className="px-4 pt-6">
-      <h1 className="text-xl font-semibold">Pareja</h1>
+    <main className="px-4 pb-28 pt-4">
+      <h1 className="px-1 text-[22px] font-semibold tracking-tight">Pareja</h1>
 
       {/* --- Invitaciones recibidas --- */}
       {(recibidas ?? []).length > 0 && (
-        <div className="mt-5 space-y-2">
+        <div className="mt-3 space-y-2">
           {(recibidas ?? []).map((inv: { id: string; inviter_name: string }) => (
-            <div key={inv.id} className="rounded-xl border p-3.5">
-              <p className="text-[13px]">
+            <div key={inv.id} className="rounded-2xl bg-card px-4 py-3.5
+                                         shadow-card ring-1 ring-primary/25">
+              <p className="text-[14px] leading-snug">
                 <span className="font-medium">{inv.inviter_name}</span> quiere
                 vincularse contigo.
               </p>
-              <div className="mt-2.5 flex gap-2">
-                <form action={aceptar}>
+              <div className="mt-3 flex gap-2">
+                <form action={aceptar} className="flex-1">
                   <input type="hidden" name="id" value={inv.id} />
-                  <button className="rounded-lg bg-foreground px-3 py-1.5
-                                     text-[11px] font-medium text-background">
+                  <button className="min-h-10 w-full rounded-xl bg-primary
+                                     text-[13px] font-medium
+                                     text-primary-foreground">
                     Aceptar
                   </button>
                 </form>
-                <form action={rechazar}>
+                <form action={rechazar} className="flex-1">
                   <input type="hidden" name="id" value={inv.id} />
-                  <button className="rounded-lg border px-3 py-1.5 text-[11px]">
+                  <button className="min-h-10 w-full rounded-xl border
+                                     text-[13px]">
                     Rechazar
                   </button>
                 </form>
@@ -148,9 +164,10 @@ export default async function ParejaPage() {
       {/* --- Sin pareja --- */}
       {!pareja && (
         <>
-          <div className="mt-5 rounded-xl border p-4">
-            <p className="text-[13px] font-medium">Vincula tu cuenta</p>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+          <div className="mt-3 rounded-2xl bg-card p-4 shadow-elevada
+                          ring-1 ring-border/70">
+            <p className="text-[15px] font-medium">Vincula tu cuenta</p>
+            <p className="mt-1.5 text-[12px] leading-snug text-muted-foreground">
               Vincularse no comparte nada automáticamente. Tú eliges cuenta
               por cuenta qué puede ver la otra persona.
             </p>
@@ -168,7 +185,8 @@ export default async function ParejaPage() {
                     valor={
                       <form action={cancelar}>
                         <input type="hidden" name="id" value={inv.id} />
-                        <button className="text-[11px] text-destructive underline">
+                        <button className="text-[12px] font-medium
+                                           text-destructive">
                           Cancelar
                         </button>
                       </form>
@@ -185,37 +203,46 @@ export default async function ParejaPage() {
       {pareja && (
         <>
           {/* El balance es lo único que se consulta a diario:
-              va suelto y grande, como el patrimonio en Inicio. */}
-          <div className="mt-5">
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-              Balance con {pareja.nombre}
-            </p>
-            {balance === 0 ? (
-              <p className="mt-1 text-[22px] font-semibold leading-none">
-                Están a mano
+              va grande y arriba, como el patrimonio en Inicio. */}
+          <section className="mt-3 overflow-hidden rounded-2xl bg-card
+                              shadow-elevada ring-1 ring-border/70">
+            <div className="px-4 py-3.5">
+              <p className="text-[11px] font-semibold uppercase
+                            tracking-[0.09em] text-muted-foreground">
+                Balance con {pareja.nombre}
               </p>
-            ) : (
-              <>
-                <p className={`mt-1 text-[30px] font-semibold leading-none
-                               tracking-tight tabular-nums ${
-                                 balance > 0 ? 'text-positivo' : 'text-negativo'
-                               }`}>
-                  {formatearCOP(Math.abs(balance))}
+              {balance === 0 ? (
+                <p className="mt-1.5 text-[24px] font-semibold leading-none
+                              tracking-tight">
+                  Están a mano
                 </p>
-                <p className="mt-1 text-[13px] text-muted-foreground">
-                  {balance > 0
-                    ? `${pareja.nombre} te debe`
-                    : `Le debes a ${pareja.nombre}`}
-                </p>
-              </>
-            )}
+              ) : (
+                <>
+                  <p className={`mt-1.5 text-[32px] font-semibold leading-none
+                                 tracking-tight tabular-nums ${
+                                   balance > 0 ? 'text-positivo' : 'text-negativo'
+                                 }`}>
+                    {formatearCOP(Math.abs(balance))}
+                  </p>
+                  <p className="mt-1.5 text-[13px] text-muted-foreground">
+                    {balance > 0
+                      ? `${pareja.nombre} te debe`
+                      : `Le debes a ${pareja.nombre}`}
+                  </p>
+                </>
+              )}
+            </div>
 
             {balance !== 0 && (misCuentasPago ?? []).length > 0 && (
-              <details className="mt-3 rounded-xl border">
-                <summary className="cursor-pointer px-4 py-2.5 text-[13px] font-medium">
+              <details className="group border-t border-border/70">
+                <summary className="flex min-h-12 cursor-pointer list-none
+                                    items-center justify-between px-4
+                                    text-[14px] font-medium text-primary">
                   Liquidar
+                  <ChevronDown className="size-4 transition-transform
+                                          group-open:rotate-180" />
                 </summary>
-                <div className="border-t px-4 pb-4">
+                <div className="border-t border-border/70 px-4 pb-4">
                   <FormularioLiquidar
                     cuentas={misCuentasPago ?? []}
                     balance={balance}
@@ -225,15 +252,29 @@ export default async function ParejaPage() {
                 </div>
               </details>
             )}
-          </div>
+          </section>
 
-          {/* --- Nuevo gasto compartido --- */}
+          {/* --- Nuevo gasto compartido ---
+              Es la acción principal de esta pantalla, así que no puede
+              parecer un desplegable de ajustes más. */}
           {(misCuentasPago ?? []).length > 0 && (
-            <details className="mt-5 rounded-xl border">
-              <summary className="cursor-pointer px-4 py-2.5 text-[13px] font-medium">
-                Registrar gasto compartido
+            <details className="group mt-4 overflow-hidden rounded-2xl bg-card
+                                shadow-card ring-1 ring-border/70">
+              <summary className="flex min-h-13 cursor-pointer list-none
+                                  items-center justify-between px-4 py-3
+                                  text-[15px] font-medium">
+                <span>
+                  Registrar gasto compartido
+                  <span className="mt-0.5 block text-[12px] font-normal
+                                   text-muted-foreground">
+                    Se reparte entre los dos automáticamente
+                  </span>
+                </span>
+                <ChevronDown className="size-4 shrink-0 text-muted-foreground
+                                        transition-transform
+                                        group-open:rotate-180" />
               </summary>
-              <div className="border-t px-4 pb-4">
+              <div className="border-t border-border/70 px-4 pb-4">
                 <FormularioGastoCompartido
                   cuentas={misCuentasPago ?? []}
                   categorias={misCategorias ?? []}
@@ -258,8 +299,8 @@ export default async function ParejaPage() {
                       g.payer_id === yo ? (
                         <form action={eliminarGastoCompartido}>
                           <input type="hidden" name="id" value={g.id} />
-                          <button className="shrink-0 text-[11px] text-destructive
-                                             underline">
+                          <button className="shrink-0 pl-2 text-[12px]
+                                             font-medium text-destructive">
                             Quitar
                           </button>
                         </form>
@@ -272,50 +313,72 @@ export default async function ParejaPage() {
           )}
 
           {/* Lo que se configura una vez, plegado */}
-          <details className="mt-5 rounded-xl border">
-            <summary className="cursor-pointer px-4 py-2.5 text-[13px] font-medium">
-              Qué compartes
-            </summary>
-            <div className="divide-y border-t">
-              {(misCuentas ?? []).map((c) => (
-                <div key={c.id} className="flex items-center justify-between
-                                           gap-3 px-3.5 py-2.5">
-                  <span className="truncate text-[13px]">{c.name}</span>
-                  <ToggleVisibilidad id={c.id} visibilidad={c.visibility} />
+          <Seccion titulo="Privacidad">
+            <div className="space-y-2">
+              <details className="group overflow-hidden rounded-2xl bg-card
+                                  shadow-card ring-1 ring-border/70">
+                <summary className="flex min-h-12 cursor-pointer list-none
+                                    items-center justify-between px-4
+                                    text-[14px] font-medium">
+                  Qué compartes
+                  <ChevronDown className="size-4 text-muted-foreground
+                                          transition-transform
+                                          group-open:rotate-180" />
+                </summary>
+                <div className="divide-y divide-border/70 border-t
+                                border-border/70">
+                  {(misCuentas ?? []).map((c) => (
+                    <div key={c.id} className="flex min-h-12 items-center
+                                               justify-between gap-3 px-4 py-2">
+                      <span className="truncate text-[14px]">{c.name}</span>
+                      <ToggleVisibilidad id={c.id} visibilidad={c.visibility} />
+                    </div>
+                  ))}
+                  <p className="px-4 py-2.5 text-[11px] leading-snug
+                                text-muted-foreground">
+                    Compartida = puede ver el saldo, no los movimientos ni
+                    editarla.
+                  </p>
                 </div>
-              ))}
-              <p className="px-3.5 py-2.5 text-[11px] text-muted-foreground">
-                Compartida = puede verla, no editarla.
-              </p>
-            </div>
-          </details>
+              </details>
 
-          <details className="mt-2.5 rounded-xl border">
-            <summary className="cursor-pointer px-4 py-2.5 text-[13px] font-medium">
-              Qué comparte contigo
-            </summary>
-            {suyas.length === 0 ? (
-              <p className="border-t px-3.5 py-3 text-[11px] text-muted-foreground">
-                Todavía no comparte ninguna cuenta.
-              </p>
-            ) : (
-              <div className="divide-y border-t">
-                {suyas.map((c) => (
-                  <div key={c.account_id} className="flex items-center
-                                                     justify-between gap-3
-                                                     px-3.5 py-2.5">
-                    <span className="truncate text-[13px]">{c.name}</span>
-                    <span className="shrink-0 text-[13px] tabular-nums">
-                      {formatearCOP(Number(c.balance))}
-                    </span>
+              <details className="group overflow-hidden rounded-2xl bg-card
+                                  shadow-card ring-1 ring-border/70">
+                <summary className="flex min-h-12 cursor-pointer list-none
+                                    items-center justify-between px-4
+                                    text-[14px] font-medium">
+                  Qué comparte contigo
+                  <ChevronDown className="size-4 text-muted-foreground
+                                          transition-transform
+                                          group-open:rotate-180" />
+                </summary>
+                {suyas.length === 0 ? (
+                  <p className="border-t border-border/70 px-4 py-3
+                                text-[12px] text-muted-foreground">
+                    Todavía no comparte ninguna cuenta.
+                  </p>
+                ) : (
+                  <div className="divide-y divide-border/70 border-t
+                                  border-border/70">
+                    {suyas.map((c) => (
+                      <div key={c.account_id}
+                           className="flex min-h-12 items-center justify-between
+                                      gap-3 px-4 py-2">
+                        <span className="truncate text-[14px]">{c.name}</span>
+                        <span className="shrink-0 text-[14px] font-medium
+                                         tabular-nums">
+                          {formatearCOP(Number(c.balance))}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-          </details>
+                )}
+              </details>
+            </div>
+          </Seccion>
 
-          <form action={salir} className="mt-8">
-            <button className="text-[11px] text-destructive underline">
+          <form action={salir} className="mt-8 px-1">
+            <button className="text-[13px] font-medium text-destructive">
               Desvincular
             </button>
           </form>

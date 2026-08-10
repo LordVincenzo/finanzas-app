@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatearCOP, formatearFecha } from '@/lib/format'
 import { BarraProgreso } from '@/components/barra-progreso'
@@ -38,63 +38,101 @@ export default async function DetalleMetaPage({
 
   const esConjunta = meta.visibility === 'joint'
   const restante = Number(meta.target_amount) - Number(meta.acumulado)
+  const completada = restante <= 0
+
+  const miParte = (porPersona ?? [])
+    .filter((p) => p.profile_id === user!.id)
+    .reduce((s, p) => s + Number(p.total), 0)
 
   return (
-    <main className="px-5 pt-6">
+    <main className="px-4 pb-28 pt-4">
       <Link href="/ahorros"
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+            className="inline-flex min-h-9 items-center gap-1 px-1 text-[13px]
+                       text-muted-foreground">
         <ChevronLeft className="size-4" /> Ahorros
       </Link>
 
-      <h1 className="mt-4 text-2xl font-semibold">{meta.name}</h1>
+      <div className="mt-1 flex items-start justify-between gap-3 px-1">
+        <h1 className="text-[22px] font-semibold tracking-tight">{meta.name}</h1>
+        {esConjunta && (
+          <span className="mt-1.5 flex shrink-0 items-center gap-1 text-[12px]
+                           text-muted-foreground">
+            <Users className="size-3.5" /> Conjunta
+          </span>
+        )}
+      </div>
       {meta.description && (
-        <p className="mt-1 text-sm text-muted-foreground">{meta.description}</p>
+        <p className="mt-1 px-1 text-[13px] leading-snug text-muted-foreground">
+          {meta.description}
+        </p>
       )}
 
-      <section className="mt-6 rounded-2xl border p-5">
-        <div className="flex items-baseline justify-between">
-          <span className="text-2xl font-semibold tabular-nums">
-            {formatearCOP(Number(meta.acumulado))}
-          </span>
-          <span className="text-sm text-muted-foreground tabular-nums">
-            de {formatearCOP(Number(meta.target_amount))}
-          </span>
-        </div>
+      <section className="mt-3 overflow-hidden rounded-2xl bg-card
+                          shadow-elevada ring-1 ring-border/70">
+        <div className="px-4 py-3.5">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-[30px] font-semibold leading-none
+                             tracking-tight tabular-nums">
+              {formatearCOP(Number(meta.acumulado))}
+            </span>
+            <span className="text-[13px] text-muted-foreground tabular-nums">
+              de {formatearCOP(Number(meta.target_amount))}
+            </span>
+          </div>
 
-        <div className="mt-3">
-          <BarraProgreso progreso={Number(meta.progreso)} />
-        </div>
+          <div className="mt-3">
+            <BarraProgreso progreso={Number(meta.progreso)} />
+          </div>
 
-        <div className="mt-2 flex justify-between text-xs text-muted-foreground">
-          <span>{meta.progreso}%</span>
-          <span className="tabular-nums">
-            {restante > 0 ? `Faltan ${formatearCOP(restante)}` : '¡Completada!'}
-          </span>
+          <div className="mt-2 flex justify-between text-[12px]
+                          text-muted-foreground tabular-nums">
+            <span>{meta.progreso}%</span>
+            <span>
+              {completada
+                ? 'Completada'
+                : `Faltan ${formatearCOP(restante)}`}
+            </span>
+          </div>
         </div>
 
         {meta.target_date && (
-          <p className="mt-3 border-t pt-3 text-xs text-muted-foreground">
+          <p className="border-t border-border/70 px-4 py-2.5 text-[12px]
+                        text-muted-foreground">
             Fecha objetivo: {formatearFecha(meta.target_date)}
           </p>
         )}
       </section>
 
-      {/* Reparto de aportes: solo tiene sentido en metas conjuntas */}
+      {/* Reparto de aportes: solo tiene sentido en metas conjuntas.
+          Y hace falta: sin esto, ver $1.000.000 aquí y $500.000 en
+          "comprometido" parece una contradicción, cuando son dos
+          preguntas distintas. */}
       {esConjunta && (porPersona ?? []).length > 0 && (
-        <section className="mt-4 rounded-2xl border p-5">
-          <p className="text-sm font-medium">Quién ha aportado</p>
-          <dl className="mt-3 space-y-2">
+        <section className="mt-3 overflow-hidden rounded-2xl bg-card
+                            shadow-card ring-1 ring-border/70">
+          <p className="px-4 pt-3 text-[11px] font-semibold uppercase
+                        tracking-[0.09em] text-muted-foreground">
+            Quién ha aportado
+          </p>
+          <dl className="mt-2 divide-y divide-border/70">
             {(porPersona ?? []).map((p) => (
-              <div key={p.profile_id} className="flex justify-between">
-                <dt className="text-sm text-muted-foreground">
+              <div key={p.profile_id}
+                   className="flex items-center justify-between px-4 py-2.5">
+                <dt className="text-[14px]">
                   {p.profile_id === user!.id ? 'Tú' : p.display_name}
                 </dt>
-                <dd className="text-sm tabular-nums">
+                <dd className="text-[14px] font-medium tabular-nums">
                   {formatearCOP(Number(p.total))}
                 </dd>
               </div>
             ))}
           </dl>
+          <p className="border-t border-border/70 px-4 py-2.5 text-[11px]
+                        leading-snug text-muted-foreground tabular-nums">
+            De tus cuentas hay {formatearCOP(miParte)} reservados para esta
+            meta. El resto lo pone tu pareja desde las suyas, así que no
+            cuenta en tu dinero comprometido.
+          </p>
         </section>
       )}
 
@@ -103,42 +141,50 @@ export default async function DetalleMetaPage({
       {/* Historial */}
       {(aportes ?? []).length > 0 && (
         <section className="mt-6">
-          <h2 className="mb-2 text-xs font-medium uppercase tracking-wide
-                         text-muted-foreground">
+          <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase
+                         tracking-[0.09em] text-muted-foreground">
             Historial
           </h2>
-          <div className="divide-y rounded-2xl border">
-            {(aportes ?? []).map((a) => (
-              <div key={a.id} className="flex items-center gap-3 px-4 py-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm tabular-nums">
-                    {Number(a.amount) > 0 ? '+' : '−'}
-                    {formatearCOP(Math.abs(Number(a.amount)))}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {formatearFecha(a.occurred_on)}
-                    {a.note ? ` · ${a.note}` : ''}
-                  </p>
+          <div className="overflow-hidden rounded-2xl bg-card shadow-card
+                          ring-1 ring-border/70 divide-y divide-border/70">
+            {(aportes ?? []).map((a) => {
+              const retiro = Number(a.amount) < 0
+              return (
+                <div key={a.id}
+                     className="flex min-h-14 items-center gap-3 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-[15px] font-medium tabular-nums
+                                   ${retiro ? 'text-negativo' : ''}`}>
+                      {retiro ? '−' : '+'}
+                      {formatearCOP(Math.abs(Number(a.amount)))}
+                    </p>
+                    <p className="mt-0.5 truncate text-[12px]
+                                  text-muted-foreground">
+                      {formatearFecha(a.occurred_on)}
+                      {a.note ? ` · ${a.note}` : ''}
+                    </p>
+                  </div>
+                  {a.profile_id === user!.id && (
+                    <form action={eliminarAporte}>
+                      <input type="hidden" name="id" value={a.id} />
+                      <input type="hidden" name="meta" value={id} />
+                      <button className="shrink-0 pl-2 text-[12px] font-medium
+                                         text-destructive">
+                        Quitar
+                      </button>
+                    </form>
+                  )}
                 </div>
-                {a.profile_id === user!.id && (
-                  <form action={eliminarAporte}>
-                    <input type="hidden" name="id" value={a.id} />
-                    <input type="hidden" name="meta" value={id} />
-                    <button className="shrink-0 text-xs text-destructive underline">
-                      Quitar
-                    </button>
-                  </form>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         </section>
       )}
 
       {meta.owner_id === user!.id && (
-        <form action={archivarMeta} className="mt-8">
+        <form action={archivarMeta} className="mt-8 px-1">
           <input type="hidden" name="id" value={id} />
-          <button className="text-sm text-destructive underline">
+          <button className="text-[13px] font-medium text-destructive">
             Archivar meta
           </button>
         </form>

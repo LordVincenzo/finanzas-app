@@ -1,6 +1,11 @@
 /**
  * Piezas de estructura compartidas.
  * La densidad se decide una sola vez, aquí.
+ *
+ * Los bloques ya no se separan del fondo con un borde de 1px, sino
+ * elevándose sobre él: `bg-card` sobre un lienzo más oscuro, con una
+ * sombra mínima. El borde queda solo como línea de pelo, para definir
+ * el canto sin dibujar una caja.
  */
 
 export function Seccion({
@@ -11,12 +16,12 @@ export function Seccion({
   children: React.ReactNode
 }) {
   return (
-    <section className="mt-5">
+    <section className="mt-6">
       {(titulo || accion) && (
-        <div className="mb-1.5 flex items-baseline justify-between px-1">
+        <div className="mb-2 flex items-baseline justify-between px-1">
           {titulo && (
-            <h2 className="text-[12px] font-medium uppercase tracking-wider
-                           text-muted-foreground">
+            <h2 className="text-[11px] font-semibold uppercase
+                           tracking-[0.09em] text-muted-foreground">
               {titulo}
             </h2>
           )}
@@ -28,12 +33,21 @@ export function Seccion({
   )
 }
 
-/** Contenedor de lista: líneas finas en vez de tarjetas separadas. */
+/** Contenedor de lista: una sola tarjeta con las filas separadas. */
 export function Lista({ children }: { children: React.ReactNode }) {
-  return <div className="divide-y rounded-xl border">{children}</div>
+  return (
+    <div className="overflow-hidden rounded-2xl bg-card shadow-card
+                    ring-1 ring-border/70 divide-y divide-border/70">
+      {children}
+    </div>
+  )
 }
 
-/** Una línea de extracto: etiqueta a la izquierda, cifra a la derecha. */
+/**
+ * Una línea de extracto: etiqueta a la izquierda, cifra a la derecha.
+ * min-h-14 (56px) porque el pulgar necesita al menos 44px y las filas
+ * de dos líneas se quedaban justas.
+ */
 export function Fila({
   titulo, detalle, valor, extra,
 }: {
@@ -43,23 +57,71 @@ export function Fila({
   extra?: React.ReactNode
 }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
+    <div className="flex min-h-14 items-center gap-3 px-4 py-3">
       <div className="min-w-0 flex-1">
         <p className="truncate text-[15px] leading-tight">{titulo}</p>
         {detalle && (
-          <p className="mt-0.5 truncate text-[12px] leading-tight
+          <p className="mt-1 truncate text-[12px] leading-tight
                         text-muted-foreground">
             {detalle}
           </p>
         )}
       </div>
-      <div className="shrink-0 text-[15px] tabular-nums">{valor}</div>
+      <div className="shrink-0 text-[15px] font-medium tabular-nums">
+        {valor}
+      </div>
       {extra}
     </div>
   )
 }
 
 /** Tarjeta compacta para bloques que no son listas. */
-export function Tarjeta({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-xl border p-4">{children}</div>
+export function Tarjeta({
+  children, className = '',
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <div className={`rounded-2xl bg-card p-4 shadow-card ring-1
+                     ring-border/70 ${className}`}>
+      {children}
+    </div>
+  )
+}
+
+/**
+ * Una cifra de dinero con la regla de color en un solo sitio.
+ *
+ * `tono` decide qué significa el número, no cómo se ve:
+ *   auto      verde si es positivo, rojo si es negativo, neutro si es 0
+ *   positivo  siempre verde, salvo que valga 0
+ *   negativo  siempre rojo, salvo que valga 0
+ *   neutro    nunca lleva color
+ *
+ * El cero nunca se colorea: no tiene signo, y pintarlo afirma algo
+ * que no es cierto.
+ */
+export function Monto({
+  valor, tono = 'neutro', formato, className = '',
+}: {
+  valor: number
+  tono?: 'auto' | 'positivo' | 'negativo' | 'neutro'
+  formato: (n: number) => string
+  className?: string
+}) {
+  let color = ''
+  if (valor !== 0) {
+    if (tono === 'positivo' || (tono === 'auto' && valor > 0)) {
+      color = 'text-positivo'
+    } else if (tono === 'negativo' || (tono === 'auto' && valor < 0)) {
+      color = 'text-negativo'
+    }
+  }
+
+  return (
+    <span className={`tabular-nums ${color} ${className}`}>
+      {formato(valor)}
+    </span>
+  )
 }

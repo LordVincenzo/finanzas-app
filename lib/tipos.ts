@@ -25,7 +25,7 @@ export const ETIQUETAS_TIPO: Record<string, string> = {
   cash: 'Efectivo',
   investment: 'Inversiones',
   receivable: 'Por cobrar',
-  partner_receivable: 'Deudas de pareja',
+  partner_receivable: 'Balance con tu pareja',
   credit_card: 'Tarjetas de crédito',
   debt: 'Deudas',
   other: 'Otras',

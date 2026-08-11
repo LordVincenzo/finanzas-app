@@ -87,18 +87,48 @@ export async function aportar(
   return {}
 }
 
+/**
+ * Antes descartaba el error del RPC: si el aporte era de otra persona,
+ * eliminar_aporte lo rechazaba, la pantalla se recargaba igual y el
+ * aporte seguía ahí sin ninguna explicación.
+ */
 export async function eliminarAporte(formData: FormData) {
   const id = String(formData.get('id') ?? '')
+  if (!id) return
+
   const supabase = await createClient()
-  await supabase.rpc('eliminar_aporte', { p_id: id })
+  const { error } = await supabase.rpc('eliminar_aporte', { p_id: id })
+
+  if (error) throw new Error(traducir(error.message))
+
   revalidar()
   revalidatePath(`/ahorros/${formData.get('meta')}`)
 }
 
-export async function archivarMeta(formData: FormData) {
+/**
+ * Eliminar, no archivar.
+ *
+ * archivar_meta() solo marcaba is_archived. Los aportes seguían vivos y
+ * cuentas_disponible los seguía contando, así que el dinero quedaba
+ * reservado para siempre en una meta que ya no se veía en ninguna
+ * pantalla. Borrar la meta se lleva los aportes en cascada y el
+ * disponible se recalcula solo.
+ *
+ * Devuelve estado en vez de tragarse el error: la RPC rechaza borrar
+ * metas ajenas, y eso hay que poder mostrarlo.
+ */
+export async function eliminarMeta(
+  _previo: EstadoMeta,
+  formData: FormData
+): Promise<EstadoMeta> {
   const id = String(formData.get('id') ?? '')
+  if (!id) return { error: 'No se identificó la meta' }
+
   const supabase = await createClient()
-  await supabase.rpc('archivar_meta', { p_id: id })
+  const { error } = await supabase.rpc('eliminar_meta', { p_id: id })
+
+  if (error) return { error: traducir(error.message) }
+
   revalidar()
   redirect('/ahorros')
 }

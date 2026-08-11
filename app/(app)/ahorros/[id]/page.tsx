@@ -5,7 +5,8 @@ import { createClient } from '@/lib/supabase/server'
 import { formatearCOP, formatearFecha } from '@/lib/format'
 import { BarraProgreso } from '@/components/barra-progreso'
 import { FormularioAporte } from '@/components/formulario-aporte'
-import { archivarMeta, eliminarAporte } from '../actions'
+import { EliminarMeta } from '@/components/eliminar-meta'
+import { eliminarAporte } from '../actions'
 
 export default async function DetalleMetaPage({
   params,
@@ -31,9 +32,12 @@ export default async function DetalleMetaPage({
       supabase.from('savings_contributions')
         .select('id, amount, note, occurred_on, profile_id')
         .eq('goal_id', id).order('occurred_on', { ascending: false }),
+      // Ordenadas por saldo libre: la cuenta con más dinero sin asignar
+      // sale primero, en vez de la primera del abecedario.
       supabase.from('cuentas_disponible')
         .select('account_id, name, disponible')
-        .eq('owner_id', user!.id).order('name'),
+        .eq('owner_id', user!.id)
+        .order('disponible', { ascending: false }),
     ])
 
   const esConjunta = meta.visibility === 'joint'
@@ -88,9 +92,7 @@ export default async function DetalleMetaPage({
                           text-muted-foreground tabular-nums">
             <span>{meta.progreso}%</span>
             <span>
-              {completada
-                ? 'Completada'
-                : `Faltan ${formatearCOP(restante)}`}
+              {completada ? 'Completada' : `Faltan ${formatearCOP(restante)}`}
             </span>
           </div>
         </div>
@@ -104,7 +106,7 @@ export default async function DetalleMetaPage({
       </section>
 
       {/* Reparto de aportes: solo tiene sentido en metas conjuntas.
-          Y hace falta: sin esto, ver $1.000.000 aquí y $500.000 en
+          Y hace falta: sin esto, ver el acumulado aquí y otro número en
           "comprometido" parece una contradicción, cuando son dos
           preguntas distintas. */}
       {esConjunta && (porPersona ?? []).length > 0 && (
@@ -182,12 +184,12 @@ export default async function DetalleMetaPage({
       )}
 
       {meta.owner_id === user!.id && (
-        <form action={archivarMeta} className="mt-8 px-1">
-          <input type="hidden" name="id" value={id} />
-          <button className="text-[13px] font-medium text-destructive">
-            Archivar meta
-          </button>
-        </form>
+        <EliminarMeta
+          metaId={id}
+          nombre={meta.name}
+          acumulado={Number(meta.acumulado)}
+          esConjunta={esConjunta}
+        />
       )}
     </main>
   )

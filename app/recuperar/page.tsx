@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useActionState } from 'react'
 import { recuperarPassword, type EstadoAuth } from '@/app/auth/actions'
+import { PantallaAuth, CampoAuth, BotonAuth } from '@/components/auth-ui'
 
 const estadoInicial: EstadoAuth = {}
 
@@ -10,35 +11,40 @@ export default function RecuperarPage() {
   const [estado, accion, enviando] = useActionState(recuperarPassword, estadoInicial)
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-semibold">Recuperar contraseña</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Te enviaremos un enlace por correo.
-        </p>
+    <PantallaAuth
+      titulo="Recuperar contraseña"
+      subtitulo="Te enviaremos un enlace por correo para que la cambies."
+    >
+      <form action={accion} className="space-y-4">
+        <CampoAuth
+          id="email" label="Correo" type="email"
+          autoComplete="email" placeholder="tu@correo.com"
+        />
 
-        <form action={accion} className="mt-6 space-y-4">
-          <input
-            name="email" type="email" required placeholder="tu@correo.com"
-            className="w-full rounded-lg border bg-transparent px-3 py-2.5
-                       focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-          {estado.error && (
-            <p className="text-sm text-muted-foreground" role="status">
-              {estado.error}
-            </p>
-          )}
-          <button type="submit" disabled={enviando}
-                  className="w-full rounded-lg bg-foreground py-2.5 font-medium
-                             text-background disabled:opacity-50">
-            {enviando ? 'Enviando…' : 'Enviar enlace'}
-          </button>
-        </form>
+        {/* Antes esto salía en gris y con role="status", como si todo
+            hubiera ido bien. Pero el campo se llama `error`: un fallo
+            real se leía como una confirmación.
 
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          <Link href="/login" className="underline">Volver a iniciar sesión</Link>
-        </p>
-      </div>
-    </main>
+            Si tu acción usa este campo para el mensaje de "enlace
+            enviado", conviene separarlo en dos —`error` y `ok`— como ya
+            hace EstadoPareja. Mientras tanto, se muestra como lo que
+            dice ser. */}
+        {estado.error && (
+          <p className="text-[13px] text-destructive" role="alert">
+            {estado.error}
+          </p>
+        )}
+
+        <BotonAuth enviando={enviando} textoEnviando="Enviando…">
+          Enviar enlace
+        </BotonAuth>
+      </form>
+
+      <p className="mt-5 text-center text-[13px]">
+        <Link href="/login" className="font-medium text-primary">
+          Volver a iniciar sesión
+        </Link>
+      </p>
+    </PantallaAuth>
   )
 }

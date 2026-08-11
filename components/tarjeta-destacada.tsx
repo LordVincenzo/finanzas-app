@@ -18,7 +18,7 @@
  *
  * Los colores del texto van en variables propias (--destacado-texto,
  * --destacado-suave) porque aquí el fondo es oscuro en los DOS temas.
- * Usar --foreground haría el texto negro sobre grafito en tema claro.
+ * Usar --foreground haría el texto negro sobre el degradado.
  */
 
 export function TarjetaDestacada({
@@ -59,6 +59,45 @@ export function TarjetaDestacada({
       {children && (
         <div className="border-t border-destacado">{children}</div>
       )}
+    </section>
+  )
+}
+
+/**
+ * Variante para una cuenta recién creada.
+ *
+ * Con todo a cero, la tarjeta normal mostraba "$0" arriba y
+ * "Disponible para gastar $0" debajo: el mismo cero dos veces, ocupando
+ * media pantalla para no decir nada.
+ *
+ * En ese momento lo útil no es la cifra —que se sabe— sino qué
+ * significa la palabra. Es lo único que alguien nuevo no puede deducir.
+ */
+export function TarjetaDestacadaVacia({
+  etiqueta, explicacion, retraso = 0,
+}: {
+  etiqueta: string
+  explicacion: string
+  retraso?: number
+}) {
+  return (
+    <section
+      className="aparece overflow-hidden rounded-2xl bg-destacado
+                 px-4 py-3.5 text-destacado shadow-elevada"
+      style={{ '--retraso': `${retraso}ms` } as React.CSSProperties}
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-[0.09em]
+                    text-destacado-suave">
+        {etiqueta}
+      </p>
+      <p className="mt-1 text-[34px] font-semibold leading-none
+                    tracking-tight tabular-nums">
+        $0
+      </p>
+      <p className="mt-2.5 max-w-[34ch] text-[12px] leading-relaxed
+                    text-destacado-suave">
+        {explicacion}
+      </p>
     </section>
   )
 }

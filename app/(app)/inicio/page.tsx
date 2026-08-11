@@ -6,8 +6,9 @@ import { Seccion, Lista, Monto } from '@/components/seccion'
 import { BarraProgreso } from '@/components/barra-progreso'
 import { CifraAnimada } from '@/components/cifra-animada'
 import { RepartoGastos } from '@/components/reparto-gastos'
+import { PrimerosPasos } from '@/components/primeros-pasos'
 import {
-  TarjetaDestacada, Reparto, DosRepartos,
+  TarjetaDestacada, TarjetaDestacadaVacia, Reparto, DosRepartos,
 } from '@/components/tarjeta-destacada'
 
 function mesActual(): string {
@@ -31,6 +32,9 @@ export default async function InicioPage() {
     { data: cuentas },
     { data: delMes },
     { data: metas },
+    { count: numCuentas },
+    { count: numMovimientos },
+    { count: numMetas },
   ] = await Promise.all([
     supabase.from('profiles')
       .select('display_name').eq('id', user!.id).single(),
@@ -51,6 +55,22 @@ export default async function InicioPage() {
       .eq('is_archived', false)
       .order('progreso', { ascending: false })
       .limit(2),
+
+    /* Los tres contadores de la guía de primeros pasos.
+       head: true pide solo el número de filas, sin traerlas: no hace
+       falta el contenido para saber si hay al menos una. */
+    supabase.from('accounts')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_id', user!.id).eq('class', 'asset')
+      .eq('is_active', true).eq('is_opening', false)
+      .eq('is_partner_balance', false)
+      .not('type', 'in', '("receivable","partner_receivable")'),
+    supabase.from('transactions')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_id', user!.id).neq('type', 'opening'),
+    supabase.from('savings_goals')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_id', user!.id).eq('is_archived', false),
   ])
 
   const total = Number(detalle?.patrimonio ?? 0)
@@ -97,7 +117,8 @@ export default async function InicioPage() {
     month: 'long', timeZone: 'America/Bogota',
   }).format(new Date())
 
-  const cuentaNueva = movs.length === 0 && total === 0
+  // Cuenta recién creada: sin cuentas y sin patrimonio.
+  const vacia = (numCuentas ?? 0) === 0 && total === 0
 
   return (
     // El botón + de la barra sobresale por encima de ella, así que el
@@ -109,63 +130,64 @@ export default async function InicioPage() {
       </p>
 
       <div className="mt-2.5">
-        <TarjetaDestacada
-          etiqueta="Patrimonio"
-          valor={<CifraAnimada valor={total} />}
-          retraso={50}
-        >
-          {porCobrar > 0 ? (
-            <DosRepartos>
+        {vacia ? (
+          /* Con todo a cero, la tarjeta normal mostraba "$0" arriba y
+             "Disponible para gastar $0" debajo: el mismo cero dos veces.
+             Aquí lo útil no es la cifra sino qué significa la palabra. */
+          <TarjetaDestacadaVacia
+            etiqueta="Patrimonio"
+            explicacion="El patrimonio es todo lo que tienes menos lo que debes. Cuando registres tus cuentas con el saldo que tienen hoy, aparecerá aquí."
+            retraso={50}
+          />
+        ) : (
+          <TarjetaDestacada
+            etiqueta="Patrimonio"
+            valor={<CifraAnimada valor={total} />}
+            retraso={50}
+          >
+            {porCobrar > 0 ? (
+              <DosRepartos>
+                <Reparto
+                  etiqueta="Disponible"
+                  valor={formatearCOP(libre)}
+                  nota={comprometido > 0
+                    ? `+ ${formatearCOP(comprometido)} en metas`
+                    : undefined}
+                />
+                <Reparto
+                  etiqueta="Por cobrar"
+                  valor={formatearCOP(porCobrar)}
+                />
+              </DosRepartos>
+            ) : (
               <Reparto
-                etiqueta="Disponible"
+                etiqueta="Disponible para gastar"
                 valor={formatearCOP(libre)}
                 nota={comprometido > 0
-                  ? `+ ${formatearCOP(comprometido)} en metas`
+                  ? `De ${formatearCOP(enCuentas)} en cuentas, ${formatearCOP(comprometido)} reservados en metas`
                   : undefined}
               />
-              <Reparto
-                etiqueta="Por cobrar"
-                valor={formatearCOP(porCobrar)}
-              />
-            </DosRepartos>
-          ) : (
-            <Reparto
-              etiqueta="Disponible para gastar"
-              valor={formatearCOP(libre)}
-              nota={comprometido > 0
-                ? `De ${formatearCOP(enCuentas)} en cuentas, ${formatearCOP(comprometido)} reservados en metas`
-                : undefined}
-            />
-          )}
-        </TarjetaDestacada>
+            )}
+          </TarjetaDestacada>
+        )}
       </div>
 
-      {cuentaNueva ? (
-        <Seccion titulo="Empezar">
-          <div className="aparece rounded-2xl border border-dashed
-                          border-border px-5 py-7 text-center"
-                style={{ '--retraso': '130ms' } as React.CSSProperties}>
-            <p className="text-[15px] font-medium">Aún no hay movimientos</p>
-            <p className="mx-auto mt-1.5 max-w-[26ch] text-[13px] leading-snug
-                          text-muted-foreground">
-              Crea tus cuentas con el saldo que tienen hoy y registra tu
-              primer gasto.
-            </p>
-            <Link
-              href="/cuentas/nueva"
-              className="mt-4 inline-flex min-h-11 items-center rounded-xl
-                         bg-primary px-5 text-[14px] font-medium
-                         text-primary-foreground shadow-card"
-            >
-              Crear una cuenta
-            </Link>
-          </div>
-        </Seccion>
-      ) : (
+      {/* Se completa sola y desaparece cuando los tres pasos están
+          hechos. No guarda estado: cada paso se deduce de los datos. */}
+      <div className="aparece mt-4"
+           style={{ '--retraso': '120ms' } as React.CSSProperties}>
+        <PrimerosPasos
+          tieneCuenta={(numCuentas ?? 0) > 0}
+          tieneMovimiento={(numMovimientos ?? 0) > 0}
+          tieneMeta={(numMetas ?? 0) > 0}
+        />
+      </div>
+
+      {(movs.length > 0 || total !== 0) && (
         <Seccion titulo={nombreMes}>
           <div className="aparece overflow-hidden rounded-2xl bg-card
                           shadow-card ring-1 ring-border/70"
-               style={{ '--retraso': '130ms' } as React.CSSProperties}>
+               style={{ '--retraso': '180ms' } as React.CSSProperties}>
             <div className="grid grid-cols-2 divide-x divide-border/70">
               <Dato etiqueta="Ingresos" valor={ingresos} tono="positivo" />
               <Dato etiqueta="Gastos" valor={gastos} tono="negativo" />
@@ -177,7 +199,7 @@ export default async function InicioPage() {
             {hayIngresos && (
               <>
                 <div className="px-4 pb-1">
-                  <BarraProgreso progreso={usado} retraso={260} />
+                  <BarraProgreso progreso={usado} retraso={300} />
                 </div>
                 <div className="flex items-center justify-between px-4 py-2.5">
                   <p className="text-[13px] text-muted-foreground">
@@ -207,11 +229,11 @@ export default async function InicioPage() {
           }
         >
           <div className="aparece"
-               style={{ '--retraso': '210ms' } as React.CSSProperties}>
+               style={{ '--retraso': '250ms' } as React.CSSProperties}>
             <RepartoGastos
               categorias={categorias}
               total={gastos}
-              retraso={280}
+              retraso={320}
             />
           </div>
         </Seccion>
@@ -233,7 +255,7 @@ export default async function InicioPage() {
                     className="aparece block rounded-2xl bg-card px-4 py-3
                                shadow-card ring-1 ring-border/70 transition
                                active:scale-[0.99]"
-                    style={{ '--retraso': `${290 + i * 60}ms` } as React.CSSProperties}>
+                    style={{ '--retraso': `${330 + i * 60}ms` } as React.CSSProperties}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-[15px] font-medium leading-tight">
@@ -257,7 +279,7 @@ export default async function InicioPage() {
                 <div className="mt-2.5">
                   <BarraProgreso
                     progreso={Number(meta.progreso)}
-                    retraso={420 + i * 60}
+                    retraso={450 + i * 60}
                   />
                 </div>
               </Link>
@@ -268,7 +290,7 @@ export default async function InicioPage() {
 
       <Seccion titulo="Ir a">
         <div className="aparece"
-             style={{ '--retraso': '410ms' } as React.CSSProperties}>
+             style={{ '--retraso': '440ms' } as React.CSSProperties}>
           <Lista>
             <Atajo href="/cuentas" etiqueta="Cuentas"
                    detalle="Dónde tienes tu dinero" icono={Wallet} />

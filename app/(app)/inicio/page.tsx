@@ -2,8 +2,13 @@ import Link from 'next/link'
 import { Users, Wallet, HandCoins, Heart, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatearCOP } from '@/lib/format'
-import { Seccion, Lista, Fila, Monto } from '@/components/seccion'
+import { Seccion, Lista, Monto } from '@/components/seccion'
 import { BarraProgreso } from '@/components/barra-progreso'
+import { CifraAnimada } from '@/components/cifra-animada'
+import { DonaCategorias } from '@/components/dona-categorias'
+import {
+  TarjetaDestacada, Reparto, DosRepartos,
+} from '@/components/tarjeta-destacada'
 
 function mesActual(): string {
   return new Intl.DateTimeFormat('sv-SE', {
@@ -41,7 +46,6 @@ export default async function InicioPage() {
       .select('type, monto, cuenta_destino')
       .gte('occurred_on', desde).lte('occurred_on', hasta)
       .in('type', ['expense', 'income']),
-    // Las metas más cercanas a cumplirse: son las que motivan.
     supabase.from('metas_resumen')
       .select('id, name, target_amount, acumulado, progreso, visibility')
       .eq('is_archived', false)
@@ -68,6 +72,16 @@ export default async function InicioPage() {
     .reduce((s, x) => s + Number(x.monto), 0)
   const balance = ingresos - gastos
 
+  /* Sin ingresos registrados no hay balance que calcular.
+     Antes se mostraba "Gastaste de más" con ingresos en cero: suena a
+     que te pasaste de un presupuesto, cuando lo que pasa es que el
+     sueldo todavía no ha entrado. */
+  const hayIngresos = ingresos > 0
+
+  const usado = hayIngresos
+    ? Math.min(100, Math.round((gastos * 100) / ingresos))
+    : 0
+
   const acumulado = new Map<string, number>()
   for (const mov of movs) {
     if (mov.type !== 'expense') continue
@@ -86,56 +100,51 @@ export default async function InicioPage() {
   const cuentaNueva = movs.length === 0 && total === 0
 
   return (
-    <main className="px-4 pb-28 pt-4">
-      <p className="px-1 text-[19px] text-muted-foreground">
-        Bienvenido, {perfil?.display_name}
+    // El botón + de la barra sobresale por encima de ella, así que el
+    // hueco tiene que contarlo. Y env(safe-area-inset-bottom) añade la
+    // franja del gesto de inicio en los iPhone sin botón.
+    <main className="px-4 pt-4 pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <p className="aparece px-1 text-[16px] text-muted-foreground">
+        Hola, {perfil?.display_name}
       </p>
 
-      {/* Tarjeta principal: patrimonio arriba, su reparto debajo.
-          El aire va ENTRE las tarjetas, no dentro: el espacio exterior
-          agrupa y separa, el interior solo infla. */}
-      <section className="mt-2.5 overflow-hidden rounded-2xl bg-card
-                          shadow-elevada ring-1 ring-border/70">
-        <div className="px-4 pb-3.5 pt-3.5">
-          <p className="text-[11px] font-semibold uppercase
-                        tracking-[0.09em] text-muted-foreground">
-            Patrimonio
-          </p>
-          <p className="mt-1 text-[34px] font-semibold leading-none
-                        tracking-tight tabular-nums">
-            {formatearCOP(total)}
-          </p>
-        </div>
-
-        {porCobrar > 0 ? (
-          <div className="grid grid-cols-2 divide-x divide-border/70
-                          border-t border-border/70">
-            <Reparto
-              etiqueta="Disponible"
-              valor={libre}
-              nota={comprometido > 0
-                ? `+ ${formatearCOP(comprometido)} en metas`
-                : undefined}
-            />
-            <Reparto etiqueta="Por cobrar" valor={porCobrar} />
-          </div>
-        ) : (
-          <div className="border-t border-border/70">
+      <div className="mt-2.5">
+        <TarjetaDestacada
+          etiqueta="Patrimonio"
+          valor={<CifraAnimada valor={total} />}
+          retraso={50}
+        >
+          {porCobrar > 0 ? (
+            <DosRepartos>
+              <Reparto
+                etiqueta="Disponible"
+                valor={formatearCOP(libre)}
+                nota={comprometido > 0
+                  ? `+ ${formatearCOP(comprometido)} en metas`
+                  : undefined}
+              />
+              <Reparto
+                etiqueta="Por cobrar"
+                valor={formatearCOP(porCobrar)}
+              />
+            </DosRepartos>
+          ) : (
             <Reparto
               etiqueta="Disponible para gastar"
-              valor={libre}
+              valor={formatearCOP(libre)}
               nota={comprometido > 0
                 ? `De ${formatearCOP(enCuentas)} en cuentas, ${formatearCOP(comprometido)} reservados en metas`
                 : undefined}
             />
-          </div>
-        )}
-      </section>
+          )}
+        </TarjetaDestacada>
+      </div>
 
       {cuentaNueva ? (
         <Seccion titulo="Empezar">
-          <div className="rounded-2xl border border-dashed border-border
-                          px-5 py-7 text-center">
+          <div className="aparece rounded-2xl border border-dashed
+                          border-border px-5 py-7 text-center"
+                style={{ '--retraso': '130ms' } as React.CSSProperties}>
             <p className="text-[15px] font-medium">Aún no hay movimientos</p>
             <p className="mx-auto mt-1.5 max-w-[26ch] text-[13px] leading-snug
                           text-muted-foreground">
@@ -154,29 +163,60 @@ export default async function InicioPage() {
         </Seccion>
       ) : (
         <Seccion titulo={nombreMes}>
-          <div className="overflow-hidden rounded-2xl bg-card shadow-card
-                          ring-1 ring-border/70">
+          <div className="aparece overflow-hidden rounded-2xl bg-card
+                          shadow-card ring-1 ring-border/70"
+               style={{ '--retraso': '130ms' } as React.CSSProperties}>
             <div className="grid grid-cols-2 divide-x divide-border/70">
               <Dato etiqueta="Ingresos" valor={ingresos} tono="positivo" />
               <Dato etiqueta="Gastos" valor={gastos} tono="negativo" />
             </div>
-            <div className="flex items-center justify-between
-                            border-t border-border/70 px-4 py-2.5">
-              <p className="text-[13px] text-muted-foreground">
-                {balance < 0 ? 'Gastaste de más' : 'Te queda'}
-              </p>
-              <Monto
-                valor={balance}
-                tono={balance < 0 ? 'negativo' : 'neutro'}
-                formato={formatearCOP}
-                className="text-[16px] font-semibold"
-              />
-            </div>
+
+            {/* Sin ingresos, las dos cifras de arriba ya lo cuentan todo:
+                una tercera línea repetiría el gasto o inventaría un
+                juicio que los datos no sostienen. */}
+            {hayIngresos && (
+              <>
+                <div className="px-4 pb-1">
+                  <BarraProgreso progreso={usado} retraso={260} />
+                </div>
+                <div className="flex items-center justify-between px-4 py-2.5">
+                  <p className="text-[13px] text-muted-foreground">
+                    {balance < 0 ? 'Gastaste de más' : 'Te queda'}
+                  </p>
+                  <Monto
+                    valor={balance}
+                    tono={balance < 0 ? 'negativo' : 'neutro'}
+                    formato={formatearCOP}
+                    className="text-[16px] font-semibold"
+                  />
+                </div>
+              </>
+            )}
           </div>
         </Seccion>
       )}
 
-      {/* Metas: lo que estás construyendo, no solo lo que gastaste */}
+      {categorias.length > 0 && gastos > 0 && (
+        <Seccion
+          titulo="En qué gastaste"
+          accion={
+            <Link href="/movimientos"
+                  className="text-[12px] font-medium text-primary">
+              Ver todo
+            </Link>
+          }
+        >
+          <div className="aparece"
+               style={{ '--retraso': '210ms' } as React.CSSProperties}>
+            <DonaCategorias
+              categorias={categorias}
+              total={gastos}
+              retraso={280}
+            />
+          </div>
+        </Seccion>
+      )}
+
       {(metas ?? []).length > 0 && (
         <Seccion
           titulo="Tus metas"
@@ -188,11 +228,12 @@ export default async function InicioPage() {
           }
         >
           <div className="space-y-2">
-            {(metas ?? []).map((meta) => (
+            {(metas ?? []).map((meta, i) => (
               <Link key={meta.id} href={`/ahorros/${meta.id}`}
-                    className="block rounded-2xl bg-card px-4 py-3 shadow-card
-                               ring-1 ring-border/70 transition
-                               active:scale-[0.99]">
+                    className="aparece block rounded-2xl bg-card px-4 py-3
+                               shadow-card ring-1 ring-border/70 transition
+                               active:scale-[0.99]"
+                    style={{ '--retraso': `${290 + i * 60}ms` } as React.CSSProperties}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-[15px] font-medium leading-tight">
@@ -214,7 +255,10 @@ export default async function InicioPage() {
                   </div>
                 </div>
                 <div className="mt-2.5">
-                  <BarraProgreso progreso={Number(meta.progreso)} />
+                  <BarraProgreso
+                    progreso={Number(meta.progreso)}
+                    retraso={420 + i * 60}
+                  />
                 </div>
               </Link>
             ))}
@@ -222,64 +266,20 @@ export default async function InicioPage() {
         </Seccion>
       )}
 
-      {categorias.length > 0 && gastos > 0 && (
-        <Seccion
-          titulo="En qué gastaste"
-          accion={
-            <Link href="/movimientos"
-                  className="text-[12px] font-medium text-primary">
-              Ver todo
-            </Link>
-          }
-        >
-          <Lista>
-            {categorias.map((c) => (
-              <Fila
-                key={c.nombre}
-                titulo={c.nombre}
-                detalle={`${Math.round((c.valor / gastos) * 100)}% del mes`}
-                valor={formatearCOP(c.valor)}
-              />
-            ))}
-          </Lista>
-        </Seccion>
-      )}
-
       <Seccion titulo="Ir a">
-        <Lista>
-          <Atajo href="/cuentas" etiqueta="Cuentas"
-                 detalle="Dónde tienes tu dinero" icono={Wallet} />
-          <Atajo href="/prestamos" etiqueta="Préstamos"
-                 detalle="Dinero que te deben" icono={HandCoins} />
-          <Atajo href="/pareja" etiqueta="Pareja"
-                 detalle="Balance y gastos compartidos" icono={Heart} />
-        </Lista>
+        <div className="aparece"
+             style={{ '--retraso': '410ms' } as React.CSSProperties}>
+          <Lista>
+            <Atajo href="/cuentas" etiqueta="Cuentas"
+                   detalle="Dónde tienes tu dinero" icono={Wallet} />
+            <Atajo href="/prestamos" etiqueta="Préstamos"
+                   detalle="Dinero que te deben" icono={HandCoins} />
+            <Atajo href="/pareja" etiqueta="Pareja"
+                   detalle="Balance y gastos compartidos" icono={Heart} />
+          </Lista>
+        </div>
       </Seccion>
     </main>
-  )
-}
-
-/** Bloque del reparto: etiqueta, cifra y, si hace falta, el matiz. */
-function Reparto({
-  etiqueta, valor, nota,
-}: {
-  etiqueta: string
-  valor: number
-  nota?: string
-}) {
-  return (
-    <div className="px-4 py-3">
-      <p className="text-[12px] text-muted-foreground">{etiqueta}</p>
-      <p className="mt-0.5 text-[18px] font-medium tabular-nums">
-        {formatearCOP(valor)}
-      </p>
-      {nota && (
-        <p className="mt-1 text-[11px] leading-snug text-muted-foreground
-                      tabular-nums">
-          {nota}
-        </p>
-      )}
-    </div>
   )
 }
 

@@ -12,16 +12,15 @@
   --font-heading: var(--font-sans);
 
   /* Color con significado: en una app de dinero el color es un dato,
-     no decoración. Solo lo usamos para el SIGNO de una cifra.
-
-     El acento (--primary) vive en el tono 268 a propósito: lejos del
-     verde 155 de --positivo y del rojo 25 de --negativo, para que nunca
-     se lea como "entra dinero" o "sale dinero". */
+     no decoración. Solo lo usamos para el SIGNO de una cifra. */
   --color-positivo: var(--positivo);
   --color-negativo: var(--negativo);
 
-  /* Sombras. Sustituyen al borde de 1px como forma de separar una
-     tarjeta del lienzo: el borde dibuja, la sombra eleva. */
+  /* Texto sobre la tarjeta destacada. Va aparte de --foreground porque
+     ahí el fondo es oscuro en los DOS temas. */
+  --color-destacado: var(--destacado-texto);
+  --color-destacado-suave: var(--destacado-suave);
+
   --shadow-card: 0 1px 2px 0 oklch(0.2 0.03 268 / 0.04),
                  0 1px 3px 0 oklch(0.2 0.03 268 / 0.05);
   --shadow-elevada: 0 2px 4px -1px oklch(0.2 0.03 268 / 0.05),
@@ -69,15 +68,9 @@
 
 /* ---------------------------------------------------------------
    TEMA CLARO
-
    El lienzo NO es blanco. Es un gris muy claro y ligeramente frío;
    las tarjetas sí son blancas. Esa diferencia de dos puntos de
-   luminosidad es lo que hace que los bloques floten en vez de estar
-   dibujados con una línea, y es el cambio que más se nota de todos.
-
-   Todos los grises llevan un punto de croma en el tono del acento.
-   Un gris neutro puro (croma 0) se ve apagado en pantalla; teñirlo
-   levemente hace que la paleta parezca elegida y no ausente.
+   luminosidad es lo que hace que los bloques floten.
    --------------------------------------------------------------- */
 :root {
   --background: oklch(0.975 0.003 268);
@@ -87,8 +80,6 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.18 0.012 268);
 
-  /* Acento índigo. Se usa poco a propósito: botón principal, foco,
-     estado activo. Todo lo demás sigue siendo gris. */
   --primary: oklch(0.51 0.19 268);
   --primary-foreground: oklch(0.99 0 0);
 
@@ -104,12 +95,38 @@
   --ring: oklch(0.51 0.19 268);
   --positivo: oklch(0.5 0.14 155);
   --negativo: oklch(0.54 0.2 25);
-  --chart-1: oklch(0.51 0.19 268);
-  --chart-2: oklch(0.62 0.14 268);
-  --chart-3: oklch(0.72 0.09 268);
-  --chart-4: oklch(0.81 0.05 268);
-  --chart-5: oklch(0.89 0.02 268);
+
+  /* PALETA DE GRÁFICOS
+     Dos reglas la gobiernan.
+     
+     1. TONO. El verde de --positivo vive en el 155 y el rojo de
+        --negativo en el 25. Ningún color de gráfico se acerca a ellos,
+        o un segmento de la dona se leería como "entra" o "sale dinero".
+        Queda la franja del 190 al 340.
+     
+     2. LUMINOSIDAD ALTERNA. Repartir solo el tono no bastaba: sobre
+        blanco, dos colores oscuros y saturados a 42 grados de distancia
+        se leen como el mismo. Por eso alternan oscuro / claro / medio,
+        y se distinguen por dos vías a la vez. Eso también los hace
+        legibles en una pantalla mala o para alguien con daltonismo,
+        que es donde el tono solo deja de funcionar. */
+  --chart-1: oklch(0.45 0.19 268);  /* índigo oscuro   */
+  --chart-2: oklch(0.68 0.18 310);  /* violeta claro   */
+  --chart-3: oklch(0.52 0.15 215);  /* azul medio      */
+  --chart-4: oklch(0.72 0.15 340);  /* rosa claro      */
+  --chart-5: oklch(0.58 0.11 190);  /* cian medio      */
   --radius: 0.875rem;
+
+  /* Tarjeta destacada en tema CLARO: grafito.
+     Sobre un lienzo casi blanco, un gris muy oscuro destaca de sobra. */
+  --destacado: linear-gradient(135deg,
+    oklch(0.32 0.012 268) 0%,
+    oklch(0.24 0.010 268) 60%,
+    oklch(0.17 0.008 268) 100%);
+  --destacado-texto: oklch(0.98 0 0);
+  --destacado-suave: oklch(0.74 0.012 268);
+  --destacado-linea: oklch(1 0 0 / 18%);
+
   --sidebar: oklch(0.985 0.003 268);
   --sidebar-foreground: oklch(0.18 0.012 268);
   --sidebar-primary: oklch(0.51 0.19 268);
@@ -122,14 +139,7 @@
 
 /* ---------------------------------------------------------------
    TEMA OSCURO
-
-   Mismo principio invertido: el lienzo es lo más oscuro y las
-   tarjetas van un punto por encima. En oscuro las sombras casi no
-   se ven, así que la separación la hace el contraste de superficie.
-
    next-themes añade la clase .dark al <html>.
-   Nada de @media prefers-color-scheme: si lo usáramos, elegir
-   "Claro" a mano no funcionaría en un celular configurado en oscuro.
    --------------------------------------------------------------- */
 .dark {
   --background: oklch(0.165 0.01 268);
@@ -154,11 +164,27 @@
   --ring: oklch(0.7 0.16 268);
   --positivo: oklch(0.76 0.16 155);
   --negativo: oklch(0.71 0.18 25);
-  --chart-1: oklch(0.7 0.16 268);
-  --chart-2: oklch(0.6 0.13 268);
-  --chart-3: oklch(0.5 0.1 268);
-  --chart-4: oklch(0.4 0.07 268);
-  --chart-5: oklch(0.31 0.04 268);
+
+  /* Mismos tonos y la misma alternancia, con la base más arriba: sobre
+     un fondo oscuro, un color oscuro se apaga y desaparece. Aquí el
+     "oscuro" de la serie es lo que en tema claro sería un medio. */
+  --chart-1: oklch(0.60 0.18 268);  /* índigo medio    */
+  --chart-2: oklch(0.80 0.15 310);  /* violeta claro   */
+  --chart-3: oklch(0.66 0.14 215);  /* azul medio      */
+  --chart-4: oklch(0.83 0.12 340);  /* rosa claro      */
+  --chart-5: oklch(0.72 0.10 190);  /* cian medio      */
+
+  /* Tarjeta destacada en tema OSCURO: azul, no grafito.
+     Un degradado gris sobre un tema que ya es todo gris no destaca.
+     Aquí lo único que separa es el croma, no la luminosidad. */
+  --destacado: linear-gradient(135deg,
+    oklch(0.44 0.11 268) 0%,
+    oklch(0.35 0.10 268) 58%,
+    oklch(0.27 0.08 268) 100%);
+  --destacado-texto: oklch(0.99 0 0);
+  --destacado-suave: oklch(0.84 0.045 268);
+  --destacado-linea: oklch(1 0 0 / 22%);
+
   --sidebar: oklch(0.19 0.011 268);
   --sidebar-foreground: oklch(0.97 0.003 268);
   --sidebar-primary: oklch(0.7 0.16 268);
@@ -176,7 +202,6 @@
 
   html {
     @apply font-sans;
-    /* Evita el zoom accidental al tocar dos veces en iOS. */
     -webkit-text-size-adjust: 100%;
   }
 
@@ -184,24 +209,83 @@
     @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* En una PWA a pantalla completa, el rebote al arrastrar delata
-       que por debajo hay un navegador. */
     overscroll-behavior-y: none;
   }
 
-  /* El dinero SIEMPRE en cifras de ancho fijo. Sin esto, $1.200.000
-     y $50.000 no alinean sus dígitos y las columnas de pesos bailan
-     al recorrer una lista. */
   .tabular-nums {
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
   }
 
-  /* El pulgar necesita blanco alrededor: el gris de :hover en un
-     celular se queda pegado después de tocar. */
   @media (hover: none) {
     * {
       -webkit-tap-highlight-color: transparent;
+    }
+  }
+}
+
+@layer utilities {
+  .bg-destacado {
+    background-image: var(--destacado);
+  }
+  .border-destacado {
+    border-color: var(--destacado-linea);
+  }
+  .divide-destacado > * + * {
+    border-color: var(--destacado-linea);
+  }
+
+  /* Entrada escalonada. El retraso se pasa por --retraso desde el
+     marcado, para no crear una clase por cada posición. */
+  @keyframes aparecer {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .aparece {
+    animation: aparecer 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: var(--retraso, 0ms);
+  }
+
+  /* Barras que crecen desde cero.
+     El ancho final va en --ancho, así que no hace falta JavaScript:
+     el componente sigue siendo un Server Component. */
+  @keyframes crecer {
+    from { width: 0; }
+    to   { width: var(--ancho, 0%); }
+  }
+
+  .crece {
+    width: var(--ancho, 0%);
+    animation: crecer 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: var(--retraso, 0ms);
+  }
+
+  /* La dona entra girando un poco. Animar cada segmento por separado
+     obligaría a un componente cliente; girar el grupo entero da la
+     misma sensación con CSS puro. */
+  @keyframes entra-dona {
+    from { opacity: 0; transform: rotate(-35deg) scale(0.9); }
+    to   { opacity: 1; transform: rotate(0) scale(1); }
+  }
+
+  .dona-entra {
+    transform-origin: center;
+    animation: entra-dona 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: var(--retraso, 0ms);
+  }
+
+  /* Quien haya pedido menos movimiento en su sistema lo ha pedido por
+     algo: mareo, migrañas, déficit de atención. El contenido aparece
+     igual, sin desplazamiento ni crecimiento. */
+  @media (prefers-reduced-motion: reduce) {
+    .aparece,
+    .dona-entra {
+      animation: none;
+    }
+    .crece {
+      animation: none;
+      width: var(--ancho, 0%);
     }
   }
 }

@@ -3,6 +3,10 @@ import { Plus, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatearCOP } from '@/lib/format'
 import { BarraProgreso } from '@/components/barra-progreso'
+import { CifraAnimada } from '@/components/cifra-animada'
+import {
+  TarjetaDestacada, Reparto, DosRepartos,
+} from '@/components/tarjeta-destacada'
 
 export default async function AhorrosPage() {
   const supabase = await createClient()
@@ -37,8 +41,8 @@ export default async function AhorrosPage() {
   }
 
   return (
-    <main className="px-4 pb-28 pt-4">
-      <div className="flex items-center justify-between gap-3 px-1">
+    <main className="px-4 pt-4 pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <div className="aparece flex items-center justify-between gap-3 px-1">
         <h1 className="text-[22px] font-semibold tracking-tight">Ahorros</h1>
         <Link href="/ahorros/nueva" aria-label="Nueva meta"
               className="flex size-10 items-center justify-center rounded-full
@@ -48,33 +52,29 @@ export default async function AhorrosPage() {
         </Link>
       </div>
 
-      {/* Contexto: sin esto, una meta suelta no dice nada.
-          "Comprometido" cuenta solo TU dinero: en una meta conjunta será
+      {/* "Comprometido" cuenta solo TU dinero: en una meta conjunta será
           menor que el acumulado de la meta, y eso es correcto. Por eso
           cada tarjeta muestra debajo quién puso qué. */}
-      <section className="mt-3 overflow-hidden rounded-2xl bg-card
-                          shadow-elevada ring-1 ring-border/70">
-        <div className="grid grid-cols-2 divide-x divide-border/70">
-          <div className="px-4 py-3">
-            <p className="text-[12px] text-muted-foreground">
-              Comprometido por ti
-            </p>
-            <p className="mt-0.5 text-[18px] font-medium tabular-nums">
-              {formatearCOP(asignado)}
-            </p>
-          </div>
-          <div className="px-4 py-3">
-            <p className="text-[12px] text-muted-foreground">Libre</p>
-            <p className="mt-0.5 text-[18px] font-medium tabular-nums">
-              {formatearCOP(libre)}
-            </p>
-          </div>
-        </div>
-      </section>
+      <div className="mt-3">
+        <TarjetaDestacada
+          etiqueta="Comprometido por ti"
+          valor={<CifraAnimada valor={asignado} />}
+          retraso={50}
+        >
+          <DosRepartos>
+            <Reparto etiqueta="Libre" valor={formatearCOP(libre)} />
+            <Reparto
+              etiqueta="Metas activas"
+              valor={String(metas.length)}
+            />
+          </DosRepartos>
+        </TarjetaDestacada>
+      </div>
 
       {metas.length === 0 ? (
-        <div className="mt-6 rounded-2xl border border-dashed border-border
-                        px-5 py-7 text-center">
+        <div className="aparece mt-6 rounded-2xl border border-dashed
+                        border-border px-5 py-7 text-center"
+             style={{ '--retraso': '130ms' } as React.CSSProperties}>
           <p className="text-[15px] font-medium">Aún no tienes metas</p>
           <p className="mx-auto mt-1.5 max-w-[30ch] text-[13px] leading-snug
                         text-muted-foreground">
@@ -90,15 +90,16 @@ export default async function AhorrosPage() {
         </div>
       ) : (
         <div className="mt-3 space-y-2">
-          {metas.map((m) => {
+          {metas.map((m, i) => {
             const reparto = repartoPorMeta.get(m.id) ?? []
             const conjunta = m.visibility === 'joint'
 
             return (
               <Link key={m.id} href={`/ahorros/${m.id}`}
-                    className="block rounded-2xl bg-card px-4 py-3 shadow-card
-                               ring-1 ring-border/70 transition
-                               active:scale-[0.99]">
+                    className="aparece block rounded-2xl bg-card px-4 py-3
+                               shadow-card ring-1 ring-border/70 transition
+                               active:scale-[0.99]"
+                    style={{ '--retraso': `${140 + i * 60}ms` } as React.CSSProperties}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-[15px] font-medium leading-tight">
@@ -123,11 +124,14 @@ export default async function AhorrosPage() {
                 </div>
 
                 <div className="mt-2.5">
-                  <BarraProgreso progreso={Number(m.progreso)} />
+                  <BarraProgreso
+                    progreso={Number(m.progreso)}
+                    retraso={260 + i * 60}
+                  />
                 </div>
 
-                {/* Sin esta línea, ver "$1.000.000" en la meta y
-                    "$500.000 comprometido" arriba parece un error. */}
+                {/* Sin esta línea, ver el acumulado de la meta y otro
+                    número en "comprometido" parece un error. */}
                 {conjunta && reparto.length > 1 && (
                   <p className="mt-2 truncate text-[11px] text-muted-foreground
                                 tabular-nums">

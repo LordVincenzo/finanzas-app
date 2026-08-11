@@ -96,36 +96,30 @@
   --positivo: oklch(0.5 0.14 155);
   --negativo: oklch(0.54 0.2 25);
 
-  /* PALETA DE GRÁFICOS
-     Dos reglas la gobiernan.
-     
-     1. TONO. El verde de --positivo vive en el 155 y el rojo de
-        --negativo en el 25. Ningún color de gráfico se acerca a ellos,
-        o un segmento de la dona se leería como "entra" o "sale dinero".
-        Queda la franja del 190 al 340.
-     
-     2. LUMINOSIDAD ALTERNA. Repartir solo el tono no bastaba: sobre
-        blanco, dos colores oscuros y saturados a 42 grados de distancia
-        se leen como el mismo. Por eso alternan oscuro / claro / medio,
-        y se distinguen por dos vías a la vez. Eso también los hace
-        legibles en una pantalla mala o para alguien con daltonismo,
-        que es donde el tono solo deja de funcionar. */
-  --chart-1: oklch(0.45 0.19 268);  /* índigo oscuro   */
-  --chart-2: oklch(0.68 0.18 310);  /* violeta claro   */
-  --chart-3: oklch(0.52 0.15 215);  /* azul medio      */
-  --chart-4: oklch(0.72 0.15 340);  /* rosa claro      */
-  --chart-5: oklch(0.58 0.11 190);  /* cian medio      */
+  /* Gráficos: gradaciones del acento, no una paleta multicolor.
+     Donde hace falta distinguir series, el componente pone el nombre
+     pegado a su barra, así que no hay que emparejar colores con una
+     leyenda y basta con la intensidad. */
+  --chart-1: oklch(0.51 0.19 268);
+  --chart-2: oklch(0.61 0.15 268);
+  --chart-3: oklch(0.70 0.11 268);
+  --chart-4: oklch(0.79 0.07 268);
+  --chart-5: oklch(0.87 0.04 268);
   --radius: 0.875rem;
 
-  /* Tarjeta destacada en tema CLARO: grafito.
-     Sobre un lienzo casi blanco, un gris muy oscuro destaca de sobra. */
+  /* Tarjeta destacada: el MISMO azul en los dos temas.
+     Antes era grafito en claro. Aisladamente se veía bien, pero con la
+     pantalla entera delante había dos identidades peleando: la tarjeta
+     decía "esta app es gris" y todo lo de debajo —barras, enlaces,
+     botones— decía "esta app es azul". Un solo color hace que la
+     pantalla se lea como una sola cosa. */
   --destacado: linear-gradient(135deg,
-    oklch(0.32 0.012 268) 0%,
-    oklch(0.24 0.010 268) 60%,
-    oklch(0.17 0.008 268) 100%);
-  --destacado-texto: oklch(0.98 0 0);
-  --destacado-suave: oklch(0.74 0.012 268);
-  --destacado-linea: oklch(1 0 0 / 18%);
+    oklch(0.47 0.17 268) 0%,
+    oklch(0.37 0.15 268) 58%,
+    oklch(0.28 0.12 268) 100%);
+  --destacado-texto: oklch(0.99 0 0);
+  --destacado-suave: oklch(0.85 0.05 268);
+  --destacado-linea: oklch(1 0 0 / 20%);
 
   --sidebar: oklch(0.985 0.003 268);
   --sidebar-foreground: oklch(0.18 0.012 268);
@@ -164,19 +158,14 @@
   --ring: oklch(0.7 0.16 268);
   --positivo: oklch(0.76 0.16 155);
   --negativo: oklch(0.71 0.18 25);
+  --chart-1: oklch(0.70 0.16 268);
+  --chart-2: oklch(0.61 0.14 268);
+  --chart-3: oklch(0.52 0.11 268);
+  --chart-4: oklch(0.43 0.08 268);
+  --chart-5: oklch(0.35 0.05 268);
 
-  /* Mismos tonos y la misma alternancia, con la base más arriba: sobre
-     un fondo oscuro, un color oscuro se apaga y desaparece. Aquí el
-     "oscuro" de la serie es lo que en tema claro sería un medio. */
-  --chart-1: oklch(0.60 0.18 268);  /* índigo medio    */
-  --chart-2: oklch(0.80 0.15 310);  /* violeta claro   */
-  --chart-3: oklch(0.66 0.14 215);  /* azul medio      */
-  --chart-4: oklch(0.83 0.12 340);  /* rosa claro      */
-  --chart-5: oklch(0.72 0.10 190);  /* cian medio      */
-
-  /* Tarjeta destacada en tema OSCURO: azul, no grafito.
-     Un degradado gris sobre un tema que ya es todo gris no destaca.
-     Aquí lo único que separa es el croma, no la luminosidad. */
+  /* Un punto más bajo que en claro: sobre un lienzo casi negro, el
+     mismo azul deslumbraría. */
   --destacado: linear-gradient(135deg,
     oklch(0.44 0.11 268) 0%,
     oklch(0.35 0.10 268) 58%,
@@ -261,26 +250,11 @@
     animation-delay: var(--retraso, 0ms);
   }
 
-  /* La dona entra girando un poco. Animar cada segmento por separado
-     obligaría a un componente cliente; girar el grupo entero da la
-     misma sensación con CSS puro. */
-  @keyframes entra-dona {
-    from { opacity: 0; transform: rotate(-35deg) scale(0.9); }
-    to   { opacity: 1; transform: rotate(0) scale(1); }
-  }
-
-  .dona-entra {
-    transform-origin: center;
-    animation: entra-dona 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
-    animation-delay: var(--retraso, 0ms);
-  }
-
   /* Quien haya pedido menos movimiento en su sistema lo ha pedido por
      algo: mareo, migrañas, déficit de atención. El contenido aparece
      igual, sin desplazamiento ni crecimiento. */
   @media (prefers-reduced-motion: reduce) {
-    .aparece,
-    .dona-entra {
+    .aparece {
       animation: none;
     }
     .crece {

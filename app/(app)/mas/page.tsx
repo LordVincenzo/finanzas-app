@@ -21,64 +21,75 @@ export default async function MasPage() {
     .from('profiles').select('display_name').eq('id', user!.id).single()
 
   return (
-    <main className="px-4 pb-28 pt-4">
-      <h1 className="px-1 text-[22px] font-semibold tracking-tight">Más</h1>
+    <main className="px-4 pt-4 pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <h1 className="aparece px-1 text-[22px] font-semibold tracking-tight">
+        Más
+      </h1>
 
       <Seccion>
-        <Lista>
-          {ENLACES.map(({ href, icono: Icono, etiqueta, detalle }) => (
-            <Link key={href} href={href}
-                  className="flex min-h-13 items-center gap-3 px-4 py-2.5
-                             transition active:bg-muted/60">
-              <span className="flex size-9 shrink-0 items-center justify-center
-                               rounded-xl bg-muted">
-                <Icono className="size-[17px] text-muted-foreground" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[15px] leading-tight">{etiqueta}</p>
-                <p className="mt-0.5 text-[12px] leading-tight
-                              text-muted-foreground">
-                  {detalle}
-                </p>
-              </div>
-              <ChevronRight className="size-4 shrink-0
-                                       text-muted-foreground/60" />
-            </Link>
-          ))}
-        </Lista>
+        <div className="aparece"
+             style={{ '--retraso': '50ms' } as React.CSSProperties}>
+          <Lista>
+            {ENLACES.map(({ href, icono: Icono, etiqueta, detalle }) => (
+              <Link key={href} href={href}
+                    className="flex min-h-13 items-center gap-3 px-4 py-2.5
+                               transition active:bg-muted/60">
+                <span className="flex size-9 shrink-0 items-center
+                                 justify-center rounded-xl bg-muted">
+                  <Icono className="size-[17px] text-muted-foreground" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[15px] leading-tight">{etiqueta}</p>
+                  <p className="mt-0.5 text-[12px] leading-tight
+                                text-muted-foreground">
+                    {detalle}
+                  </p>
+                </div>
+                <ChevronRight className="size-4 shrink-0
+                                         text-muted-foreground/60" />
+              </Link>
+            ))}
+          </Lista>
+        </div>
       </Seccion>
 
       <Seccion titulo="Apariencia">
-        <Lista>
-          <SelectorTema />
-        </Lista>
+        <div className="aparece"
+             style={{ '--retraso': '120ms' } as React.CSSProperties}>
+          <Lista>
+            <SelectorTema />
+          </Lista>
+        </div>
       </Seccion>
 
       <Seccion titulo="Cuenta">
-        <Lista>
-          <div className="flex min-h-13 items-center gap-3 px-4 py-2.5">
-            <span className="flex size-9 shrink-0 items-center justify-center
-                             rounded-xl bg-muted">
-              <User className="size-[17px] text-muted-foreground" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[15px] leading-tight">
-                {perfil?.display_name}
-              </p>
-              <p className="mt-0.5 truncate text-[12px] leading-tight
-                            text-muted-foreground">
-                {user?.email}
-              </p>
+        <div className="aparece"
+             style={{ '--retraso': '190ms' } as React.CSSProperties}>
+          <Lista>
+            <div className="flex min-h-13 items-center gap-3 px-4 py-2.5">
+              <span className="flex size-9 shrink-0 items-center justify-center
+                               rounded-xl bg-muted">
+                <User className="size-[17px] text-muted-foreground" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[15px] leading-tight">
+                  {perfil?.display_name}
+                </p>
+                <p className="mt-0.5 truncate text-[12px] leading-tight
+                              text-muted-foreground">
+                  {user?.email}
+                </p>
+              </div>
             </div>
-          </div>
-          <form action={cerrarSesion}>
-            <button className="min-h-12 w-full px-4 text-left text-[15px]
-                               font-medium text-destructive transition
-                               active:bg-muted/60">
-              Cerrar sesión
-            </button>
-          </form>
-        </Lista>
+            <form action={cerrarSesion}>
+              <button className="min-h-12 w-full px-4 text-left text-[15px]
+                                 font-medium text-destructive transition
+                                 active:bg-muted/60">
+                Cerrar sesión
+              </button>
+            </form>
+          </Lista>
+        </div>
       </Seccion>
     </main>
   )

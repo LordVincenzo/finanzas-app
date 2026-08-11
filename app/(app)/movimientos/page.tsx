@@ -53,14 +53,15 @@ export default async function MovimientosPage({
   }
 
   return (
-    <main className="px-4 pb-28 pt-4">
-      <div className="flex items-center justify-between gap-3 px-1">
+    <main className="px-4 pt-4 pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <div className="aparece flex items-center justify-between gap-3 px-1">
         <h1 className="text-[22px] font-semibold tracking-tight">Movimientos</h1>
         <SelectorMes mes={mes} tipo={tipo} />
       </div>
 
       {/* Filtros: chips que caben en una sola línea deslizable */}
-      <div className="-mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4 pb-1">
+      <div className="aparece -mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4 pb-1"
+           style={{ '--retraso': '60ms' } as React.CSSProperties}>
         {FILTROS.map((f) => (
           <Link
             key={f.valor}
@@ -78,8 +79,9 @@ export default async function MovimientosPage({
       </div>
 
       {movimientos.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-dashed border-border
-                        px-5 py-7 text-center">
+        <div className="aparece mt-8 rounded-2xl border border-dashed
+                        border-border px-5 py-7 text-center"
+             style={{ '--retraso': '120ms' } as React.CSSProperties}>
           <p className="text-[15px] font-medium">
             No hay movimientos en este periodo
           </p>
@@ -95,13 +97,16 @@ export default async function MovimientosPage({
           </Link>
         </div>
       ) : (
-        [...porDia.entries()].map(([dia, lista]) => (
+        [...porDia.entries()].map(([dia, lista], i) => (
           <Seccion key={dia} titulo={formatearFecha(dia)}>
-            <Lista>
-              {lista.map((mov) => (
-                <FilaMovimiento key={mov.id} mov={mov} />
-              ))}
-            </Lista>
+            <div className="aparece"
+                 style={{ '--retraso': `${120 + i * 60}ms` } as React.CSSProperties}>
+              <Lista>
+                {lista.map((mov) => (
+                  <FilaMovimiento key={mov.id} mov={mov} />
+                ))}
+              </Lista>
+            </div>
           </Seccion>
         ))
       )}

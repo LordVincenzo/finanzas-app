@@ -5,7 +5,7 @@ import { formatearCOP } from '@/lib/format'
 import { Seccion, Lista, Monto } from '@/components/seccion'
 import { BarraProgreso } from '@/components/barra-progreso'
 import { CifraAnimada } from '@/components/cifra-animada'
-import { DonaCategorias } from '@/components/dona-categorias'
+import { RepartoGastos } from '@/components/reparto-gastos'
 import {
   TarjetaDestacada, Reparto, DosRepartos,
 } from '@/components/tarjeta-destacada'
@@ -104,7 +104,7 @@ export default async function InicioPage() {
     // hueco tiene que contarlo. Y env(safe-area-inset-bottom) añade la
     // franja del gesto de inicio en los iPhone sin botón.
     <main className="px-4 pt-4 pb-[calc(8rem+env(safe-area-inset-bottom))]">
-      <p className="aparece px-1 text-[16px] text-muted-foreground">
+      <p className="aparece px-1 text-[13px] text-muted-foreground">
         Hola, {perfil?.display_name}
       </p>
 
@@ -208,7 +208,7 @@ export default async function InicioPage() {
         >
           <div className="aparece"
                style={{ '--retraso': '210ms' } as React.CSSProperties}>
-            <DonaCategorias
+            <RepartoGastos
               categorias={categorias}
               total={gastos}
               retraso={280}

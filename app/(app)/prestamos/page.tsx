@@ -3,6 +3,10 @@ import { Plus, AlertCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatearCOP, formatearFecha } from '@/lib/format'
 import { BarraProgreso } from '@/components/barra-progreso'
+import { CifraAnimada } from '@/components/cifra-animada'
+import {
+  TarjetaDestacada, Reparto, DosRepartos,
+} from '@/components/tarjeta-destacada'
 
 export default async function PrestamosPage() {
   const supabase = await createClient()
@@ -16,7 +20,7 @@ export default async function PrestamosPage() {
   // Si algo falla en la consulta, mejor verlo que quedarse en blanco.
   if (error) {
     return (
-      <main className="px-4 pb-28 pt-4">
+      <main className="px-4 pt-4 pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <h1 className="px-1 text-[22px] font-semibold tracking-tight">
           Préstamos
         </h1>
@@ -31,10 +35,11 @@ export default async function PrestamosPage() {
   const prestamos = data ?? []
   const activos = prestamos.filter((p) => p.status === 'active')
   const porCobrar = activos.reduce((s, p) => s + Number(p.pendiente), 0)
+  const yaCobrado = prestamos.reduce((s, p) => s + Number(p.pagado), 0)
 
   return (
-    <main className="px-4 pb-28 pt-4">
-      <div className="flex items-center justify-between gap-3 px-1">
+    <main className="px-4 pt-4 pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      <div className="aparece flex items-center justify-between gap-3 px-1">
         <h1 className="text-[22px] font-semibold tracking-tight">Préstamos</h1>
         <Link href="/prestamos/nuevo" aria-label="Nuevo préstamo"
               className="flex size-10 items-center justify-center rounded-full
@@ -45,22 +50,30 @@ export default async function PrestamosPage() {
       </div>
 
       {prestamos.length > 0 && (
-        <section className="mt-3 rounded-2xl bg-card px-4 py-3 shadow-elevada
-                            ring-1 ring-border/70">
-          <p className="text-[12px] text-muted-foreground">
-            Por cobrar en {activos.length}{' '}
-            {activos.length === 1 ? 'préstamo activo' : 'préstamos activos'}
-          </p>
-          <p className="mt-0.5 text-[26px] font-semibold leading-none
-                        tracking-tight tabular-nums">
-            {formatearCOP(porCobrar)}
-          </p>
-        </section>
+        <div className="mt-3">
+          <TarjetaDestacada
+            etiqueta="Por cobrar"
+            valor={<CifraAnimada valor={porCobrar} />}
+            retraso={50}
+          >
+            <DosRepartos>
+              <Reparto
+                etiqueta="Ya te devolvieron"
+                valor={formatearCOP(yaCobrado)}
+              />
+              <Reparto
+                etiqueta={activos.length === 1 ? 'Préstamo activo' : 'Préstamos activos'}
+                valor={String(activos.length)}
+              />
+            </DosRepartos>
+          </TarjetaDestacada>
+        </div>
       )}
 
       {prestamos.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-dashed border-border
-                        px-5 py-7 text-center">
+        <div className="aparece mt-8 rounded-2xl border border-dashed
+                        border-border px-5 py-7 text-center"
+             style={{ '--retraso': '100ms' } as React.CSSProperties}>
           <p className="text-[15px] font-medium">No has registrado préstamos</p>
           <p className="mx-auto mt-1.5 max-w-[30ch] text-[13px] leading-snug
                         text-muted-foreground">
@@ -75,7 +88,7 @@ export default async function PrestamosPage() {
         </div>
       ) : (
         <div className="mt-3 space-y-2">
-          {prestamos.map((p) => {
+          {prestamos.map((p, i) => {
             const principal = Number(p.principal) || 1
             const progreso = Math.round((Number(p.pagado) * 100) / principal)
             const cuotas = Number(p.cuotas_total ?? 0)
@@ -84,9 +97,10 @@ export default async function PrestamosPage() {
 
             return (
               <Link key={p.id} href={`/prestamos/${p.id}`}
-                    className="block rounded-2xl bg-card px-4 py-3 shadow-card
-                               ring-1 ring-border/70 transition
-                               active:scale-[0.99]">
+                    className="aparece block rounded-2xl bg-card px-4 py-3
+                               shadow-card ring-1 ring-border/70 transition
+                               active:scale-[0.99]"
+                    style={{ '--retraso': `${140 + i * 55}ms` } as React.CSSProperties}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-[15px] font-medium leading-tight">
@@ -112,7 +126,7 @@ export default async function PrestamosPage() {
                 </div>
 
                 <div className="mt-2.5">
-                  <BarraProgreso progreso={progreso} />
+                  <BarraProgreso progreso={progreso} retraso={260 + i * 55} />
                 </div>
 
                 {/* El contador de cuotas solo aparece si de verdad hay

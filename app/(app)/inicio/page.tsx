@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Users, Wallet, HandCoins, Heart, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { formatearCOP } from '@/lib/format'
+import { formatearCOP, mesActualBogota } from '@/lib/format'
 import { Seccion, Lista, Monto } from '@/components/seccion'
 import { BarraProgreso } from '@/components/barra-progreso'
 import { RepartoGastos } from '@/components/reparto-gastos'
@@ -10,17 +10,11 @@ import { AvatarPerfil } from '@/components/avatar-perfil'
 import { CarruselPatrimonio, type CuentaWallet } from '@/components/carrusel-patrimonio'
 import { TarjetaDestacadaVacia } from '@/components/tarjeta-destacada'
 
-function mesActual(): string {
-  return new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'America/Bogota', year: 'numeric', month: '2-digit',
-  }).format(new Date()).slice(0, 7)
-}
-
 export default async function InicioPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const mes = mesActual()
+  const mes = mesActualBogota()
   const desde = `${mes}-01`
   const [anio, m] = mes.split('-').map(Number)
   const hasta = new Date(Date.UTC(anio, m, 0)).toISOString().slice(0, 10)

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ChevronRight, Wallet, HeartHandshake, HandCoins } from 'lucide-react'
+import { ChevronRight, Wallet, HeartHandshake, HandCoins, BarChart3 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { cerrarSesion } from '@/app/auth/actions'
 import { Seccion, Lista } from '@/components/seccion'
@@ -52,6 +52,31 @@ export default async function MasPage() {
                                          text-muted-foreground/60" />
               </Link>
             ))}
+          </Lista>
+        </div>
+      </Seccion>
+
+      <Seccion titulo="Escritorio">
+        <div className="aparece"
+             style={{ '--retraso': '90ms' } as React.CSSProperties}>
+          <Lista>
+            <Link href="/escritorio/estadisticas"
+                  className="flex min-h-13 items-center gap-3 px-4 py-2.5
+                             transition active:bg-muted/60">
+              <span className="flex size-9 shrink-0 items-center
+                               justify-center rounded-xl bg-muted">
+                <BarChart3 className="size-[17px] text-muted-foreground" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] leading-tight">Vista de escritorio</p>
+                <p className="mt-0.5 text-[12px] leading-tight
+                              text-muted-foreground">
+                  Estadísticas y movimientos — se ve mejor desde un computador
+                </p>
+              </div>
+              <ChevronRight className="size-4 shrink-0
+                                       text-muted-foreground/60" />
+            </Link>
           </Lista>
         </div>
       </Seccion>

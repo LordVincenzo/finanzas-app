@@ -43,6 +43,16 @@ en `transactions` ni `transaction_entries`: `crear_movimiento`, `ajustar_saldo`,
 **RLS en todas las tablas.** Visibilidad por recurso: `private`, `shared_view`,
 `joint`. Se aplica en la base, no en la interfaz.
 
+**Fotos de perfil van a Supabase Storage**, bucket `avatars` (público de
+lectura; cada quien sube/reemplaza/borra solo su propia carpeta, RLS sobre
+`storage.objects`). No hay CLI de Storage tampoco: el bucket y sus políticas
+se crean con SQL, como cualquier otra migración.
+
+**Nada de funcionalidad decorativa.** Un botón o icono que no hace nada real
+—una campana de notificaciones sin sistema de notificaciones detrás, un logo
+de Visa/Mastercard inventado porque una referencia visual lo traía— es peor
+que no ponerlo. Si hace falta, se construye de verdad; si no, se omite.
+
 **`getUser()`, nunca `getSession()`** para decidir permisos. `getSession()` lee
 la cookie sin verificarla.
 
@@ -60,9 +70,21 @@ lugares. Antes de calcular algo, comprobar si ya existe una vista que lo haga:
 - `movimientos_detalle` — `monto` (lo que gastaste) vs `monto_total` (lo que se
   movió). Difieren en gastos compartidos.
 - `metas_resumen`, `metas_aportes_por_persona`, `prestamos_resumen`.
+- `movimientos_mensuales`, `categorias_mensuales`, `patrimonio_mensual` —
+  tendencias de los últimos 12 meses para `/escritorio/estadisticas`. Las dos
+  primeras reusan `movimientos_detalle` (agregan `monto` por mes), no repiten
+  su selección de líneas. `patrimonio_mensual` es la única vista con
+  historial real: reconstruye el patrimonio de cada fin de mes sumando todo
+  lo ocurrido hasta esa fecha, porque no existe ningún otro sitio que guarde
+  saldos pasados.
 
 Si una función SQL necesita saber qué cuentas son "dinero gastable", que
 consulte `cuentas_disponible` en vez de copiar la lista de tipos.
+
+Lo mismo aplica fuera de SQL: cómo se ve un movimiento según su tipo (color,
+signo, qué cuenta mostrar) vive solo en `lib/movimientos.ts`. La fila del
+celular y la tabla de `/escritorio/movimientos` lo importan de ahí — antes
+esa lógica vivía duplicada dentro del componente de la fila.
 
 ## Sistema visual
 
@@ -85,13 +107,27 @@ Tokens en `app/globals.css`. Primitivas en `components/seccion.tsx`
 ## Estructura
 
 ```
-app/(app)/          rutas protegidas; la sesión se comprueba en su layout
+app/(app)/          app de celular (PWA); sesión y NavInferior en su layout
+app/escritorio/     vista de escritorio — sidebar propio, tabla de
+                    movimientos con filtros combinados, más pantallas por
+                    construir (Cuentas, Préstamos). NO vive dentro de
+                    (app): layout y comprobación de sesión completamente
+                    aparte, así que (app)/layout.tsx no la protege
 app/auth/           server actions de autenticación
 lib/supabase/       clientes de navegador y servidor
 lib/format.ts       formato y parseo de COP, fechas y horas
+lib/movimientos.ts  cómo se ve un movimiento según su tipo — un solo sitio,
+                    lo usan la fila del celular y la tabla de escritorio
 supabase/migrations/  esquema versionado + scripts verificacion_*.sql
 proxy.ts            refresco de sesión en cada petición
 ```
+
+**Dos interfaces, no una que se adapta.** `app/(app)/` es la app de celular;
+`app/escritorio/` es una vista de escritorio aparte, con su propio layout y
+navegación (sidebar en vez de barra flotante) — como una vista de cliente y
+una de admin, no un diseño responsive del mismo árbol de páginas. Comparten
+`app/layout.tsx` (fuentes, tema, `globals.css`) y las utilidades de `lib/` y
+`components/`, pero nada de la navegación ni del ancho de página.
 
 ## Cómo trabajar conmigo
 

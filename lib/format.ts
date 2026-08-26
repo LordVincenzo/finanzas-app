@@ -51,6 +51,31 @@ export function formatearFecha(fecha: string | Date): string {
   }).format(d)
 }
 
+/** "2026-03" — el mes actual en Bogotá, para agrupar por mes. */
+export function mesActualBogota(): string {
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'America/Bogota', year: 'numeric', month: '2-digit',
+  }).format(new Date()).slice(0, 7)
+}
+
+/** "2026-03", 2 -> "2026-01". Para listar los últimos N meses. */
+export function restarMeses(mes: string, n: number): string {
+  const [anio, m] = mes.split('-').map(Number)
+  const fecha = new Date(Date.UTC(anio, m - 1 - n, 1))
+  return `${fecha.getUTCFullYear()}-${String(fecha.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+/** "2026-03" -> "mar" */
+export function etiquetaMesCorta(mes: string): string {
+  const [anio, m] = mes.split('-').map(Number)
+  // Día 15: cualquier día del mes sirve, pero uno a mitad de mes evita
+  // que un huso horario raro lo empuje al mes anterior o siguiente.
+  const nombre = new Intl.DateTimeFormat('es-CO', {
+    month: 'short', timeZone: 'America/Bogota',
+  }).format(new Date(Date.UTC(anio, m - 1, 15)))
+  return nombre.replace('.', '')
+}
+
 /** "12:32 p. m." — con espacios normales, iguales en servidor y cliente. */
 export function formatearHora(instante: string | Date): string {
   const d = typeof instante === 'string' ? new Date(instante) : instante

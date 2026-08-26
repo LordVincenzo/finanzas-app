@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { formatearFecha } from '@/lib/format'
+import { formatearFecha, mesActualBogota } from '@/lib/format'
 import { FilaMovimiento, type Movimiento } from '@/components/fila-movimiento'
 import { Seccion, Lista } from '@/components/seccion'
 import { SelectorMes } from '@/components/selector-mes'
@@ -13,18 +13,12 @@ const FILTROS = [
   { valor: 'adjustment', etiqueta: 'Ajustes' },
 ]
 
-function mesActual(): string {
-  return new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'America/Bogota', year: 'numeric', month: '2-digit',
-  }).format(new Date()).slice(0, 7)
-}
-
 export default async function MovimientosPage({
   searchParams,
 }: {
   searchParams: Promise<{ tipo?: string; mes?: string }>
 }) {
-  const { tipo = '', mes = mesActual() } = await searchParams
+  const { tipo = '', mes = mesActualBogota() } = await searchParams
   const supabase = await createClient()
 
   const desde = `${mes}-01`
@@ -43,7 +37,7 @@ export default async function MovimientosPage({
   if (tipo) consulta = consulta.eq('type', tipo)
 
   const { data } = await consulta
-  const movimientos = (data ?? []) as (Movimiento & { occurred_on: string })[]
+  const movimientos = (data ?? []) as Movimiento[]
 
   const porDia = new Map<string, typeof movimientos>()
   for (const mov of movimientos) {

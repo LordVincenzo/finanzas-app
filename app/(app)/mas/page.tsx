@@ -1,9 +1,10 @@
 import Link from 'next/link'
-import { ChevronRight, Wallet, HeartHandshake, HandCoins, User } from 'lucide-react'
+import { ChevronRight, Wallet, HeartHandshake, HandCoins } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { cerrarSesion } from '@/app/auth/actions'
 import { Seccion, Lista } from '@/components/seccion'
 import { SelectorTema } from '@/components/selector-tema'
+import { AvatarPerfil } from '@/components/avatar-perfil'
 
 const ENLACES = [
   { href: '/cuentas',   icono: Wallet,         etiqueta: 'Cuentas',
@@ -18,7 +19,9 @@ export default async function MasPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const { data: perfil } = await supabase
-    .from('profiles').select('display_name').eq('id', user!.id).single()
+    .from('profiles')
+    .select('display_name, avatar_url')
+    .eq('id', user!.id).single()
 
   return (
     <main className="px-4 pt-4 pb-[calc(8rem+env(safe-area-inset-bottom))]">
@@ -66,11 +69,15 @@ export default async function MasPage() {
         <div className="aparece"
              style={{ '--retraso': '190ms' } as React.CSSProperties}>
           <Lista>
-            <div className="flex min-h-13 items-center gap-3 px-4 py-2.5">
-              <span className="flex size-9 shrink-0 items-center justify-center
-                               rounded-xl bg-muted">
-                <User className="size-[17px] text-muted-foreground" />
-              </span>
+            <Link
+              href="/mas/perfil"
+              className="flex min-h-13 items-center gap-3 px-4 py-2.5
+                         transition active:bg-muted/60"
+            >
+              <AvatarPerfil
+                nombre={perfil?.display_name} url={perfil?.avatar_url}
+                className="size-9 text-[13px]"
+              />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[15px] leading-tight">
                   {perfil?.display_name}
@@ -80,7 +87,9 @@ export default async function MasPage() {
                   {user?.email}
                 </p>
               </div>
-            </div>
+              <ChevronRight className="size-4 shrink-0
+                                       text-muted-foreground/60" />
+            </Link>
             <form action={cerrarSesion}>
               <button className="min-h-12 w-full px-4 text-left text-[15px]
                                  font-medium text-destructive transition

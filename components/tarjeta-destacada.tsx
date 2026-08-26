@@ -6,12 +6,16 @@
  * es la cifra principal" y sería decoración.
  *
  * Pantallas que la usan:
- *   Inicio      patrimonio
+ *   Inicio      patrimonio (como primera página de carrusel-patrimonio.tsx)
  *   Cuentas     disponible y por cobrar
  *   Ahorros     comprometido y libre
  *   Préstamos   por cobrar
  *   Pareja      balance
  *   Meta        acumulado
+ *
+ * En Inicio esta misma tarjeta es la primera página de un carrusel
+ * (ver carrusel-patrimonio.tsx): las páginas siguientes son cuentas en
+ * bg-card, así que el degradado sigue apareciendo una sola vez.
  *
  * Movimientos y Más no la llevan: son un historial y un menú, no
  * tienen una cifra que resuma nada.
@@ -35,8 +39,9 @@ export function TarjetaDestacada({
 }) {
   return (
     <section
-      className="aparece overflow-hidden rounded-2xl bg-destacado
-                 text-destacado shadow-elevada"
+      className="aparece flex h-full flex-col justify-between
+                 overflow-hidden rounded-2xl bg-destacado text-destacado
+                 shadow-elevada"
       style={{ '--retraso': `${retraso}ms` } as React.CSSProperties}
     >
       <div className="px-4 pb-3.5 pt-3.5">

@@ -4,12 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 import { formatearCOP } from '@/lib/format'
 import { Seccion, Lista, Monto } from '@/components/seccion'
 import { BarraProgreso } from '@/components/barra-progreso'
-import { CifraAnimada } from '@/components/cifra-animada'
 import { RepartoGastos } from '@/components/reparto-gastos'
 import { PrimerosPasos } from '@/components/primeros-pasos'
-import {
-  TarjetaDestacada, TarjetaDestacadaVacia, Reparto, DosRepartos,
-} from '@/components/tarjeta-destacada'
+import { AvatarPerfil } from '@/components/avatar-perfil'
+import { CarruselPatrimonio, type CuentaWallet } from '@/components/carrusel-patrimonio'
+import { TarjetaDestacadaVacia } from '@/components/tarjeta-destacada'
 
 function mesActual(): string {
   return new Intl.DateTimeFormat('sv-SE', {
@@ -30,6 +29,7 @@ export default async function InicioPage() {
     { data: perfil },
     { data: detalle },
     { data: cuentas },
+    { data: cuentasActivos },
     { data: delMes },
     { data: metas },
     { count: numCuentas },
@@ -37,7 +37,7 @@ export default async function InicioPage() {
     { count: numMetas },
   ] = await Promise.all([
     supabase.from('profiles')
-      .select('display_name').eq('id', user!.id).single(),
+      .select('display_name, avatar_url').eq('id', user!.id).single(),
     supabase.from('patrimonio_detalle')
       .select('liquido, ahorros, inversiones, por_cobrar, deudas, patrimonio')
       .eq('owner_id', user!.id).maybeSingle(),
@@ -46,6 +46,14 @@ export default async function InicioPage() {
     // que los dos números se separen con el tiempo.
     supabase.from('cuentas_disponible')
       .select('saldo, asignado, disponible').eq('owner_id', user!.id),
+    // Saldo real por cuenta, tal cual lo muestra /cuentas: sin restar lo
+    // comprometido en metas. Por cobrar y balance con pareja quedan
+    // fuera porque ya salen en el desglose de la primera tarjeta.
+    supabase.from('account_balances')
+      .select('account_id, name, type, balance')
+      .eq('class', 'asset').eq('is_active', true)
+      .not('type', 'in', '("receivable","partner_receivable")')
+      .order('name'),
     supabase.from('movimientos_detalle')
       .select('type, monto, cuenta_destino')
       .gte('occurred_on', desde).lte('occurred_on', hasta)
@@ -84,6 +92,13 @@ export default async function InicioPage() {
   const enCuentas = filas.reduce((s, c) => s + Number(c.saldo), 0)
   const comprometido = filas.reduce((s, c) => s + Number(c.asignado), 0)
   const libre = filas.reduce((s, c) => s + Number(c.disponible), 0)
+
+  const cuentasWallet: CuentaWallet[] = (cuentasActivos ?? []).map((c) => ({
+    account_id: c.account_id as string,
+    name: c.name as string,
+    type: c.type as string,
+    balance: Number(c.balance),
+  }))
 
   const movs = delMes ?? []
   const gastos = movs.filter((x) => x.type === 'expense')
@@ -125,11 +140,21 @@ export default async function InicioPage() {
     // hueco tiene que contarlo. Y env(safe-area-inset-bottom) añade la
     // franja del gesto de inicio en los iPhone sin botón.
     <main className="px-4 pt-4 pb-[calc(8rem+env(safe-area-inset-bottom))]">
-      <p className="aparece px-1 text-[13px] text-muted-foreground">
-        Hola, {perfil?.display_name}
-      </p>
+      <div className="aparece flex items-center justify-between gap-3 px-1">
+        <div className="min-w-0">
+          <p className="text-[13px] text-muted-foreground">Hola,</p>
+          <h1 className="truncate text-[24px] font-bold leading-tight
+                        tracking-tight">
+            {perfil?.display_name}
+          </h1>
+        </div>
+        <AvatarPerfil nombre={perfil?.display_name} url={perfil?.avatar_url} />
+      </div>
 
-      <div className="mt-2.5">
+      {/* La billetera necesita más aire arriba que la tarjeta vacía:
+          las tarjetas de atrás se asoman hacia arriba y si no, tapan
+          el saludo. */}
+      <div className={vacia ? 'mt-2.5' : 'mt-10'}>
         {vacia ? (
           /* Con todo a cero, la tarjeta normal mostraba "$0" arriba y
              "Disponible para gastar $0" debajo: el mismo cero dos veces.
@@ -140,42 +165,21 @@ export default async function InicioPage() {
             retraso={50}
           />
         ) : (
-          <TarjetaDestacada
-            etiqueta="Patrimonio"
-            valor={<CifraAnimada valor={total} />}
-            retraso={50}
-          >
-            {porCobrar > 0 ? (
-              <DosRepartos>
-                <Reparto
-                  etiqueta="Disponible"
-                  valor={formatearCOP(libre)}
-                  nota={comprometido > 0
-                    ? `+ ${formatearCOP(comprometido)} en metas`
-                    : undefined}
-                />
-                <Reparto
-                  etiqueta="Por cobrar"
-                  valor={formatearCOP(porCobrar)}
-                />
-              </DosRepartos>
-            ) : (
-              <Reparto
-                etiqueta="Disponible para gastar"
-                valor={formatearCOP(libre)}
-                nota={comprometido > 0
-                  ? `De ${formatearCOP(enCuentas)} en cuentas, ${formatearCOP(comprometido)} reservados en metas`
-                  : undefined}
-              />
-            )}
-          </TarjetaDestacada>
+          <CarruselPatrimonio
+            patrimonio={total}
+            libre={libre}
+            porCobrar={porCobrar}
+            comprometido={comprometido}
+            enCuentas={enCuentas}
+            cuentas={cuentasWallet}
+          />
         )}
       </div>
 
       {/* Se completa sola y desaparece cuando los tres pasos están
           hechos. No guarda estado: cada paso se deduce de los datos. */}
       <div className="aparece mt-4"
-           style={{ '--retraso': '120ms' } as React.CSSProperties}>
+           style={{ '--retraso': '150ms' } as React.CSSProperties}>
         <PrimerosPasos
           tieneCuenta={(numCuentas ?? 0) > 0}
           tieneMovimiento={(numMovimientos ?? 0) > 0}
@@ -185,36 +189,32 @@ export default async function InicioPage() {
 
       {(movs.length > 0 || total !== 0) && (
         <Seccion titulo={nombreMes}>
-          <div className="aparece overflow-hidden rounded-2xl bg-card
-                          shadow-card ring-1 ring-border/70"
-               style={{ '--retraso': '180ms' } as React.CSSProperties}>
-            <div className="grid grid-cols-2 divide-x divide-border/70">
-              <Dato etiqueta="Ingresos" valor={ingresos} tono="positivo" />
-              <Dato etiqueta="Gastos" valor={gastos} tono="negativo" />
-            </div>
-
-            {/* Sin ingresos, las dos cifras de arriba ya lo cuentan todo:
-                una tercera línea repetiría el gasto o inventaría un
-                juicio que los datos no sostienen. */}
-            {hayIngresos && (
-              <>
-                <div className="px-4 pb-1">
-                  <BarraProgreso progreso={usado} retraso={300} />
-                </div>
-                <div className="flex items-center justify-between px-4 py-2.5">
-                  <p className="text-[13px] text-muted-foreground">
-                    {balance < 0 ? 'Gastaste de más' : 'Te queda'}
-                  </p>
-                  <Monto
-                    valor={balance}
-                    tono={balance < 0 ? 'negativo' : 'neutro'}
-                    formato={formatearCOP}
-                    className="text-[16px] font-semibold"
-                  />
-                </div>
-              </>
-            )}
+          <div className="grid grid-cols-2 gap-3">
+            <TarjetaDato etiqueta="Ingresos" valor={ingresos} tono="positivo" retraso={180} />
+            <TarjetaDato etiqueta="Gastos" valor={gastos} tono="negativo" retraso={210} />
           </div>
+
+          {/* Sin ingresos, las dos cifras de arriba ya lo cuentan todo:
+              una tercera línea repetiría el gasto o inventaría un
+              juicio que los datos no sostienen. */}
+          {hayIngresos && (
+            <div className="aparece mt-3 rounded-2xl bg-card p-4 shadow-card
+                            ring-1 ring-border/70"
+                 style={{ '--retraso': '240ms' } as React.CSSProperties}>
+              <BarraProgreso progreso={usado} retraso={300} />
+              <div className="mt-2.5 flex items-center justify-between">
+                <p className="text-[13px] text-muted-foreground">
+                  {balance < 0 ? 'Gastaste de más' : 'Te queda'}
+                </p>
+                <Monto
+                  valor={balance}
+                  tono={balance < 0 ? 'negativo' : 'neutro'}
+                  formato={formatearCOP}
+                  className="text-[16px] font-semibold"
+                />
+              </div>
+            </div>
+          )}
         </Seccion>
       )}
 
@@ -306,15 +306,18 @@ export default async function InicioPage() {
 }
 
 /** Cifra del mes. El color marca la dirección del dinero, nada más. */
-function Dato({
-  etiqueta, valor, tono,
+function TarjetaDato({
+  etiqueta, valor, tono, retraso,
 }: {
   etiqueta: string
   valor: number
   tono: 'positivo' | 'negativo'
+  retraso: number
 }) {
   return (
-    <div className="px-4 py-3">
+    <div className="aparece rounded-2xl bg-card p-4 shadow-card ring-1
+                    ring-border/70"
+         style={{ '--retraso': `${retraso}ms` } as React.CSSProperties}>
       <p className="text-[12px] text-muted-foreground">{etiqueta}</p>
       {/* Monto deja el cero en neutro: no tiene signo que colorear. */}
       <Monto

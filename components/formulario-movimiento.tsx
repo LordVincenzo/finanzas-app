@@ -13,7 +13,8 @@ const TIPOS = [
   { valor: 'adjustment', etiqueta: 'Ajuste' },
 ] as const
 
-type Tipo = (typeof TIPOS)[number]['valor']
+export type TipoMovimiento = (typeof TIPOS)[number]['valor']
+type Tipo = TipoMovimiento
 
 const estadoInicial: EstadoMovimiento = {}
 
@@ -44,14 +45,15 @@ function resumenFecha(valor: string, ahora: string): string {
 }
 
 export function FormularioMovimiento({
-  cuentas, categoriasGasto, categoriasIngreso, ahora,
+  cuentas, categoriasGasto, categoriasIngreso, ahora, tipoInicial,
 }: {
   cuentas: Cuenta[]
   categoriasGasto: Cuenta[]
   categoriasIngreso: Cuenta[]
   ahora: string
+  tipoInicial?: TipoMovimiento
 }) {
-  const [tipo, setTipo] = useState<Tipo>('expense')
+  const [tipo, setTipo] = useState<Tipo>(tipoInicial ?? 'expense')
   const [fecha, setFecha] = useState(ahora)
   const [editarFecha, setEditarFecha] = useState(false)
   const [estado, accion, enviando] = useActionState(registrarMovimiento, estadoInicial)

@@ -1,7 +1,11 @@
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { FormularioMovimiento } from '@/components/formulario-movimiento'
+import {
+  FormularioMovimiento, type TipoMovimiento,
+} from '@/components/formulario-movimiento'
+
+const TIPOS_VALIDOS: TipoMovimiento[] = ['expense', 'income', 'transfer', 'adjustment']
 
 /** "2026-08-09T12:32" en hora de Bogotá, para el valor por defecto. */
 function ahoraEnBogota(): string {
@@ -13,7 +17,14 @@ function ahoraEnBogota(): string {
   return partes.replace(' ', 'T')
 }
 
-export default async function NuevoMovimientoPage() {
+export default async function NuevoMovimientoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tipo?: string }>
+}) {
+  const { tipo } = await searchParams
+  const tipoInicial = TIPOS_VALIDOS.find((t) => t === tipo)
+
   const supabase = await createClient()
 
   const { data } = await supabase
@@ -72,6 +83,7 @@ export default async function NuevoMovimientoPage() {
         categoriasGasto={categoriasGasto}
         categoriasIngreso={categoriasIngreso}
         ahora={ahoraEnBogota()}
+        tipoInicial={tipoInicial}
       />
     </main>
   )

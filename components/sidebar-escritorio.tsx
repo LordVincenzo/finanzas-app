@@ -2,12 +2,16 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart3, ArrowLeftRight, Wallet, HandCoins, ChevronLeft } from 'lucide-react'
+import {
+  LayoutDashboard, BarChart3, ArrowLeftRight, Wallet, PiggyBank, HandCoins, ChevronLeft,
+} from 'lucide-react'
 
 const ENLACES = [
+  { href: '/escritorio', etiqueta: 'Panorama', icono: LayoutDashboard },
   { href: '/escritorio/estadisticas', etiqueta: 'Estadísticas', icono: BarChart3 },
   { href: '/escritorio/movimientos', etiqueta: 'Movimientos', icono: ArrowLeftRight },
   { href: '/escritorio/cuentas', etiqueta: 'Cuentas', icono: Wallet },
+  { href: '/escritorio/ahorros', etiqueta: 'Ahorros', icono: PiggyBank },
   { href: '/escritorio/prestamos', etiqueta: 'Préstamos', icono: HandCoins },
 ]
 
@@ -24,7 +28,9 @@ export function SidebarEscritorio() {
 
       <div className="mt-6 space-y-1">
         {ENLACES.map(({ href, etiqueta, icono: Icono }) => {
-          const activo = ruta.startsWith(href)
+          // "/escritorio" a secas necesita coincidencia exacta: si no,
+          // startsWith lo marcaría activo en todas las demás páginas.
+          const activo = href === '/escritorio' ? ruta === href : ruta.startsWith(href)
           return (
             <Link
               key={href}

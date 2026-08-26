@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatearCOP } from '@/lib/format'
-import { ETIQUETAS_TIPO } from '@/lib/tipos'
+import { ETIQUETAS_TIPO, ORDEN_TIPOS_CUENTA, cuentaVisible } from '@/lib/tipos'
 import { Seccion, Lista, Fila, Monto } from '@/components/seccion'
 import { CifraAnimada } from '@/components/cifra-animada'
 import {
@@ -17,16 +17,6 @@ type CuentaFila = {
   balance: number
 }
 
-/**
- * Orden en que se muestran los grupos.
- * Antes salía del orden alfabético de las cuentas, así que crear una
- * cuenta nueva podía reordenar la pantalla entera.
- */
-const ORDEN_TIPOS = [
-  'digital_wallet', 'checking', 'savings', 'cash', 'investment', 'other',
-  'credit_card', 'debt', 'receivable', 'partner_receivable',
-]
-
 export default async function CuentasPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -40,8 +30,11 @@ export default async function CuentasPage() {
     // Antes esta pantalla sumaba el disponible por su cuenta y daba un
     // número distinto al de Inicio y Ahorros. La vista es la fuente
     // única: ya sabe qué cuentas cuentan y cuánto está comprometido.
+    // account_id además sirve para avisar, cuenta por cuenta, cuánto de
+    // su saldo ya tiene dueño en una meta — sin eso, ver "$1.612.200"
+    // en Nu hace pensar que todo ese dinero está libre.
     supabase.from('cuentas_disponible')
-      .select('saldo, asignado, disponible').eq('owner_id', user!.id),
+      .select('account_id, saldo, asignado, disponible').eq('owner_id', user!.id),
     supabase.from('patrimonio_detalle')
       .select('por_cobrar, patrimonio')
       .eq('owner_id', user!.id).maybeSingle(),
@@ -57,13 +50,9 @@ export default async function CuentasPage() {
   const porCobrar = Number(patri?.por_cobrar ?? 0)
   const patrimonio = Number(patri?.patrimonio ?? 0)
 
-  // Una cuenta por cobrar en cero ya no dice nada: la ocultamos.
-  const visibles = cuentas.filter(
-    (c) => !(
-      (c.type === 'receivable' || c.type === 'partner_receivable') &&
-      Number(c.balance) === 0
-    )
-  )
+  const asignadoPorCuenta = new Map(filas.map((c) => [c.account_id, Number(c.asignado)]))
+
+  const visibles = cuentas.filter((c) => cuentaVisible(c.type, Number(c.balance)))
 
   const grupos = new Map<string, CuentaFila[]>()
   for (const c of visibles) {
@@ -73,8 +62,8 @@ export default async function CuentasPage() {
   }
 
   const ordenados = [...grupos.entries()].sort((a, b) => {
-    const ia = ORDEN_TIPOS.indexOf(a[0])
-    const ib = ORDEN_TIPOS.indexOf(b[0])
+    const ia = ORDEN_TIPOS_CUENTA.indexOf(a[0])
+    const ib = ORDEN_TIPOS_CUENTA.indexOf(b[0])
     return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
   })
 
@@ -137,19 +126,29 @@ export default async function CuentasPage() {
             <div className="aparece"
                  style={{ '--retraso': `${140 + g * 70}ms` } as React.CSSProperties}>
               <Lista>
-                {lista.map((c) => (
-                  <Fila
-                    key={c.account_id}
-                    titulo={nombreCorto(c.name, tipo)}
-                    valor={
-                      <Monto
-                        valor={Number(c.balance)}
-                        tono={Number(c.balance) < 0 ? 'negativo' : 'neutro'}
-                        formato={formatearCOP}
-                      />
-                    }
-                  />
-                ))}
+                {lista.map((c) => {
+                  const asignado = asignadoPorCuenta.get(c.account_id) ?? 0
+                  // Se muestra el disponible (saldo menos lo comprometido en
+                  // metas), no el saldo real: mostrar el saldo real hacía
+                  // pensar que ese dinero también estaba libre para gastar.
+                  const disponibleCuenta = Number(c.balance) - asignado
+                  return (
+                    <Fila
+                      key={c.account_id}
+                      titulo={nombreCorto(c.name, tipo)}
+                      detalle={asignado > 0
+                        ? `${formatearCOP(asignado)} en metas`
+                        : undefined}
+                      valor={
+                        <Monto
+                          valor={disponibleCuenta}
+                          tono={disponibleCuenta < 0 ? 'negativo' : 'neutro'}
+                          formato={formatearCOP}
+                        />
+                      }
+                    />
+                  )
+                })}
               </Lista>
             </div>
           </Seccion>

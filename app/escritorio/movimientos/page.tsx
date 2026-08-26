@@ -6,9 +6,11 @@ import { FiltrosMovimientosEscritorio } from '@/components/filtros-movimientos-e
 export default async function MovimientosEscritorioPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tipo?: string; mes?: string; cuenta?: string }>
+  searchParams: Promise<{ tipo?: string; mes?: string; cuenta?: string; categoria?: string }>
 }) {
-  const { tipo = '', mes = mesActualBogota(), cuenta = '' } = await searchParams
+  const {
+    tipo = '', mes = mesActualBogota(), cuenta = '', categoria = '',
+  } = await searchParams
   const supabase = await createClient()
 
   const desde = `${mes}-01`
@@ -23,11 +25,24 @@ export default async function MovimientosEscritorioPage({
 
   if (tipo) consulta = consulta.eq('type', tipo)
   if (cuenta) consulta = consulta.or(`cuenta_origen_id.eq.${cuenta},cuenta_destino_id.eq.${cuenta}`)
+  // Filtro separado del de cuenta: una categoría es una cuenta de clase
+  // expense/income (ver CLAUDE.md), no una cuenta de dinero. Al ser dos
+  // .or() distintos, Supabase los combina con AND — puedes pedir
+  // "Nu" + "Alimentación" a la vez.
+  if (categoria) {
+    consulta = consulta.or(`cuenta_origen_id.eq.${categoria},cuenta_destino_id.eq.${categoria}`)
+  }
 
-  const [{ data: cuentas }, { data: movsData }] = await Promise.all([
+  const [{ data: cuentas }, { data: categorias }, { data: movsData }] = await Promise.all([
     supabase.from('accounts')
       .select('id, name')
       .eq('is_active', true).eq('is_opening', false)
+      .in('class', ['asset', 'liability'])
+      .order('name'),
+    supabase.from('accounts')
+      .select('id, name')
+      .eq('is_active', true)
+      .in('class', ['expense', 'income'])
       .order('name'),
     consulta,
   ])
@@ -47,10 +62,12 @@ export default async function MovimientosEscritorioPage({
     <div className="mx-auto max-w-[1400px] px-8 py-10">
       <h1 className="text-[26px] font-semibold tracking-tight">Movimientos</h1>
       <p className="mt-1 text-[13px] text-muted-foreground">
-        Mes, tipo y cuenta a la vez — en el celular ves un filtro a la vez.
+        Mes, tipo, cuenta y categoría a la vez — en el celular ves un filtro a la vez.
       </p>
 
-      <FiltrosMovimientosEscritorio mes={mes} cuentas={cuentas ?? []} />
+      <FiltrosMovimientosEscritorio
+        mes={mes} cuentas={cuentas ?? []} categorias={categorias ?? []}
+      />
 
       <div className="mt-6 grid grid-cols-3 gap-4">
         <TarjetaResumen etiqueta="Ingresos" valor={formatearCOP(ingresos)} tono="positivo" />

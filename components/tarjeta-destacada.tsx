@@ -140,3 +140,22 @@ export function DosRepartos({ children }: { children: React.ReactNode }) {
     </div>
   )
 }
+
+/** Fila de tres repartos, con línea vertical entre ellos. */
+export function TresRepartos({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-3 divide-x divide-destacado">
+      {children}
+    </div>
+  )
+}
+
+/** Fila de cuatro repartos. Para pantallas anchas: cuatro cifras cortas
+ *  caben en una sola línea sin duplicar la altura de la tarjeta. */
+export function CuatroRepartos({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-4 divide-x divide-destacado">
+      {children}
+    </div>
+  )
+}

@@ -37,9 +37,12 @@ export default async function InicioPage() {
       .eq('owner_id', user!.id).maybeSingle(),
     // La misma vista que usa /ahorros. Ella ya sabe cuánto de cada cuenta
     // está comprometido en metas; duplicar ese cálculo aquí sería pedir
-    // que los dos números se separen con el tiempo.
+    // que los dos números se separen con el tiempo. account_id además
+    // permite avisar, tarjeta por tarjeta, cuánto de ese saldo no es
+    // libre — sin eso, la billetera hace ver disponible dinero que ya
+    // tiene dueño en una meta.
     supabase.from('cuentas_disponible')
-      .select('saldo, asignado, disponible').eq('owner_id', user!.id),
+      .select('account_id, saldo, asignado, disponible').eq('owner_id', user!.id),
     // Saldo real por cuenta, tal cual lo muestra /cuentas: sin restar lo
     // comprometido en metas. Por cobrar y balance con pareja quedan
     // fuera porque ya salen en el desglose de la primera tarjeta.
@@ -87,11 +90,14 @@ export default async function InicioPage() {
   const comprometido = filas.reduce((s, c) => s + Number(c.asignado), 0)
   const libre = filas.reduce((s, c) => s + Number(c.disponible), 0)
 
+  const asignadoPorCuenta = new Map((cuentas ?? []).map((c) => [c.account_id, Number(c.asignado)]))
+
   const cuentasWallet: CuentaWallet[] = (cuentasActivos ?? []).map((c) => ({
     account_id: c.account_id as string,
     name: c.name as string,
     type: c.type as string,
     balance: Number(c.balance),
+    asignado: asignadoPorCuenta.get(c.account_id as string) ?? 0,
   }))
 
   const movs = delMes ?? []

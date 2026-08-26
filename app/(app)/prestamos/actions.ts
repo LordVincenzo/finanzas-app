@@ -17,7 +17,17 @@ function revalidar(id?: string) {
   revalidatePath('/cuentas')
   revalidatePath('/inicio')
   revalidatePath('/movimientos')
-  if (id) revalidatePath(`/prestamos/${id}`)
+  // Estas acciones las puede disparar tanto el celular como la vista
+  // de escritorio (comparten el mismo formulario), así que las dos
+  // interfaces se refrescan siempre, sin importar desde cuál se llamó.
+  revalidatePath('/escritorio')
+  revalidatePath('/escritorio/prestamos')
+  revalidatePath('/escritorio/cuentas')
+  revalidatePath('/escritorio/movimientos')
+  if (id) {
+    revalidatePath(`/prestamos/${id}`)
+    revalidatePath(`/escritorio/prestamos/${id}`)
+  }
 }
 
 const esquema = z.object({

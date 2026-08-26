@@ -40,6 +40,8 @@ export type CuentaWallet = {
   name: string
   type: string
   balance: number
+  /** Cuánto de `balance` ya tiene dueño en una meta de ahorro. */
+  asignado: number
 }
 
 const UMBRAL_ARRASTRE = 50
@@ -245,6 +247,9 @@ function TarjetaCuentaWallet({
   oculto: boolean
 }) {
   const Icono = ICONOS_TIPO[cuenta.type] ?? CircleDollarSign
+  // Disponible, no saldo real: mostrar el saldo real hacía pensar que
+  // el dinero comprometido en una meta también estaba libre.
+  const disponible = cuenta.balance - cuenta.asignado
 
   return (
     <div className="flex h-full flex-col justify-between gap-3
@@ -269,12 +274,21 @@ function TarjetaCuentaWallet({
             {MASCARA}
           </span>
         ) : (
-          <Monto
-            valor={cuenta.balance}
-            tono={cuenta.balance < 0 ? 'negativo' : 'neutro'}
-            formato={formatearCOP}
-            className="mt-1 block text-[28px] font-semibold leading-tight"
-          />
+          <>
+            <Monto
+              valor={disponible}
+              tono={disponible < 0 ? 'negativo' : 'neutro'}
+              formato={formatearCOP}
+              className="mt-1 block text-[28px] font-semibold leading-tight"
+            />
+            {/* Sin esto, el saldo completo de la cuenta parece libre
+                aunque una meta ya se haya quedado con parte de él. */}
+            {cuenta.asignado > 0 && (
+              <p className="mt-0.5 text-[12px] text-secundaria-suave">
+                {formatearCOP(cuenta.asignado)} en metas
+              </p>
+            )}
+          </>
         )}
       </div>
     </div>

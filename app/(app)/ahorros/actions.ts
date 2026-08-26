@@ -16,6 +16,12 @@ function revalidar() {
   revalidatePath('/ahorros')
   revalidatePath('/inicio')
   revalidatePath('/cuentas')
+  // Estas acciones las puede disparar tanto el celular como la vista
+  // de escritorio (comparten el mismo formulario), así que las dos
+  // interfaces se refrescan siempre, sin importar desde cuál se llamó.
+  revalidatePath('/escritorio')
+  revalidatePath('/escritorio/ahorros')
+  revalidatePath('/escritorio/cuentas')
 }
 
 const esquemaMeta = z.object({
@@ -84,6 +90,7 @@ export async function aportar(
 
   revalidar()
   revalidatePath(`/ahorros/${meta}`)
+  revalidatePath(`/escritorio/ahorros/${meta}`)
   return {}
 }
 
@@ -103,6 +110,7 @@ export async function eliminarAporte(formData: FormData) {
 
   revalidar()
   revalidatePath(`/ahorros/${formData.get('meta')}`)
+  revalidatePath(`/escritorio/ahorros/${formData.get('meta')}`)
 }
 
 /**

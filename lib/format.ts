@@ -58,6 +58,13 @@ export function mesActualBogota(): string {
   }).format(new Date()).slice(0, 7)
 }
 
+/** "2026-03-26" — el día de hoy en Bogotá, mismo formato que `occurred_on`. */
+export function hoyBogota(): string {
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date())
+}
+
 /** "2026-03", 2 -> "2026-01". Para listar los últimos N meses. */
 export function restarMeses(mes: string, n: number): string {
   const [anio, m] = mes.split('-').map(Number)

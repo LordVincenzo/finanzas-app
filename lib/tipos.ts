@@ -30,3 +30,23 @@ export const ETIQUETAS_TIPO: Record<string, string> = {
   debt: 'Deudas',
   other: 'Otras',
 }
+
+/**
+ * Orden en que se muestran los grupos de cuentas.
+ * Antes salía del orden alfabético, así que crear una cuenta nueva
+ * podía reordenar la pantalla entera. La usan tanto /cuentas (celular)
+ * como /escritorio/cuentas.
+ */
+export const ORDEN_TIPOS_CUENTA = [
+  'digital_wallet', 'checking', 'savings', 'cash', 'investment', 'other',
+  'credit_card', 'debt', 'receivable', 'partner_receivable',
+]
+
+/**
+ * Una cuenta por cobrar en $0 ya no dice nada: se oculta en los
+ * listados. Regla única para no repetir el mismo filtro en cada
+ * pantalla que lista cuentas.
+ */
+export function cuentaVisible(tipo: string, balance: number): boolean {
+  return !((tipo === 'receivable' || tipo === 'partner_receivable') && balance === 0)
+}

@@ -21,7 +21,8 @@ export default async function LayoutEscritorio({
   if (!user) redirect('/login')
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="sin-scrollbar flex h-screen overflow-y-auto
+                    bg-background text-foreground">
       <SidebarEscritorio />
       <main className="min-w-0 flex-1">{children}</main>
     </div>

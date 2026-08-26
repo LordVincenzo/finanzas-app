@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { mesActualBogota, restarMeses } from '@/lib/format'
+import { mesActualBogota, restarMeses, etiquetaMesCorta } from '@/lib/format'
 import { GraficaBarrasComparadas } from '@/components/grafica-barras-comparadas'
 import { GraficaPatrimonio } from '@/components/grafica-patrimonio'
 import { GraficaCategoriasMensual } from '@/components/grafica-categorias-mensual'
@@ -34,7 +34,7 @@ export default async function EstadisticasPage() {
     mapa.set(fila.mes, Number(fila.monto))
   }
   const datosIngresosGastos = meses.map((mes) => ({
-    mes,
+    etiqueta: etiquetaMesCorta(mes),
     ingresos: ingresosPorMes.get(mes) ?? 0,
     gastos: gastosPorMes.get(mes) ?? 0,
   }))

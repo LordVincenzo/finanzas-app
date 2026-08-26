@@ -28,15 +28,22 @@ function nombreMes(mes: string): string {
 }
 
 /**
- * Tres filtros a la vez (mes, tipo, cuenta) — en el celular
- * (SelectorMes) solo hay uno visible por vez. Todos escriben en la
- * misma URL, así que se combinan y se pueden compartir/recargar.
+ * Cuatro filtros a la vez (mes, tipo, cuenta, categoría) — en el
+ * celular (SelectorMes) solo hay uno visible por vez. Todos escriben
+ * en la misma URL, así que se combinan y se pueden compartir/recargar.
+ *
+ * "Cuenta" y "categoría" son dos listas separadas aunque las dos
+ * filtran por las mismas columnas de la base: una cuenta es dinero
+ * (Nu, Efectivo), una categoría es una cuenta de clase expense/income
+ * (Alimentación, Sueldo) — mezclarlas en un solo selector es lo que
+ * hacía difícil encontrar algo ahí.
  */
 export function FiltrosMovimientosEscritorio({
-  mes, cuentas,
+  mes, cuentas, categorias,
 }: {
   mes: string
   cuentas: { id: string; name: string }[]
+  categorias: { id: string; name: string }[]
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -44,6 +51,7 @@ export function FiltrosMovimientosEscritorio({
 
   const tipoActual = searchParams.get('tipo') ?? ''
   const cuentaActual = searchParams.get('cuenta') ?? ''
+  const categoriaActual = searchParams.get('categoria') ?? ''
 
   function irA(cambios: Record<string, string>) {
     const params = new URLSearchParams(searchParams.toString())
@@ -105,6 +113,21 @@ export function FiltrosMovimientosEscritorio({
         >
           <option value="">Todas las cuentas</option>
           {cuentas.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="relative">
+        <select
+          value={categoriaActual}
+          onChange={(e) => irA({ categoria: e.target.value })}
+          className="h-8 appearance-none rounded-full border border-border/70
+                     bg-transparent pl-3 pr-8 text-[13px]
+                     focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">Todas las categorías</option>
+          {categorias.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>

@@ -277,6 +277,17 @@
     animation-delay: var(--retraso, 0ms);
   }
 
+  /* Oculta la barra de scroll sin desactivar el scroll: solo la vista
+     de escritorio la usa, para que se vea como una app y no como un
+     documento largo. */
+  .sin-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .sin-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Quien haya pedido menos movimiento en su sistema lo ha pedido por
      algo: mareo, migrañas, déficit de atención. El contenido aparece
      igual, sin desplazamiento ni crecimiento. */

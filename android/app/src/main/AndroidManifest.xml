@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Lo único que se pide: salir a internet. No hay permiso de SMS,
+         ni de contactos, ni de almacenamiento. El acceso a las
+         notificaciones no es un permiso normal: se concede a mano desde
+         los ajustes del sistema (ver BIND_NOTIFICATION_LISTENER_SERVICE
+         más abajo). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Oyente">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- El servicio que lee las notificaciones.
+             BIND_NOTIFICATION_LISTENER_SERVICE lo declara la app, pero
+             quien decide es la persona: hasta que no lo active en
+             Ajustes -> Acceso a notificaciones, Android no entrega nada.
+             android:exported="true" es obligatorio para que el sistema
+             pueda enlazarlo. -->
+        <service
+            android:name=".OyenteNotificaciones"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+    </application>
+</manifest>

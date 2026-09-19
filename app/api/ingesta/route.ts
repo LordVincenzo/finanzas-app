@@ -111,10 +111,15 @@ export async function POST(request: NextRequest) {
   }
 
   /* La hora la manda el celular porque puede haber leído la
-     notificación sin cobertura y reintentado después. Si no viene, o
-     viene mal, se usa la de ahora: es mejor una hora aproximada que
-     rechazar el mensaje. */
-  const cuando = texto(cuerpo.recibido)
+     notificación sin cobertura y reintentado después: el gasto es de
+     cuando ocurrió, no de cuando por fin hubo señal. Sin esto, un rato
+     sin cobertura movería los gastos de hora — y con occurred_on por
+     trigger, un pago de las 11 de la noche podría acabar en el día
+     siguiente.
+     Si no viene, o viene mal, se usa la de ahora: es mejor una hora
+     aproximada que rechazar el mensaje. */
+  const cuando = texto(request.headers.get('x-recibido'))
+    || texto(cuerpo.recibido)
   const fecha = cuando ? new Date(cuando) : new Date()
   const recibido = Number.isNaN(fecha.getTime())
     ? new Date().toISOString()

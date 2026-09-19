@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Oyente Finanzas</string>
+    <string name="probar">Probar el envío</string>
+    <string name="probando">Probando…</string>
+</resources>

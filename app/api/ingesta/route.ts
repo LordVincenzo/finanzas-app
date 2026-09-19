@@ -162,6 +162,18 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  /* Cuántas quedan, para el aviso del teléfono.
+     Va en una segunda llamada y no dentro de recibir_ingesta() porque
+     esa devuelve el uuid del mensaje y aquí se cuenta con ello: colarle
+     un segundo dato obligaría a cambiar servidor y app a la vez, y en
+     una tubería que queda corriendo sola eso se paga el día que una va
+     por delante de la otra.
+     Si falla, se responde igual sin el número: el mensaje ya entró, y
+     perder un aviso vale mucho menos que perder el gasto. */
+  const { data: pendientes } = await supabase.rpc('pendientes_por_token', {
+    p_token: token,
+  })
+
   /* data == null significa que ese mensaje ya estaba: la notificación
      llegó repetida. Se responde 200 y no un error, para que el celular
      lo dé por bueno y no se quede reintentando algo que funcionó. */
@@ -170,6 +182,7 @@ export async function POST(request: NextRequest) {
     duplicado: data === null,
     leido: { monto: leido.monto, comercio: leido.comercio, direccion: leido.direccion },
     id: data ?? null,
+    pendientes: typeof pendientes === 'number' ? pendientes : null,
   })
 }
 

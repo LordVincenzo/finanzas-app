@@ -1,7 +1,10 @@
 package com.finanzas.oyente
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.View
@@ -16,6 +19,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.finanzas.oyente.databinding.ActivityMainBinding
 
 /**
@@ -50,6 +54,7 @@ class MainActivity : AppCompatActivity() {
     private var esperandoArchivos: ValueCallback<Array<Uri>>? = null
 
     private lateinit var selectorArchivos: ActivityResultLauncher<Intent>
+    private lateinit var permisoAvisos: ActivityResultLauncher<String>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,6 +76,13 @@ class MainActivity : AppCompatActivity() {
             esperandoArchivos = null
         }
 
+        // Sin nada que hacer con la respuesta: si dice que no, lo único
+        // que se pierde es el recordatorio.
+        permisoAvisos = registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { }
+
+        pedirPermisoDeAvisos()
         configurarWeb()
         configurarAtras()
 
@@ -91,6 +103,33 @@ class MainActivity : AppCompatActivity() {
         vista.web.evaluateJavascript(
             "document.dispatchEvent(new Event('visibilitychange'))", null
         )
+    }
+
+    /**
+     * El permiso para mostrar el aviso de «N por confirmar».
+     *
+     * Solo hace falta pedirlo desde Android 13; antes bastaba con
+     * declararlo en el manifiesto.
+     *
+     * Se pide al abrir y no se insiste: si la persona dice que no, lo
+     * único que se pierde es un recordatorio. El resto —leer las
+     * notificaciones del banco y mandarlas— no depende de esto, y una
+     * app que vuelve a preguntar cada vez que la abres es una app que
+     * se desinstala.
+     */
+    private fun pedirPermisoDeAvisos() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+
+        val permiso = Manifest.permission.POST_NOTIFICATIONS
+        if (ContextCompat.checkSelfPermission(this, permiso)
+            == PackageManager.PERMISSION_GRANTED) return
+
+        // El lanzador está registrado en onCreate y no aquí:
+        // registerForActivityResult tiene que llamarse siempre y antes
+        // de que la Activity arranque. Registrarlo dentro de un `if`
+        // revienta con "attempting to register while current state is
+        // STARTED" el día que este método se llame un poco más tarde.
+        permisoAvisos.launch(permiso)
     }
 
     private fun configurarWeb() {

@@ -22,12 +22,19 @@ import java.util.TimeZone
  */
 class Enviador(contexto: Context) {
 
+    // applicationContext y no el que llegue: este objeto se usa desde
+    // un hilo de fondo del servicio de notificaciones, que puede vivir
+    // más que la pantalla que lo creó.
+    private val contexto = contexto.applicationContext
+
     private val ajustes = Ajustes(contexto)
     private val cola = Cola(contexto)
 
     /** Resultado de un intento, para poder decidir si reintentar. */
     sealed class Resultado {
-        object Bien : Resultado()
+        /** @param pendientes cuántas quedan por confirmar, o -1 si el
+         *  servidor no lo dijo (versión vieja, respuesta rara). */
+        data class Bien(val pendientes: Int = -1) : Resultado()
         /** El servidor contestó, pero que no. Reintentar no arregla nada. */
         data class Rechazado(val codigo: Int, val detalle: String) : Resultado()
         /** No se pudo ni preguntar: sin red, servidor apagado... */
@@ -60,6 +67,11 @@ class Enviador(contexto: Context) {
                     cola.quitar(mensaje)
                     ajustes.enviadas = ajustes.enviadas + 1
                     ajustes.ultimoResultado = "Enviado a las ${hora()}"
+                    // El servidor dice cuántas quedan por confirmar; es
+                    // el momento exacto en que ese número cambia.
+                    if (r.pendientes >= 0) {
+                        Aviso.actualizar(contexto, r.pendientes)
+                    }
                 }
                 is Resultado.Rechazado -> {
                     cola.quitar(mensaje)
@@ -92,7 +104,7 @@ class Enviador(contexto: Context) {
 
             val codigo = conexion.responseCode
             if (codigo in 200..299) {
-                Resultado.Bien
+                Resultado.Bien(pendientesDe(conexion))
             } else {
                 val cuerpo = conexion.errorStream
                     ?.bufferedReader()
@@ -104,6 +116,26 @@ class Enviador(contexto: Context) {
             Resultado.SinRed(e.message ?: "sin detalle")
         } finally {
             conexion?.disconnect()
+        }
+    }
+
+    /**
+     * Cuántas quedan por confirmar, según la respuesta del servidor.
+     *
+     * Devuelve -1 si no viene: un servidor más viejo que esta app, o
+     * una respuesta que no es el JSON que esperamos. Con -1 el aviso se
+     * queda como estaba, que es mejor que ponerlo en cero y hacer
+     * desaparecer un recordatorio que sigue haciendo falta.
+     */
+    private fun pendientesDe(conexion: HttpURLConnection): Int {
+        return try {
+            val cuerpo = conexion.inputStream
+                .bufferedReader()
+                .use(BufferedReader::readText)
+            val valor = org.json.JSONObject(cuerpo).optInt("pendientes", -1)
+            if (valor < 0) -1 else valor
+        } catch (e: Exception) {
+            -1
         }
     }
 

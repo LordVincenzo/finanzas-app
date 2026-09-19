@@ -2,6 +2,7 @@ import { Inbox } from 'lucide-react'
 import { cargarBandeja } from '@/lib/datos-bandeja'
 import { FilaBandeja } from '@/components/fila-bandeja'
 import { Conectar } from '@/components/conectar'
+import { SincronizarAviso } from '@/components/sincronizar-aviso'
 
 /**
  * La bandeja de entrada, en el celular.
@@ -20,6 +21,10 @@ export default async function BandejaPage() {
 
   return (
     <main className="px-4 pt-4 pb-[calc(8rem+env(safe-area-inset-bottom))]">
+      {/* Mantiene el aviso del telefono al dia: el servidor lo sube al
+          llegar una notificacion, y esto lo baja al confirmarlas. */}
+      <SincronizarAviso pendientes={mensajes.length} />
+
       <h1 className="aparece px-1 text-[22px] font-semibold tracking-tight">
         Por confirmar
       </h1>

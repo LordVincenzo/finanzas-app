@@ -31,6 +31,9 @@ export type MensajeBandeja = {
    *  transferencia entre cuentas propias llega con los dos lados
    *  resueltos y confirmarla es un solo toque. */
   pareja_cuenta_id: string | null
+  /** ¿Es la mitad que se esconde de una pareja? Lo decide la vista,
+   *  para que la pantalla y el contador de Inicio no puedan discrepar. */
+  oculta: boolean
 }
 
 export type Dispositivo = {
@@ -60,7 +63,7 @@ export async function cargarBandeja(): Promise<DatosBandeja> {
     { data: todas },
   ] = await Promise.all([
     supabase.from('bandeja_pendiente')
-      .select('id, fuente, texto, recibido_en, monto, comercio, direccion, cuenta_id, categoria_id, pareja_id, pareja_fuente, pareja_texto, pareja_direccion, pareja_cuenta_id')
+      .select('id, fuente, texto, recibido_en, monto, comercio, direccion, cuenta_id, categoria_id, pareja_id, pareja_fuente, pareja_texto, pareja_direccion, pareja_cuenta_id, oculta')
       .eq('owner_id', user.id),
     supabase.from('ingest_tokens')
       .select('id, nombre, created_at, last_used_at')
@@ -85,23 +88,17 @@ export async function cargarBandeja(): Promise<DatosBandeja> {
   )
 
   /* Una pareja son dos avisos del MISMO movimiento, así que se enseña
-     una sola tarjeta: la del lado que SALIÓ. Es la que suele traer el
-     nombre de quien recibe ("a Juan Pérez"), y "enviaste" es la acción
-     que hiciste tú. Confirmar esa cierra las dos, porque
-     confirmar_pareja_ingesta() marca ambas.
+     una sola tarjeta: la del lado que SALIÓ. Confirmar esa cierra las
+     dos, porque confirmar_pareja_ingesta() marca ambas.
 
-     Si por lo que sea las dos fueran del mismo sentido, no se esconde
-     ninguna: mejor dos tarjetas de más que un movimiento desaparecido. */
+     CUÁL SE ESCONDE LO DICE LA VISTA, en su columna `oculta`. Antes ese
+     criterio se calculaba aquí, y el contador de Inicio era otra
+     consulta que no lo sabía: decía "2 por confirmar" donde había una
+     sola tarjeta. Es el mismo cálculo en dos sitios, otra vez. */
   const todos = (mensajes ?? []) as MensajeBandeja[]
-  const ocultas = new Set(
-    todos
-      .filter((m) => m.pareja_id && m.direccion === 'entrada'
-                  && m.pareja_direccion === 'salida')
-      .map((m) => m.id)
-  )
 
   return {
-    mensajes: todos.filter((m) => !ocultas.has(m.id)),
+    mensajes: todos.filter((m) => !m.oculta),
     dispositivos: (dispositivos ?? []) as Dispositivo[],
     cuentas: cuentas.map((a) => ({ id: a.id, name: a.name })),
     categoriasGasto: (todas ?? [])
@@ -113,16 +110,28 @@ export async function cargarBandeja(): Promise<DatosBandeja> {
   }
 }
 
-/** Solo el número, para el aviso de Inicio y Panorama. */
+/**
+ * Solo el número, para el aviso de Inicio, el menú Más y Panorama.
+ *
+ * CUENTA TARJETAS, NO MENSAJES. Una transferencia entre cuentas propias
+ * son dos mensajes y una sola tarjeta; contando mensajes, Inicio decía
+ * "2 movimientos por confirmar" y al entrar había uno. Un número que no
+ * cuadra con lo que se ve al tocarlo mina la confianza en todos los
+ * demás números de la app, que es de lo poco que no se puede permitir
+ * una app de finanzas.
+ *
+ * Se lee de la vista y no de la tabla justo por eso: el criterio de
+ * cuál se esconde vive ahí y en un solo sitio.
+ */
 export async function contarPendientes(): Promise<number> {
   const supabase = await createClient()
   const user = await requerirUsuario(supabase)
 
   const { count } = await supabase
-    .from('ingest_messages')
+    .from('bandeja_pendiente')
     .select('id', { count: 'exact', head: true })
     .eq('owner_id', user.id)
-    .eq('estado', 'pendiente')
+    .eq('oculta', false)
 
   return count ?? 0
 }

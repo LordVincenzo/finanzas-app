@@ -149,6 +149,20 @@ class Puente(private val contexto: Context) {
 
             "vistas" -> responder(respuesta, id, JSONObject().put("vistas", vistas()))
 
+            /* Cuántas quedan por confirmar, según la página.
+             *
+             * El servidor ya lo dice cuando llega una notificación, pero
+             * eso no cubre el otro sentido: al confirmar desde la
+             * pantalla, el número baja y el aviso se quedaría contando
+             * movimientos que ya están resueltos. Un recordatorio que no
+             * desaparece al hacer la tarea es el que enseña a ignorarlo.
+             */
+            "pendientes" -> {
+                val n = datos.toIntOrNull() ?: -1
+                if (n >= 0) Aviso.actualizar(contexto, n)
+                responder(respuesta, id, JSONObject().put("puesto", n))
+            }
+
             "abrirDiagnostico" -> {
                 alAbrirDiagnostico?.invoke()
                 responder(respuesta, id, JSONObject().put("abierto", true))

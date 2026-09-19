@@ -9,6 +9,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- Para el aviso de "N por confirmar". Desde Android 13 hay que
+         pedirlo en marcha; antes bastaba con declararlo. Si se deniega,
+         todo lo demas sigue funcionando igual: se pierde el
+         recordatorio, no el gasto. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"

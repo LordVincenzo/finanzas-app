@@ -13,8 +13,8 @@ android {
         // mucho antes, pero por debajo de 24 no vale la pena probar.
         minSdk = 24
         targetSdk = 35
-        versionCode = 2
-        versionName = "2.0"
+        versionCode = 3
+        versionName = "2.1"
 
         // A dónde apunta la app. Va aquí y no en una pantalla de
         // ajustes porque nadie debería tener que escribir una URL para

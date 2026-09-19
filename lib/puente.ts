@@ -141,6 +141,8 @@ export const puente = {
   probar: () => preguntar<{ mensaje: string }>('probar'),
   vistas: () => preguntar<{ vistas: Vista[] }>('vistas'),
   abrirDiagnostico: () => preguntar<unknown>('abrirDiagnostico'),
+  /** Cuántas quedan por confirmar, para el aviso del teléfono. */
+  pendientes: (n: number) => preguntar<{ puesto: number }>('pendientes', String(n)),
 }
 
 /* ── Los hooks ──────────────────────────────────────────────────── */

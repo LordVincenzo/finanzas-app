@@ -91,18 +91,24 @@ export function ConectarDispositivo({
           <p className="mt-3 text-[12px] font-medium">Dónde ponerlo</p>
           <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
             En MacroDroid: disparador «Notificación recibida» de la app de
-            tu banco, y acción «HTTP POST» a esta dirección, con este
-            cuerpo:
+            tu banco, y acción «HTTP Request» con método POST.
           </p>
           <code className="mt-2 block overflow-x-auto whitespace-pre rounded-lg
                            bg-background px-2.5 py-2 font-mono text-[11px]
                            leading-relaxed">
-{`${urlBase}/api/ingesta
-
-{"token":"${token}",
- "app":"nequi",
- "texto":"{notification_text}"}`}
+{`URL       ${urlBase}/api/ingesta?app=nequi
+Cabecera  X-Token: ${token}
+Tipo      text/plain
+Cuerpo    [notification_text]`}
           </code>
+          <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+            El token va en la cabecera y el texto va solo en el cuerpo, sin
+            comillas alrededor: así una notificación con comillas no rompe
+            nada. Cambia <span className="font-mono">app=nequi</span> por{' '}
+            <span className="font-mono">nu</span>,{' '}
+            <span className="font-mono">daviplata</span> o{' '}
+            <span className="font-mono">davivienda</span> en cada macro.
+          </p>
         </div>
       )}
 

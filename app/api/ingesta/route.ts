@@ -45,22 +45,60 @@ function texto(valor: unknown): string {
 }
 
 export async function POST(request: NextRequest) {
-  const largo = Number(request.headers.get('content-length') ?? 0)
-  if (largo > MAXIMO_BYTES) {
+  const crudo = await request.text()
+
+  if (crudo.length > MAXIMO_BYTES) {
     return NextResponse.json({ ok: false, error: 'Mensaje demasiado largo' },
       { status: 413 })
   }
 
+  /* Dos formas de mandar lo mismo.
+   *
+   * La buena es JSON, con el token dentro del cuerpo — un token en la
+   * URL acaba escrito en los registros del servidor.
+   *
+   * Pero el cuerpo lo arma MacroDroid pegando el texto de la
+   * notificación dentro de la plantilla, sin escaparlo. Si un banco
+   * mandara un mensaje con comillas, el JSON quedaría roto y el gasto se
+   * perdería EN SILENCIO, que es el peor fallo posible en una tubería
+   * que uno deja corriendo sola durante días.
+   *
+   * Por eso, si el cuerpo no es JSON válido, se toma entero como el
+   * texto y el token y la app se leen de la URL. Es la red de seguridad,
+   * no el camino recomendado. */
   let cuerpo: Cuerpo
   try {
-    cuerpo = await request.json()
+    const leido: unknown = JSON.parse(crudo)
+    if (!leido || typeof leido !== 'object' || Array.isArray(leido)) {
+      throw new Error('no es un objeto')
+    }
+    cuerpo = leido as Cuerpo
   } catch {
-    return NextResponse.json({ ok: false, error: 'El cuerpo no es JSON' },
-      { status: 400 })
+    const parametros = request.nextUrl.searchParams
+    cuerpo = {
+      token: parametros.get('token') ?? undefined,
+      app: parametros.get('app') ?? undefined,
+      texto: crudo,
+    }
   }
 
-  const token = texto(cuerpo.token)
+  /* El token puede venir por tres sitios, y el orden importa.
+   *
+   * 1. Una cabecera. Es el mejor: no se mete en el cuerpo, así que el
+   *    texto de la notificación puede llevar comillas sin romper nada,
+   *    y no acaba escrito en los registros del servidor como pasaría en
+   *    la URL. Es lo que recomienda la pantalla de conectar.
+   * 2. El cuerpo JSON. Sencillo de configurar, pero se rompe si un
+   *    banco manda un mensaje con comillas.
+   * 3. La URL. La red de seguridad de la que habla el bloque de arriba.
+   */
+  const cabecera = request.headers.get('x-token')
+    ?? request.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
+    ?? ''
+
+  const token = texto(cabecera) || texto(cuerpo.token)
   const fuente = texto(cuerpo.fuente) || texto(cuerpo.app)
+    || texto(request.nextUrl.searchParams.get('app'))
   const mensaje = texto(cuerpo.texto)
 
   if (!token) {
@@ -76,8 +114,8 @@ export async function POST(request: NextRequest) {
      notificación sin cobertura y reintentado después. Si no viene, o
      viene mal, se usa la de ahora: es mejor una hora aproximada que
      rechazar el mensaje. */
-  const crudo = texto(cuerpo.recibido)
-  const fecha = crudo ? new Date(crudo) : new Date()
+  const cuando = texto(cuerpo.recibido)
+  const fecha = cuando ? new Date(cuando) : new Date()
   const recibido = Number.isNaN(fecha.getTime())
     ? new Date().toISOString()
     : fecha.toISOString()

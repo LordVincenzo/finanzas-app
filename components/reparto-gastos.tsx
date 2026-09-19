@@ -1,6 +1,13 @@
 import { formatearCOP } from '@/lib/format'
+import { Comparacion } from '@/components/comparacion'
 
-type Categoria = { nombre: string; valor: number }
+type Categoria = {
+  nombre: string
+  valor: number
+  /** Lo mismo el mes pasado. null = no hay mes pasado con el que
+   *  comparar; 0 sí lo hay y no se gastó nada en eso. */
+  antes?: number | null
+}
 
 /**
  * Reparto de los gastos del mes por categoría.
@@ -27,11 +34,13 @@ type Categoria = { nombre: string; valor: number }
 const INTENSIDAD = ['opacity-100', 'opacity-70', 'opacity-45', 'opacity-30', 'opacity-20']
 
 export function RepartoGastos({
-  categorias, total, retraso = 0,
+  categorias, total, mesAnterior, retraso = 0,
 }: {
   categorias: Categoria[]
   /** Gasto total del mes, incluyendo lo que no cabe en la lista. */
   total: number
+  /** "agosto". Si falta, no se dibuja ninguna comparación. */
+  mesAnterior?: string
   retraso?: number
 }) {
   if (categorias.length === 0 || total <= 0) return null
@@ -40,8 +49,10 @@ export function RepartoGastos({
   const resto = total - enLista
 
   const trozos = [
-    ...categorias.map((c) => ({ nombre: c.nombre, valor: c.valor })),
-    ...(resto > 0 ? [{ nombre: 'Otras', valor: resto }] : []),
+    ...categorias.map((c) => ({ nombre: c.nombre, valor: c.valor, antes: c.antes })),
+    // "Otras" no se compara: agrupa categorías distintas cada mes, así
+    // que la diferencia no significaría nada.
+    ...(resto > 0 ? [{ nombre: 'Otras', valor: resto, antes: null }] : []),
   ].map((t, i) => ({
     ...t,
     pct: (t.valor * 100) / total,
@@ -98,6 +109,17 @@ export function RepartoGastos({
                 } as React.CSSProperties}
               />
             </div>
+            {/* Es aquí donde el porcentaje se vuelve útil: "35% en
+                Alimentación" no dice si está bien, "$120.000 más que en
+                agosto" sí. */}
+            {mesAnterior && (
+              <Comparacion
+                actual={t.valor}
+                anterior={t.antes ?? null}
+                mesAnterior={mesAnterior}
+                className="mt-1"
+              />
+            )}
           </li>
         ))}
       </ul>

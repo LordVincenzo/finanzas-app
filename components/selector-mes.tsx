@@ -2,22 +2,7 @@
 
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-
-/** Suma o resta meses a "2026-08" devolviendo "2026-09". */
-function moverMes(mes: string, delta: number): string {
-  const [anio, m] = mes.split('-').map(Number)
-  const d = new Date(Date.UTC(anio, m - 1 + delta, 1))
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
-}
-
-/** "2026-08" -> "agosto 2026" */
-function nombreMes(mes: string): string {
-  const [anio, m] = mes.split('-').map(Number)
-  const texto = new Intl.DateTimeFormat('es-CO', {
-    month: 'long', timeZone: 'UTC',
-  }).format(new Date(Date.UTC(anio, m - 1, 1)))
-  return `${texto} ${anio}`
-}
+import { moverMes, nombreDelMes } from '@/lib/format'
 
 export function SelectorMes({ mes, tipo }: { mes: string; tipo: string }) {
   const sufijo = tipo ? `&tipo=${tipo}` : ''
@@ -34,7 +19,7 @@ export function SelectorMes({ mes, tipo }: { mes: string; tipo: string }) {
       </Link>
 
       <span className="min-w-[86px] text-center text-[12px] capitalize">
-        {nombreMes(mes)}
+        {nombreDelMes(mes)}
       </span>
 
       <Link

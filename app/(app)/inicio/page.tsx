@@ -1,7 +1,9 @@
 import Link from 'next/link'
 import { Users, Wallet, HandCoins, Heart, Inbox, ChevronRight } from 'lucide-react'
 import { createClient, requerirUsuario } from '@/lib/supabase/server'
-import { formatearCOP, mesActualBogota } from '@/lib/format'
+import {
+  formatearCOP, mesActualBogota, moverMes, soloNombreMes,
+} from '@/lib/format'
 import { Seccion, Lista, Monto } from '@/components/seccion'
 import { BarraProgreso } from '@/components/barra-progreso'
 import { RepartoGastos } from '@/components/reparto-gastos'
@@ -10,22 +12,22 @@ import { AvatarPerfil } from '@/components/avatar-perfil'
 import { CarruselPatrimonio, type CuentaWallet } from '@/components/carrusel-patrimonio'
 import { TarjetaDestacadaVacia } from '@/components/tarjeta-destacada'
 import { contarPendientes } from '@/lib/datos-bandeja'
+import { Comparacion } from '@/components/comparacion'
 
 export default async function InicioPage() {
   const supabase = await createClient()
   const user = await requerirUsuario(supabase)
 
   const mes = mesActualBogota()
-  const desde = `${mes}-01`
-  const [anio, m] = mes.split('-').map(Number)
-  const hasta = new Date(Date.UTC(anio, m, 0)).toISOString().slice(0, 10)
+  const mesPasado = moverMes(mes, -1)
 
   const [
     { data: perfil },
     { data: detalle },
     { data: cuentas },
     { data: cuentasActivos },
-    { data: delMes },
+    { data: mensual },
+    { data: porCategoria },
     { data: metas },
     { count: numCuentas },
     { count: numMovimientos },
@@ -63,17 +65,28 @@ export default async function InicioPage() {
       .eq('class', 'asset').eq('is_active', true)
       .not('type', 'in', '("receivable","partner_receivable")')
       .order('name'),
-    /* Los gastos e ingresos del mes son TUYOS, así que se piden por
-       owner_id. Antes salía el número correcto por accidente: la vista
-       hace INNER JOIN con accounts, y las cuentas de tu pareja son
-       privadas, así que sus filas se caían por RLS. El día que ella
-       compartiera sus cuentas y sus movimientos, sus gastos habrían
-       empezado a sumarse a los tuyos sin ningún error visible. */
-    supabase.from('movimientos_detalle')
-      .select('type, monto, cuenta_destino')
+    /* Los dos meses de una sola vez, y desde las VISTAS.
+
+       owner_id explícito en las dos. Antes salía el número correcto por
+       accidente: la vista hace INNER JOIN con accounts y las cuentas de
+       tu pareja son privadas, así que sus filas se caían por RLS. El día
+       que ella compartiera sus cuentas, sus gastos habrían empezado a
+       sumarse a los tuyos sin ningún error visible.
+
+       Antes esta pantalla sumaba movimientos_detalle por su cuenta
+       mientras /escritorio/estadisticas usaba movimientos_mensuales:
+       dos formas de contar lo mismo, esperando a separarse. Ahora las
+       dos leen la misma vista, y de paso sale gratis el mes anterior,
+       que es lo que convierte "$473.500" en "$180.000 menos que en
+       agosto". */
+    supabase.from('movimientos_mensuales')
+      .select('mes, type, monto')
       .eq('owner_id', user.id)
-      .gte('occurred_on', desde).lte('occurred_on', hasta)
-      .in('type', ['expense', 'income']),
+      .in('mes', [mes, mesPasado]),
+    supabase.from('categorias_mensuales')
+      .select('mes, categoria, monto')
+      .eq('owner_id', user.id)
+      .in('mes', [mes, mesPasado]),
     /* SIN owner_id a propósito: una meta conjunta pertenece a la pareja y
        las dos personas tienen que verla. El RLS ya recorta a las tuyas
        más las shared_view/joint de ella. No lo "arregles" añadiendo el
@@ -147,12 +160,24 @@ export default async function InicioPage() {
       asignado: asignadoPorCuenta.get(c.account_id as string) ?? 0,
     }))
 
-  const movs = delMes ?? []
-  const gastos = movs.filter((x) => x.type === 'expense')
-    .reduce((s, x) => s + Number(x.monto), 0)
-  const ingresos = movs.filter((x) => x.type === 'income')
-    .reduce((s, x) => s + Number(x.monto), 0)
+  /* Los totales de cada mes.
+     Las vistas devuelven una fila por (mes, tipo), así que un mes sin
+     gastos no trae fila — de ahí el ?? 0. Pero un mes SIN NINGUNA fila
+     es distinto de un mes en cero: el primero no tiene con qué
+     comparar y el segundo sí. Esa diferencia es `huboMesPasado`. */
+  const totalDe = (delMes: string, tipo: string) =>
+    (mensual ?? [])
+      .filter((x) => x.mes === delMes && x.type === tipo)
+      .reduce((s, x) => s + Number(x.monto), 0)
+
+  const gastos = totalDe(mes, 'expense')
+  const ingresos = totalDe(mes, 'income')
   const balance = ingresos - gastos
+
+  const huboMesPasado = (mensual ?? []).some((x) => x.mes === mesPasado)
+  const gastosAntes = huboMesPasado ? totalDe(mesPasado, 'expense') : null
+  const ingresosAntes = huboMesPasado ? totalDe(mesPasado, 'income') : null
+  const nombreMesPasado = soloNombreMes(mesPasado)
 
   /* Sin ingresos registrados no hay balance que calcular.
      Antes se mostraba "Gastaste de más" con ingresos en cero: suena a
@@ -164,14 +189,23 @@ export default async function InicioPage() {
     ? Math.min(100, Math.round((gastos * 100) / ingresos))
     : 0
 
-  const acumulado = new Map<string, number>()
-  for (const mov of movs) {
-    if (mov.type !== 'expense') continue
-    acumulado.set(mov.cuenta_destino,
-      (acumulado.get(mov.cuenta_destino) ?? 0) + Number(mov.monto))
-  }
-  const categorias = [...acumulado.entries()]
-    .map(([nombre, valor]) => ({ nombre, valor }))
+  /* Las categorías del mes, con lo que fue cada una el mes pasado.
+     `antes` puede ser 0 —gastaste en algo nuevo— y eso es distinto de
+     null, que es "no hay mes pasado con el que comparar". */
+  const gastoCategoria = (delMes: string) =>
+    new Map((porCategoria ?? [])
+      .filter((x) => x.mes === delMes)
+      .map((x) => [x.categoria as string, Number(x.monto)]))
+
+  const esteMes = gastoCategoria(mes)
+  const mesAnterior = gastoCategoria(mesPasado)
+
+  const categorias = [...esteMes.entries()]
+    .map(([nombre, valor]) => ({
+      nombre,
+      valor,
+      antes: huboMesPasado ? (mesAnterior.get(nombre) ?? 0) : null,
+    }))
     .sort((a, b) => b.valor - a.valor)
     .slice(0, 4)
 
@@ -265,11 +299,15 @@ export default async function InicioPage() {
         />
       </div>
 
-      {(movs.length > 0 || total !== 0) && (
+      {(gastos > 0 || ingresos > 0 || total !== 0) && (
         <Seccion titulo={nombreMes}>
           <div className="grid grid-cols-2 gap-3">
-            <TarjetaDato etiqueta="Ingresos" valor={ingresos} tono="positivo" retraso={180} />
-            <TarjetaDato etiqueta="Gastos" valor={gastos} tono="negativo" retraso={210} />
+            <TarjetaDato etiqueta="Ingresos" valor={ingresos} tono="positivo"
+                         antes={ingresosAntes} mesAnterior={nombreMesPasado}
+                         retraso={180} />
+            <TarjetaDato etiqueta="Gastos" valor={gastos} tono="negativo"
+                         antes={gastosAntes} mesAnterior={nombreMesPasado}
+                         retraso={210} />
           </div>
 
           {/* Sin ingresos, las dos cifras de arriba ya lo cuentan todo:
@@ -280,15 +318,28 @@ export default async function InicioPage() {
                             ring-1 ring-border/70"
                  style={{ '--retraso': '240ms' } as React.CSSProperties}>
               <BarraProgreso progreso={usado} retraso={300} />
-              <div className="mt-2.5 flex items-center justify-between">
-                <p className="text-[13px] text-muted-foreground">
-                  {balance < 0 ? 'Gastaste de más' : 'Te queda'}
-                </p>
+              <div className="mt-2.5 flex items-baseline justify-between gap-3">
+                {/* "Te queda" era mentira, y de la peor clase: la que
+                    suena a presupuesto. Esto es ingresos menos gastos
+                    DEL MES, no lo que puedes gastar — si te pagan el 30,
+                    el día 29 decía que no te quedaba casi nada aunque
+                    tuvieras cinco millones en el banco. Lo que puedes
+                    gastar es el "Disponible" de la tarjeta de arriba, y
+                    sale de las cuentas, no del calendario. */}
+                <div className="min-w-0">
+                  <p className="text-[13px] text-muted-foreground">
+                    {balance < 0 ? 'Gastaste más de lo que entró' : 'Ahorraste'}
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug
+                                text-muted-foreground">
+                    De los {formatearCOP(ingresos)} que entraron
+                  </p>
+                </div>
                 <Monto
                   valor={balance}
-                  tono={balance < 0 ? 'negativo' : 'neutro'}
+                  tono={balance < 0 ? 'negativo' : 'positivo'}
                   formato={formatearCOP}
-                  className="text-[16px] font-semibold"
+                  className="shrink-0 text-[16px] font-semibold"
                 />
               </div>
             </div>
@@ -315,6 +366,7 @@ export default async function InicioPage() {
             <RepartoGastos
               categorias={categorias}
               total={gastos}
+              mesAnterior={huboMesPasado ? nombreMesPasado : undefined}
               retraso={320}
             />
           </div>
@@ -390,12 +442,15 @@ export default async function InicioPage() {
 
 /** Cifra del mes. El color marca la dirección del dinero, nada más. */
 function TarjetaDato({
-  etiqueta, valor, tono, retraso,
+  etiqueta, valor, tono, retraso, antes, mesAnterior,
 }: {
   etiqueta: string
   valor: number
   tono: 'positivo' | 'negativo'
   retraso: number
+  /** Lo mismo el mes pasado, o null si no hay mes pasado que comparar. */
+  antes?: number | null
+  mesAnterior?: string
 }) {
   return (
     <div className="aparece rounded-2xl bg-card p-4 shadow-card ring-1
@@ -407,6 +462,16 @@ function TarjetaDato({
         valor={valor} tono={tono} formato={formatearCOP}
         className="mt-0.5 block text-[16px] font-medium leading-tight"
       />
+      {antes !== undefined && mesAnterior && (
+        <Comparacion
+          actual={valor}
+          anterior={antes}
+          mesAnterior={mesAnterior}
+          // En gastos, bajar es bueno. En ingresos, al revés.
+          bajarEsBueno={tono === 'negativo'}
+          className="mt-1"
+        />
+      )}
     </div>
   )
 }

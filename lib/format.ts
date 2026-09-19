@@ -97,3 +97,33 @@ export function formatearHora(instante: string | Date): string {
     // hidratación de React.
     .replace(/[\u202F\u00A0]/g, ' ')
 }
+/**
+ * Suma o resta meses a "2026-08" devolviendo "2026-09".
+ *
+ * Con Date.UTC y no con setMonth sobre una fecha local: el 31 de marzo
+ * menos un mes da 3 de marzo en muchas implementaciones, porque febrero
+ * no tiene 31. Empezando siempre por el día 1 eso no puede pasar.
+ */
+export function moverMes(mes: string, delta: number): string {
+  const [anio, m] = mes.split('-').map(Number)
+  const d = new Date(Date.UTC(anio, m - 1 + delta, 1))
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+/** "2026-08" -> "agosto 2026" */
+export function nombreDelMes(mes: string): string {
+  const [anio, m] = mes.split('-').map(Number)
+  const texto = new Intl.DateTimeFormat('es-CO', {
+    month: 'long', timeZone: 'UTC',
+  }).format(new Date(Date.UTC(anio, m - 1, 1)))
+  return `${texto} ${anio}`
+}
+
+/** "2026-08" -> "agosto". Sin el año, para comparar con el mes vecino:
+ *  "$180.000 menos que en agosto" no necesita decir de qué año. */
+export function soloNombreMes(mes: string): string {
+  const [anio, m] = mes.split('-').map(Number)
+  return new Intl.DateTimeFormat('es-CO', {
+    month: 'long', timeZone: 'UTC',
+  }).format(new Date(Date.UTC(anio, m - 1, 1)))
+}

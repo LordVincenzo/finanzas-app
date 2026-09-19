@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import {
-  ChevronRight, Wallet, HeartHandshake, HandCoins, BarChart3, Inbox,
+  ChevronRight, Wallet, HeartHandshake, HandCoins, BarChart3, Inbox, Target,
 } from 'lucide-react'
 import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { cerrarSesion } from '@/app/auth/actions'
@@ -32,6 +32,8 @@ export default async function MasPage() {
       detalle: pendientes > 0
         ? `${pendientes} esperando`
         : 'Lo que leen tus bancos, y activar la lectura' },
+    { href: '/presupuestos', icono: Target,      etiqueta: 'Topes de gasto',
+      detalle: 'Cuánto quieres gastar al mes en cada cosa' },
     { href: '/cuentas',   icono: Wallet,         etiqueta: 'Cuentas',
       detalle: 'Dónde tienes tu dinero' },
     { href: '/prestamos', icono: HandCoins,      etiqueta: 'Préstamos',

@@ -28,6 +28,7 @@ export default async function InicioPage() {
     { data: cuentas },
     { data: cuentasActivos },
     { data: mensual },
+    { data: topes },
     { data: porCategoria },
     { data: metas },
     { count: numCuentas },
@@ -84,6 +85,12 @@ export default async function InicioPage() {
       .select('mes, type, monto')
       .eq('owner_id', user.id)
       .in('mes', [mes, mesPasado]),
+    /* Los topes de este mes. Se piden aquí aunque solo se pinten los
+       que van apretados: es una consulta más dentro del mismo
+       Promise.all, así que no añade ni un milisegundo de espera. */
+    supabase.from('presupuestos_del_mes')
+      .select('categoria_id, categoria, tope, gastado, restante, porcentaje')
+      .eq('owner_id', user.id).eq('mes', mes),
     supabase.from('categorias_mensuales')
       .select('mes, categoria, monto')
       .eq('owner_id', user.id)
@@ -179,6 +186,18 @@ export default async function InicioPage() {
   const gastosAntes = huboMesPasado ? totalDe(mesPasado, 'expense') : null
   const ingresosAntes = huboMesPasado ? totalDe(mesPasado, 'income') : null
   const nombreMesPasado = soloNombreMes(mesPasado)
+
+  /* Solo los topes que van apretados: del 75% para arriba. Una lista
+     de cinco barras a medias en Inicio es una pantalla que se
+     aprende a ignorar; lo que hay que ver al abrir es el que se está
+     saliendo. El resto vive en /presupuestos.
+
+     Tres como mucho, y los más apretados primero: si te pasaste en
+     cuatro cosas, la cuarta no cambia lo que hay que hacer hoy. */
+  const apretados = (topes ?? [])
+    .filter((x) => Number(x.porcentaje) >= 75)
+    .sort((a, b) => Number(b.porcentaje) - Number(a.porcentaje))
+    .slice(0, 3)
 
   /* Sin ingresos registrados no hay balance que calcular.
      Antes se mostraba "Gastaste de más" con ingresos en cero: suena a
@@ -345,6 +364,50 @@ export default async function InicioPage() {
               </div>
             </div>
           )}
+        </Seccion>
+      )}
+
+      {apretados.length > 0 && (
+        <Seccion
+          titulo="Ojo con esto"
+          accion={
+            <Link href="/presupuestos"
+                  className="-my-3 -mr-1 py-3 pr-1 text-[12px] font-medium
+                             text-primary">
+              Ver topes
+            </Link>
+          }
+        >
+          <div className="space-y-2">
+            {apretados.map((x, i) => {
+              const restante = Number(x.restante)
+              const pasado = restante < 0
+              return (
+                <Link key={x.categoria_id} href="/presupuestos"
+                      className="aparece block rounded-2xl bg-card px-4 py-3
+                                 shadow-card ring-1 ring-border/70 transition
+                                 active:scale-[0.99]"
+                      style={{ '--retraso': String(240 + i * 60) + 'ms' } as React.CSSProperties}>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="min-w-0 flex-1 truncate text-[14px]">
+                      {x.categoria}
+                    </p>
+                    <span className={"shrink-0 text-[13px] font-medium tabular-nums "
+                                     + (pasado ? 'text-negativo' : '')}>
+                      {pasado ? formatearCOP(-restante) + ' de más'
+                              : 'Quedan ' + formatearCOP(restante)}
+                    </span>
+                  </div>
+                  <div className="mt-2">
+                    <BarraProgreso
+                      progreso={Math.min(100, Number(x.porcentaje))}
+                      retraso={300 + i * 60}
+                    />
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
         </Seccion>
       )}
 

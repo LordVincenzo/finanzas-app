@@ -20,7 +20,19 @@ import kotlin.concurrent.thread
 class OyenteNotificaciones : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        val fuente = Bancos.fuenteDe(sbn.packageName, tituloDe(sbn)) ?: return
+        val fuente = Bancos.fuenteDe(sbn.packageName, tituloDe(sbn))
+
+        /* Se anota SIEMPRE, encaje o no, y antes de mirar el contenido:
+           solo el nombre del paquete y la hora. Es lo que permite ver en
+           el diagnóstico por qué un banco no entra —el paquete real no
+           es el que está en Bancos.kt— en vez de quedarse mirando una
+           bandeja vacía sin ninguna pista. Ver Vistas.kt. */
+        try {
+            Vistas(applicationContext).anotar(sbn.packageName, fuente != null)
+        } catch (e: Exception) {
+        }
+
+        if (fuente == null) return
 
         val texto = textoDe(sbn) ?: return
         if (texto.isBlank()) return
@@ -54,17 +66,47 @@ class OyenteNotificaciones : NotificationListenerService() {
         sbn.notification?.extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString()
 
     /**
-     * El texto de la notificación.
+     * El texto que se manda: TÍTULO Y CUERPO, en dos líneas.
      *
-     * Se prefiere EXTRA_BIG_TEXT: los bancos mandan mensajes largos y
-     * Android los recorta en EXTRA_TEXT con un "…". Leer el recortado
-     * significaría perder justo el final, que es donde suele ir el
-     * saldo o la referencia.
+     * Antes iba solo el cuerpo, y eso perdía dinero de verdad. Nu manda
+     * esto:
+     *
+     *     Título:  Enviaste $100,00
+     *     Cuerpo:  Le enviaste a Bri***** Cas***** en su cuenta de Nequi.
+     *
+     * El monto está SOLO en el título. Con el cuerpo a secas, el lector
+     * no encuentra ninguna cifra y el movimiento entra vacío — y un
+     * movimiento vacío hay que teclearlo a mano, que es justo lo que
+     * esto viene a evitar.
+     *
+     * Nequi se salvaba de casualidad porque repite el monto en el
+     * cuerpo. Depender de esa casualidad, banco por banco, no es un
+     * diseño.
+     *
+     * Se prefiere EXTRA_BIG_TEXT para el cuerpo: los bancos mandan
+     * mensajes largos y Android recorta EXTRA_TEXT con un "…", justo
+     * donde suele ir el saldo o la referencia.
      */
     private fun textoDe(sbn: StatusBarNotification): String? {
         val extras = sbn.notification?.extras ?: return null
-        val grande = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
-        if (!grande.isNullOrBlank()) return grande.trim()
-        return extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim()
+
+        val titulo = extras.getCharSequence(Notification.EXTRA_TITLE)
+            ?.toString()?.trim().orEmpty()
+
+        val grande = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)
+            ?.toString()?.trim().orEmpty()
+        val corto = extras.getCharSequence(Notification.EXTRA_TEXT)
+            ?.toString()?.trim().orEmpty()
+        val cuerpo = grande.ifEmpty { corto }
+
+        return when {
+            titulo.isEmpty() -> cuerpo.ifEmpty { null }
+            cuerpo.isEmpty() -> titulo
+            // Algunas apps repiten el título dentro del cuerpo. Mandarlo
+            // dos veces haría que un lector encontrara el mismo monto
+            // por partida doble.
+            cuerpo.contains(titulo) -> cuerpo
+            else -> "$titulo\n$cuerpo"
+        }
     }
 }

@@ -9,6 +9,7 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import android.webkit.WebView
 import android.net.Uri
+import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.concurrent.thread
 
@@ -72,6 +73,26 @@ class Puente(private val contexto: Context) {
     /** Lo pone MainActivity: ¿nos concedió Android el acceso a notificaciones? */
     var tienePermiso: (() -> Boolean)? = null
 
+    /** Lo pone MainActivity: abrir la pantalla de diagnóstico. */
+    var alAbrirDiagnostico: (() -> Unit)? = null
+
+    /**
+     * Las apps que han mandado notificaciones últimamente, la más
+     * reciente primero. Solo paquete y hora — ver Vistas.kt.
+     */
+    private fun vistas(): JSONArray {
+        val lista = JSONArray()
+        for (v in Vistas(contexto).todas()) {
+            lista.put(
+                JSONObject()
+                    .put("paquete", v.paquete)
+                    .put("cuando", v.cuando)
+                    .put("aceptado", v.aceptado)
+            )
+        }
+        return lista
+    }
+
     fun instalar(web: WebView, servidor: String) {
         if (!disponible()) return
         val origenes = origenesPermitidos(servidor)
@@ -124,6 +145,13 @@ class Puente(private val contexto: Context) {
             "olvidarToken" -> {
                 Ajustes(contexto).token = ""
                 responder(respuesta, id, estado())
+            }
+
+            "vistas" -> responder(respuesta, id, JSONObject().put("vistas", vistas()))
+
+            "abrirDiagnostico" -> {
+                alAbrirDiagnostico?.invoke()
+                responder(respuesta, id, JSONObject().put("abierto", true))
             }
 
             "probar" -> {

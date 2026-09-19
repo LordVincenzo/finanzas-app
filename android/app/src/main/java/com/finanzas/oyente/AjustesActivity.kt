@@ -5,6 +5,9 @@ import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.appcompat.app.AppCompatActivity
 import com.finanzas.oyente.databinding.ActivityAjustesBinding
 import kotlin.concurrent.thread
@@ -39,7 +42,6 @@ class AjustesActivity : AppCompatActivity() {
         ajustes = Ajustes(this)
 
         vista.servidor.setText(ajustes.servidor)
-        vista.bancos.text = Bancos.resumen()
 
         vista.guardar.setOnClickListener {
             ajustes.servidor = vista.servidor.text.toString()
@@ -98,6 +100,32 @@ class AjustesActivity : AppCompatActivity() {
         }
 
         vista.resultado.text = ajustes.ultimoResultado
+        vista.bancos.text = queSeHaVisto()
+    }
+
+    /**
+     * Lo que de verdad ha llegado, con una marca en lo que encaja en la
+     * lista blanca.
+     *
+     * Es la pantalla que dice POR QUÉ un banco no entra: si su app está
+     * aquí con una cruz, el nombre del paquete que manda no es el que
+     * está en Bancos.kt, y se copia de aquí.
+     */
+    private fun queSeHaVisto(): String {
+        val vistas = Vistas(this).todas()
+        if (vistas.isEmpty()) {
+            return "Configurada para:\n${Bancos.resumen()}\n\n" +
+                "Todavía no ha llegado ninguna notificación. Si acabas de " +
+                "dar el permiso, haz una transacción y vuelve."
+        }
+
+        val hora = SimpleDateFormat("HH:mm", Locale.US)
+        val lista = vistas.joinToString("\n") { v ->
+            val marca = if (v.aceptado) "✓" else "·"
+            "$marca ${v.paquete}   ${hora.format(Date(v.cuando))}"
+        }
+        return "Configurada para:\n${Bancos.resumen()}\n\n" +
+            "Apps que han notificado (✓ = se manda):\n$lista"
     }
 
     private fun avisar(texto: String) =

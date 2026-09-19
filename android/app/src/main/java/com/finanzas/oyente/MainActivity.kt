@@ -118,6 +118,9 @@ class MainActivity : AppCompatActivity() {
             alPedirPermiso = {
                 startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
             }
+            alAbrirDiagnostico = {
+                startActivity(Intent(this@MainActivity, AjustesActivity::class.java))
+            }
         }
         puente.instalar(web, ajustes.servidor)
 

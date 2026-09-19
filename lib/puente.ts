@@ -119,12 +119,28 @@ function preguntar<T>(accion: string, datos = ''): Promise<T> {
 
 /* ── Las acciones ───────────────────────────────────────────────── */
 
+/**
+ * Una app que mandó una notificación, encajara o no en la lista blanca.
+ *
+ * Solo el nombre del paquete y la hora: el contenido de las
+ * notificaciones ajenas no se guarda en ninguna parte (ver Vistas.kt).
+ */
+export type Vista = {
+  paquete: string
+  /** Milisegundos desde 1970. */
+  cuando: number
+  /** ¿Está en la lista de bancos que se envían? */
+  aceptado: boolean
+}
+
 export const puente = {
   estado: () => preguntar<EstadoPuente>('estado'),
   pedirPermiso: () => preguntar<unknown>('pedirPermiso'),
   guardarToken: (token: string) => preguntar<EstadoPuente>('guardarToken', token),
   olvidarToken: () => preguntar<EstadoPuente>('olvidarToken'),
   probar: () => preguntar<{ mensaje: string }>('probar'),
+  vistas: () => preguntar<{ vistas: Vista[] }>('vistas'),
+  abrirDiagnostico: () => preguntar<unknown>('abrirDiagnostico'),
 }
 
 /* ── Los hooks ──────────────────────────────────────────────────── */

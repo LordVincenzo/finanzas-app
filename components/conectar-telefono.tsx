@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { BellRing, Check, Loader2, TriangleAlert } from 'lucide-react'
 import { conectarDispositivo } from '@/app/(app)/bandeja/actions'
-import { puente, useEstadoOyente } from '@/lib/puente'
+import { puente, useEstadoOyente, type Vista } from '@/lib/puente'
 
 /**
  * Activar la lectura de notificaciones, dentro de la app de Android.
@@ -201,8 +201,94 @@ export function ConectarTelefono() {
               {aviso}
             </p>
           )}
+
+          <QueLlega />
         </>
       )}
     </section>
+  )
+}
+
+/**
+ * Qué apps han notificado, y cuáles se mandan.
+ *
+ * POR QUÉ ESTÁ AQUÍ. Cuando un banco no entra, desde fuera se ve una
+ * bandeja vacía y nada más: las notificaciones llegan, no encajan en la
+ * lista blanca de `Bancos.kt` y se descartan sin dejar rastro. Averiguar
+ * el nombre de paquete real de una app desde el teléfono no se puede
+ * —Android no lo enseña, y la URL de Play Store no siempre coincide—
+ * así que la app lo apunta y lo enseña aquí.
+ *
+ * Va plegado porque es una pantalla de avería, no de uso diario.
+ */
+function QueLlega() {
+  const [vistas, setVistas] = useState<Vista[] | null>(null)
+  const [cargando, setCargando] = useState(false)
+
+  async function cargar() {
+    setCargando(true)
+    try {
+      const r = await puente.vistas()
+      setVistas(r.vistas ?? [])
+    } catch {
+      setVistas([])
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  return (
+    <details className="mt-4 border-t border-border/70 pt-3"
+             onToggle={(e) => {
+               if ((e.currentTarget as HTMLDetailsElement).open && !vistas) cargar()
+             }}>
+      <summary className="cursor-pointer list-none text-[13px] font-medium
+                          text-muted-foreground">
+        ¿No llega algún banco?
+      </summary>
+
+      <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+        Estas son las apps que han notificado desde que se activó. La
+        marca ✓ es lo que se manda. Si tu banco aparece sin marca, su
+        nombre de paquete no está en la lista y hay que añadirlo.
+      </p>
+
+      {cargando && (
+        <p className="mt-2 text-[12px] text-muted-foreground">Leyendo…</p>
+      )}
+
+      {vistas?.length === 0 && !cargando && (
+        <p className="mt-2 text-[12px] text-muted-foreground">
+          Todavía no ha llegado ninguna. Haz una transacción y vuelve.
+        </p>
+      )}
+
+      {vistas && vistas.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {vistas.map((v) => (
+            <li key={v.paquete}
+                className="flex items-baseline gap-2 font-mono text-[11px]">
+              <span className={v.aceptado ? 'text-positivo' : 'text-muted-foreground/50'}>
+                {v.aceptado ? '✓' : '·'}
+              </span>
+              <span className="min-w-0 flex-1 truncate">{v.paquete}</span>
+              <span className="shrink-0 tabular-nums text-muted-foreground">
+                {new Date(v.cuando).toLocaleTimeString('es-CO', {
+                  hour: '2-digit', minute: '2-digit',
+                })}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <button
+        type="button"
+        onClick={() => puente.abrirDiagnostico()}
+        className="mt-3 text-[12px] font-medium text-muted-foreground underline"
+      >
+        Abrir diagnóstico
+      </button>
+    </details>
   )
 }

@@ -34,12 +34,40 @@ object Bancos {
         "com.nequi.MobileApp" to "nequi",
         "com.nu.production" to "nu",
 
-        // SIN COMPROBAR: vienen de la misma fuente equivocada que los de
-        // arriba. Cuando llegue una notificación de estos bancos, mira
-        // el diagnóstico y corrige el nombre si hace falta.
+        // SIN COMPROBAR TODAVÍA contra una notificación real.
+        //
+        // De DaviPlata hay dos candidatos y están los dos a propósito:
+        // un nombre que no coincide con nada no cuesta nada —nunca se
+        // activa— mientras que faltar el bueno significa perder gastos
+        // en silencio. Cuando llegue una notificación suya, el
+        // diagnóstico dirá cuál era, y entonces se quita el otro.
         "com.daviplata" to "daviplata",
+        "com.daviplata.digital" to "daviplata",
         "com.davivienda.bancamovil" to "davivienda",
     )
+
+    /*
+     * OTROS BANCOS DE COLOMBIA, por si hacen falta algún día:
+     *
+     *   Bancolombia      com.grupobancolombia.bancolombia
+     *   Banco de Bogotá  com.bancodebogota.bancamovil
+     *   BBVA             com.bbva.bbvacolombia
+     *   Scotiabank       com.colpatria.bancamovil
+     *   Falabella        com.bancofalabella
+     *   Itaú             com.itau.colombia
+     *   Lulo Bank        com.lulobank.mobile
+     *   Dale!            com.dale.bancodeoccidente
+     *
+     * NO ESTÁN EN LA LISTA DE ARRIBA, y no por olvido: añadir un banco
+     * aquí sin escribir su lector en lib/lectores.ts hace que sus
+     * notificaciones salgan del teléfono para entrar a la bandeja sin
+     * monto, o sea para teclearlas a mano. Mandar el contenido de
+     * notificaciones de apps que no se usan, a cambio de nada, es peor
+     * que no mandarlo.
+     *
+     * Añadir uno son dos líneas: esta, y un leerLoQueSea() con el
+     * formato REAL de sus mensajes.
+     */
 
     /**
      * Apps de mensajes. DaviPlata y Davivienda avisan también por SMS,

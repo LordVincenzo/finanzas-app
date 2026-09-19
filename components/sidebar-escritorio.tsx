@@ -4,13 +4,14 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, BarChart3, ArrowLeftRight, Wallet, PiggyBank, HandCoins,
-  HeartHandshake, UserRound, ChevronLeft,
+  HeartHandshake, UserRound, Inbox, ChevronLeft,
 } from 'lucide-react'
 
 const ENLACES = [
   { href: '/escritorio', etiqueta: 'Panorama', icono: LayoutDashboard },
   { href: '/escritorio/estadisticas', etiqueta: 'Estadísticas', icono: BarChart3 },
   { href: '/escritorio/movimientos', etiqueta: 'Movimientos', icono: ArrowLeftRight },
+  { href: '/escritorio/bandeja', etiqueta: 'Por confirmar', icono: Inbox },
   { href: '/escritorio/cuentas', etiqueta: 'Cuentas', icono: Wallet },
   { href: '/escritorio/ahorros', etiqueta: 'Ahorros', icono: PiggyBank },
   { href: '/escritorio/prestamos', etiqueta: 'Préstamos', icono: HandCoins },

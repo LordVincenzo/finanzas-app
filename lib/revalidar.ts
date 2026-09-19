@@ -29,6 +29,8 @@ const PANTALLAS = [
   '/escritorio/prestamos',
   '/escritorio/estadisticas',
   '/escritorio/pareja',
+  '/bandeja',
+  '/escritorio/bandeja',
 ]
 
 /* /escritorio/perfil no está en la lista a propósito: muestra tu nombre,

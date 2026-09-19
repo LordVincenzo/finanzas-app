@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { parsearCOP } from '@/lib/format'
+import { ladosDelMovimiento } from '@/lib/movimientos'
 import { leerOrigen, rutaDe } from '@/lib/interfaz'
 import { revalidarLedger } from '@/lib/revalidar'
 
@@ -107,12 +108,11 @@ export async function registrarMovimiento(
     return { error: 'El origen y el destino no pueden ser la misma cuenta' }
   }
 
-  // El servidor decide qué cuenta es origen y cuál destino según
-  // el tipo. El formulario nunca envía esa decisión.
-  const [cuentaOrigen, cuentaDestino] =
-    tipo === 'income'
-      ? [contraparte, cuenta]   // el dinero viene de la categoría de ingreso
-      : [cuenta, contraparte]   // gasto y transferencia salen de la cuenta
+  // El servidor decide qué cuenta es origen y cuál destino según el
+  // tipo. El formulario nunca envía esa decisión. La regla vive en
+  // lib/movimientos.ts porque la bandeja de entrada la necesita igual.
+  const { origen: cuentaOrigen, destino: cuentaDestino } =
+    ladosDelMovimiento(tipo, cuenta, contraparte)
 
   const { error } = await supabase.rpc('crear_movimiento', {
     p_tipo: tipo,

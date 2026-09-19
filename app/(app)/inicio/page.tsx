@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Users, Wallet, HandCoins, Heart, ChevronRight } from 'lucide-react'
+import { Users, Wallet, HandCoins, Heart, Inbox, ChevronRight } from 'lucide-react'
 import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { formatearCOP, mesActualBogota } from '@/lib/format'
 import { Seccion, Lista, Monto } from '@/components/seccion'
@@ -9,6 +9,7 @@ import { PrimerosPasos } from '@/components/primeros-pasos'
 import { AvatarPerfil } from '@/components/avatar-perfil'
 import { CarruselPatrimonio, type CuentaWallet } from '@/components/carrusel-patrimonio'
 import { TarjetaDestacadaVacia } from '@/components/tarjeta-destacada'
+import { contarPendientes } from '@/lib/datos-bandeja'
 
 export default async function InicioPage() {
   const supabase = await createClient()
@@ -112,6 +113,10 @@ export default async function InicioPage() {
       .maybeSingle(),
   ])
 
+  // Cuántas notificaciones esperan confirmación. Consulta aparte porque
+  // cargarBandeja() trae mucho más de lo que Inicio necesita.
+  const pendientes = await contarPendientes()
+
   const total = Number(detalle?.patrimonio ?? 0)
   const porCobrar = Number(detalle?.por_cobrar ?? 0)
 
@@ -211,6 +216,35 @@ export default async function InicioPage() {
           />
         )}
       </div>
+
+      {/* Lo único de Inicio que pide una acción. Solo aparece si hay algo
+          esperando, y desaparece solo al confirmarlo todo — como
+          PrimerosPasos, sin estado que mantener. */}
+      {pendientes > 0 && (
+        <Link
+          href="/bandeja"
+          className="aparece mt-4 flex min-h-14 items-center gap-3 rounded-2xl
+                     bg-card px-4 shadow-card ring-1 ring-primary/25
+                     transition active:scale-[0.99]"
+          style={{ '--retraso': '120ms' } as React.CSSProperties}
+        >
+          <span className="flex size-9 shrink-0 items-center justify-center
+                           rounded-xl bg-muted">
+            <Inbox className="size-[17px] text-muted-foreground" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[15px] leading-tight">
+              {pendientes === 1
+                ? '1 movimiento por confirmar'
+                : `${pendientes} movimientos por confirmar`}
+            </p>
+            <p className="mt-0.5 text-[12px] leading-tight text-muted-foreground">
+              Llegaron de tus bancos
+            </p>
+          </div>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" />
+        </Link>
+      )}
 
       {/* Se completa sola y desaparece cuando los tres pasos están
           hechos. No guarda estado: cada paso se deduce de los datos. */}

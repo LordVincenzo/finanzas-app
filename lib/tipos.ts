@@ -1,14 +1,44 @@
-/** Tipos de cuenta que el usuario puede crear desde la app. */
+/**
+ * Tipos de cuenta que el usuario puede crear desde la app.
+ *
+ * Los dos últimos son DEUDAS, no dinero que tengas. El esquema los
+ * soportaba desde 0001 —el enum, chk_class_type, crear_cuenta,
+ * patrimonio_detalle.deudas y hasta las etiquetas de los grupos— pero
+ * esta lista no los ofrecía, así que no había forma de crear una. La app
+ * insinuaba que llevaba deudas y no las llevaba.
+ */
 export const TIPOS_CUENTA = [
   { valor: 'digital_wallet', etiqueta: 'Billetera digital', ayuda: 'Nu, Nequi, Davivienda' },
   { valor: 'checking',       etiqueta: 'Cuenta corriente',  ayuda: 'Cuenta de banco del día a día' },
   { valor: 'savings',        etiqueta: 'Cuenta de ahorros', ayuda: 'Ahorro programado o CDT' },
   { valor: 'cash',           etiqueta: 'Efectivo',          ayuda: 'Dinero en billetes' },
   { valor: 'investment',     etiqueta: 'Inversión',         ayuda: 'Acciones, fondos, cripto' },
+  { valor: 'credit_card',    etiqueta: 'Tarjeta de crédito', ayuda: 'Lo que debes, no tu cupo' },
+  { valor: 'debt',           etiqueta: 'Deuda',             ayuda: 'Un crédito, algo que debes a alguien' },
   { valor: 'other',          etiqueta: 'Otra',              ayuda: '' },
 ] as const
 
 export type TipoCuenta = (typeof TIPOS_CUENTA)[number]['valor']
+
+/**
+ * Los tipos que son DEUDA (clase `liability` en la base).
+ *
+ * El signo importa y es la razón de que esto viva en un solo sitio: en
+ * el ledger una deuda es un saldo NEGATIVO, porque patrimonio_detalle
+ * suma `asset` y `liability` juntos y así la deuda resta sola. Pero a
+ * nadie se le pide escribir un número negativo: la persona escribe
+ * "debo 500.000" y el servidor guarda -500.000.
+ *
+ * Quien pregunte "¿esto es una deuda?" tiene que preguntárselo aquí. Si
+ * la lista se copiara, el día que se añada un tipo de deuda habría un
+ * sitio que lo trataría como dinero que tienes — y el patrimonio saldría
+ * al revés.
+ */
+const TIPOS_DEUDA: readonly string[] = ['credit_card', 'debt']
+
+export function esDeuda(tipo: string): boolean {
+  return TIPOS_DEUDA.includes(tipo)
+}
 
 export const VISIBILIDADES = [
   { valor: 'private',     etiqueta: 'Privada',    ayuda: 'Solo tú puedes verla' },

@@ -14,19 +14,27 @@ import { ajustarSaldoEscritorio } from '@/app/escritorio/cuentas/actions'
  * se le vuelve a sumar `asignado` antes de llamarlo.
  */
 export function SaldoEditable({
-  cuentaId, disponible, asignado = 0,
+  cuentaId, disponible, asignado = 0, deuda = false,
 }: {
   cuentaId: string
   disponible: number
   asignado?: number
+  /** Una deuda se muestra y se edita en positivo: "cuánto debes". */
+  deuda?: boolean
 }) {
   const [editando, setEditando] = useState(false)
   const [texto, setTexto] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
+  /* En una deuda el saldo del ledger es negativo (así resta del
+     patrimonio), pero nadie piensa su tarjeta como "-500.000": se
+     muestra y se escribe lo que debes, en positivo. La acción vuelve a
+     ponerle el signo, consultando la clase en la base. */
+  const mostrado = deuda ? Math.abs(disponible) : disponible
+
   function empezar() {
-    setTexto(String(disponible))
+    setTexto(String(mostrado))
     setError(null)
     setEditando(true)
   }
@@ -39,7 +47,7 @@ export function SaldoEditable({
       setError('Número inválido')
       return
     }
-    if (valor === disponible) {
+    if (valor === mostrado) {
       setEditando(false)
       return
     }
@@ -59,12 +67,14 @@ export function SaldoEditable({
       <button
         type="button"
         onClick={empezar}
-        title={asignado > 0
-          ? `Saldo real de la cuenta: ${formatearCOP(disponible + asignado)}`
-          : 'Clic para ajustar el saldo'}
+        title={deuda
+          ? 'Clic para ajustar lo que debes'
+          : asignado > 0
+            ? `Saldo real de la cuenta: ${formatearCOP(disponible + asignado)}`
+            : 'Clic para ajustar el saldo'}
         className="rounded-md px-2 py-1 tabular-nums transition hover:bg-muted"
       >
-        {formatearCOP(disponible)}
+        {formatearCOP(mostrado)}
       </button>
     )
   }

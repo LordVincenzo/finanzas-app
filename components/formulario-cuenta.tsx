@@ -1,9 +1,9 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { crearCuenta, type EstadoCuenta } from '@/app/(app)/cuentas/actions'
-import { TIPOS_CUENTA, VISIBILIDADES } from '@/lib/tipos'
+import { TIPOS_CUENTA, VISIBILIDADES, esDeuda } from '@/lib/tipos'
 import type { Origen } from '@/lib/interfaz'
 
 const estadoInicial: EstadoCuenta = {}
@@ -29,6 +29,13 @@ const SELECT = `min-h-12 w-full appearance-none rounded-xl border
 export function FormularioCuenta({ origen = 'celular' }: { origen?: Origen }) {
   const [estado, accion, enviando] = useActionState(crearCuenta, estadoInicial)
 
+  /* Una tarjeta de crédito no se piensa como "cuánto tengo" sino como
+     "cuánto debo", así que el campo cambia de pregunta según el tipo. El
+     número se escribe SIEMPRE en positivo; convertirlo al negativo que
+     necesita el ledger es cosa del servidor, no de este formulario. */
+  const [tipo, setTipo] = useState<string>('digital_wallet')
+  const deuda = esDeuda(tipo)
+
   return (
     <form action={accion} className="mt-5 space-y-4">
       {/* A qué lista volver al terminar. La acción lo traduce contra una
@@ -48,7 +55,8 @@ export function FormularioCuenta({ origen = 'celular' }: { origen?: Origen }) {
           Tipo
         </label>
         <div className="relative">
-          <select id="tipo" name="tipo" required defaultValue="digital_wallet"
+          <select id="tipo" name="tipo" required value={tipo}
+                  onChange={(e) => setTipo(e.target.value)}
                   className={SELECT}>
             {TIPOS_CUENTA.map((t) => (
               <option key={t.valor} value={t.valor}>{t.etiqueta}</option>
@@ -75,7 +83,7 @@ export function FormularioCuenta({ origen = 'celular' }: { origen?: Origen }) {
       <div>
         <label htmlFor="saldoInicial"
                className="mb-1.5 block text-[13px] font-medium">
-          Saldo actual
+          {deuda ? 'Cuánto debes' : 'Saldo actual'}
         </label>
         <div className="flex items-center rounded-xl border
                         focus-within:ring-2 focus-within:ring-ring">
@@ -85,15 +93,17 @@ export function FormularioCuenta({ origen = 'celular' }: { origen?: Origen }) {
           </span>
           <input
             id="saldoInicial" name="saldoInicial" inputMode="numeric"
-            placeholder="2.430.000"
+            placeholder={deuda ? '500.000' : '2.430.000'}
             className="min-h-12 w-full rounded-xl bg-transparent pl-1.5 pr-3.5
                        text-[20px] font-semibold tabular-nums
                        placeholder:text-muted-foreground/50
                        focus:outline-none"
           />
         </div>
-        <p className="mt-1.5 text-[12px] text-muted-foreground">
-          Cuánto dinero tienes ahí ahora. Puedes escribir 2430k.
+        <p className="mt-1.5 text-[12px] leading-snug text-muted-foreground">
+          {deuda
+            ? 'Lo que debes hoy, en positivo. No el cupo de la tarjeta: el cupo no es tuyo, es lo que te prestarían.'
+            : 'Cuánto dinero tienes ahí ahora. Puedes escribir 2430k.'}
         </p>
       </div>
 

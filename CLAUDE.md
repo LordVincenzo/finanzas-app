@@ -30,6 +30,15 @@ transferencia son la misma operación con distintas cuentas. Solo `asset` y
 **El dinero es BIGINT en pesos enteros.** `20000` = $20.000. Nunca float: en
 JavaScript `0.1 + 0.2` da `0.30000000000000004`.
 
+**Una deuda es un saldo NEGATIVO.** Las tarjetas de crédito y las deudas son
+cuentas de clase `liability`, y `patrimonio_detalle` suma `asset` y
+`liability` juntos: así la deuda resta sola, sin ninguna regla aparte. Pero a
+nadie se le pide escribir un número negativo — la persona escribe «debo
+500.000» y **el servidor pone el signo**, consultando la clase en la base.
+Nunca a partir de un campo del formulario: el signo decide si algo suma o
+resta al patrimonio. Quien pregunte «¿esto es una deuda?» se lo pregunta a
+`esDeuda()` en `lib/tipos.ts`, que es el único sitio con esa lista.
+
 **Dos campos de tiempo.** `occurred_at` (instante UTC) y `occurred_on` (día
 contable en Bogotá, por trigger). Sin el segundo, un gasto del 31 de agosto a
 las 8 PM caería en septiembre.

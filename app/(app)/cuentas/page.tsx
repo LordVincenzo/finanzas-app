@@ -6,7 +6,7 @@ import { ETIQUETAS_TIPO, ORDEN_TIPOS_CUENTA, cuentaVisible } from '@/lib/tipos'
 import { Seccion, Lista, Fila, Monto } from '@/components/seccion'
 import { CifraAnimada } from '@/components/cifra-animada'
 import {
-  TarjetaDestacada, Reparto, DosRepartos,
+  TarjetaDestacada, Reparto, DosRepartos, TresRepartos,
 } from '@/components/tarjeta-destacada'
 
 type CuentaFila = {
@@ -47,7 +47,7 @@ export default async function CuentasPage() {
     supabase.from('cuentas_disponible')
       .select('account_id, saldo, asignado, disponible').eq('owner_id', user.id),
     supabase.from('patrimonio_detalle')
-      .select('por_cobrar, patrimonio')
+      .select('por_cobrar, patrimonio, deudas')
       .eq('owner_id', user.id).maybeSingle(),
     /* Cuál es tu cuenta "Pendiente de ubicar", para esconderla cuando
        está en $0 (ver cuentaVisible en lib/tipos.ts). Va dentro del
@@ -68,6 +68,7 @@ export default async function CuentasPage() {
   const libre = filas.reduce((s, c) => s + Number(c.disponible), 0)
 
   const porCobrar = Number(patri?.por_cobrar ?? 0)
+  const deudas = Number(patri?.deudas ?? 0)
   const patrimonio = Number(patri?.patrimonio ?? 0)
 
   const asignadoPorCuenta = new Map(filas.map((c) => [c.account_id, Number(c.asignado)]))
@@ -110,16 +111,21 @@ export default async function CuentasPage() {
               : undefined}
             retraso={50}
           >
-            <DosRepartos>
-              <Reparto
-                etiqueta="Por cobrar"
-                valor={formatearCOP(porCobrar)}
-              />
-              <Reparto
-                etiqueta="Patrimonio"
-                valor={formatearCOP(patrimonio)}
-              />
-            </DosRepartos>
+            {/* La columna de "Debes" solo sale si debes algo: una
+                columna en $0 ocupa sitio sin decir nada. Antes no existía
+                y una tarjeta de crédito bajaba el patrimonio en silencio. */}
+            {deudas !== 0 ? (
+              <TresRepartos>
+                <Reparto etiqueta="Por cobrar" valor={formatearCOP(porCobrar)} />
+                <Reparto etiqueta="Debes" valor={formatearCOP(Math.abs(deudas))} />
+                <Reparto etiqueta="Patrimonio" valor={formatearCOP(patrimonio)} />
+              </TresRepartos>
+            ) : (
+              <DosRepartos>
+                <Reparto etiqueta="Por cobrar" valor={formatearCOP(porCobrar)} />
+                <Reparto etiqueta="Patrimonio" valor={formatearCOP(patrimonio)} />
+              </DosRepartos>
+            )}
           </TarjetaDestacada>
         </div>
       )}

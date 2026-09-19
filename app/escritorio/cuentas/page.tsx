@@ -2,7 +2,9 @@ import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { formatearCOP } from '@/lib/format'
-import { ETIQUETAS_TIPO, ORDEN_TIPOS_CUENTA, cuentaVisible } from '@/lib/tipos'
+import {
+  ETIQUETAS_TIPO, ORDEN_TIPOS_CUENTA, cuentaVisible, esDeuda,
+} from '@/lib/tipos'
 import { SaldoEditable } from '@/components/saldo-editable'
 
 type CuentaFila = {
@@ -46,7 +48,7 @@ export default async function CuentasEscritorioPage() {
     supabase.from('cuentas_disponible')
       .select('account_id, saldo, asignado, disponible').eq('owner_id', user.id),
     supabase.from('patrimonio_detalle')
-      .select('por_cobrar').eq('owner_id', user.id).maybeSingle(),
+      .select('por_cobrar, deudas').eq('owner_id', user.id).maybeSingle(),
     /* Cuál es tu cuenta "Pendiente de ubicar", para esconderla cuando
        está en $0 (ver cuentaVisible en lib/tipos.ts). Dentro del mismo
        Promise.all: no añade espera. */
@@ -64,6 +66,7 @@ export default async function CuentasEscritorioPage() {
   const disponible = filas.reduce((s, c) => s + Number(c.disponible), 0)
   const asignado = filas.reduce((s, c) => s + Number(c.asignado), 0)
   const porCobrar = Number(patri?.por_cobrar ?? 0)
+  const deudas = Number(patri?.deudas ?? 0)
   const asignadoPorCuenta = new Map(filas.map((c) => [c.account_id, Number(c.asignado)]))
 
   const grupos = new Map<string, CuentaFila[]>()
@@ -115,10 +118,17 @@ export default async function CuentasEscritorioPage() {
         </div>
       ) : (
         <>
-          <div className="mt-6 grid grid-cols-3 gap-4">
+          {/* La cuarta tarjeta solo si debes algo. Con tarjetas de
+              crédito el patrimonio baja, y hasta ahora nada decía por
+              qué: patrimonio_detalle.deudas existía desde 0012 sin que
+              ninguna pantalla lo pintara. */}
+          <div className={`mt-6 grid gap-4 ${deudas !== 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
             <TarjetaResumen etiqueta="Disponible" valor={formatearCOP(disponible)} />
             <TarjetaResumen etiqueta="Comprometido en metas" valor={formatearCOP(asignado)} />
             <TarjetaResumen etiqueta="Por cobrar" valor={formatearCOP(porCobrar)} />
+            {deudas !== 0 && (
+              <TarjetaResumen etiqueta="Debes" valor={formatearCOP(Math.abs(deudas))} />
+            )}
           </div>
 
           {cuentasDinero.length > 0 && (
@@ -185,6 +195,7 @@ function BloqueCuentas({
                         cuentaId={c.account_id}
                         disponible={Number(c.balance) - enMetas}
                         asignado={enMetas}
+                        deuda={esDeuda(c.type)}
                       />
                     </span>
                   ) : (

@@ -18,13 +18,22 @@ export async function ajustarSaldoEscritorio(
   nuevoSaldo: number,
 ): Promise<{ error?: string }> {
   if (!Number.isFinite(nuevoSaldo) || nuevoSaldo < 0) {
-    return { error: 'El saldo no puede ser negativo' }
+    return { error: 'Escribe el saldo en positivo' }
   }
 
   const supabase = await createClient()
+
+  /* En una deuda se escribe lo que se DEBE, en positivo, y el ledger la
+     guarda negativa. La clase se consulta aquí, nunca se acepta del
+     cliente: el signo decide si algo suma o resta al patrimonio. */
+  const { data: cta } = await supabase
+    .from('accounts').select('class').eq('id', cuentaId).maybeSingle()
+
+  const saldoReal = Math.round(cta?.class === 'liability' ? -nuevoSaldo : nuevoSaldo)
+
   const { error } = await supabase.rpc('ajustar_saldo', {
     p_cuenta: cuentaId,
-    p_saldo_real: Math.round(nuevoSaldo),
+    p_saldo_real: saldoReal,
     p_notas: null,
     p_ocurrido_en: new Date().toISOString(),
   })

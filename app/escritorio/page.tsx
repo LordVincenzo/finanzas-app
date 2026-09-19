@@ -6,7 +6,9 @@ import {
 } from '@/lib/format'
 import { NOMBRE_TIPO, presentarMovimiento, type Movimiento } from '@/lib/movimientos'
 import { BarraProgreso } from '@/components/barra-progreso'
-import { TarjetaDestacada, Reparto, TresRepartos } from '@/components/tarjeta-destacada'
+import {
+  TarjetaDestacada, Reparto, TresRepartos, CuatroRepartos,
+} from '@/components/tarjeta-destacada'
 import { GraficaBarrasComparadas } from '@/components/grafica-barras-comparadas'
 
 const MAX_MOVIMIENTOS = 8
@@ -35,7 +37,7 @@ export default async function PanoramaPage() {
     { data: movsDelMes },
   ] = await Promise.all([
     supabase.from('patrimonio_detalle')
-      .select('por_cobrar, patrimonio')
+      .select('por_cobrar, patrimonio, deudas')
       .eq('owner_id', user.id).maybeSingle(),
     supabase.from('cuentas_disponible')
       .select('saldo, asignado, disponible').eq('owner_id', user.id),
@@ -74,6 +76,7 @@ export default async function PanoramaPage() {
 
   const patrimonio = Number(patri?.patrimonio ?? 0)
   const porCobrarPatrimonio = Number(patri?.por_cobrar ?? 0)
+  const deudas = Number(patri?.deudas ?? 0)
 
   const filasCuentas = cuentas ?? []
   const disponible = filasCuentas.reduce((s, c) => s + Number(c.disponible), 0)
@@ -150,11 +153,25 @@ export default async function PanoramaPage() {
       ) : (
         <>
           <TarjetaDestacada etiqueta="Patrimonio" valor={formatearCOP(patrimonio)}>
-            <TresRepartos>
-              <Reparto etiqueta="Disponible" valor={formatearCOP(disponible)} />
-              <Reparto etiqueta="Comprometido en metas" valor={formatearCOP(asignado)} />
-              <Reparto etiqueta="Por cobrar" valor={formatearCOP(porCobrarPatrimonio)} />
-            </TresRepartos>
+            {/* La cuarta columna solo aparece si debes algo. Hasta que
+                se pudieron crear tarjetas de crédito, patrimonio_detalle
+                .deudas existía desde 0012 sin que ninguna pantalla lo
+                pintara — y una deuda baja el patrimonio sin decir por
+                qué. Si no debes nada, una columna con $0 solo estorba. */}
+            {deudas !== 0 ? (
+              <CuatroRepartos>
+                <Reparto etiqueta="Disponible" valor={formatearCOP(disponible)} />
+                <Reparto etiqueta="En metas" valor={formatearCOP(asignado)} />
+                <Reparto etiqueta="Por cobrar" valor={formatearCOP(porCobrarPatrimonio)} />
+                <Reparto etiqueta="Debes" valor={formatearCOP(Math.abs(deudas))} />
+              </CuatroRepartos>
+            ) : (
+              <TresRepartos>
+                <Reparto etiqueta="Disponible" valor={formatearCOP(disponible)} />
+                <Reparto etiqueta="Comprometido en metas" valor={formatearCOP(asignado)} />
+                <Reparto etiqueta="Por cobrar" valor={formatearCOP(porCobrarPatrimonio)} />
+              </TresRepartos>
+            )}
           </TarjetaDestacada>
 
           <div className="mt-6">

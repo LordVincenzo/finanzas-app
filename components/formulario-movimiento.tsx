@@ -4,8 +4,9 @@ import { useActionState, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { registrarMovimiento, type EstadoMovimiento } from '@/app/(app)/movimientos/actions'
 import type { Origen } from '@/lib/interfaz'
+import { esDeuda } from '@/lib/tipos'
 
-type Cuenta = { id: string; name: string }
+type Cuenta = { id: string; name: string; type?: string }
 
 const TIPOS = [
   { valor: 'expense',    etiqueta: 'Gasto' },
@@ -61,6 +62,15 @@ export function FormularioMovimiento({
   const [editarFecha, setEditarFecha] = useState(false)
   const [estado, accion, enviando] = useActionState(registrarMovimiento, estadoInicial)
 
+  /* Qué cuenta está elegida, para saber si es una deuda: ajustar una
+     tarjeta no es "cuánto dinero hay" sino "cuánto debes". El número se
+     escribe siempre en positivo; el signo lo pone el servidor, que
+     consulta la clase en la base en vez de fiarse del formulario. */
+  const [cuentaId, setCuentaId] = useState(cuentas[0]?.id ?? '')
+  const esDeudaSeleccionada = esDeuda(
+    cuentas.find((c) => c.id === cuentaId)?.type ?? ''
+  )
+
   const esAjuste = tipo === 'adjustment'
   const esTransferencia = tipo === 'transfer'
   const categorias = tipo === 'income' ? categoriasIngreso : categoriasGasto
@@ -94,7 +104,9 @@ export function FormularioMovimiento({
       {/* Monto: el campo protagonista, con el signo de peso siempre visible */}
       <div>
         <label htmlFor="monto" className="mb-1.5 block text-sm font-medium">
-          {esAjuste ? 'Saldo real de la cuenta' : 'Monto'}
+          {esAjuste
+            ? (esDeudaSeleccionada ? 'Cuánto debes ahora' : 'Saldo real de la cuenta')
+            : 'Monto'}
         </label>
         <div className="flex items-center rounded-lg border
                         focus-within:ring-2 focus-within:ring-ring">
@@ -113,7 +125,9 @@ export function FormularioMovimiento({
         </div>
         <p className="mt-1.5 text-xs text-muted-foreground">
           {esAjuste
-            ? 'Cuánto dinero hay realmente. Registraremos la diferencia.'
+            ? (esDeudaSeleccionada
+                ? 'Lo que debes hoy, en positivo. Registraremos la diferencia.'
+                : 'Cuánto dinero hay realmente. Registraremos la diferencia.')
             : 'Puedes escribir 20k.'}
         </p>
       </div>
@@ -123,7 +137,8 @@ export function FormularioMovimiento({
         id="cuenta"
         etiqueta={tipo === 'income' ? 'Entra a' : esTransferencia ? 'Sale de' : 'Cuenta'}
       >
-        <Selector id="cuenta" nombre="cuenta" opciones={cuentas} />
+        <Selector id="cuenta" nombre="cuenta" opciones={cuentas}
+                  onChange={setCuentaId} />
       </Campo>
 
       {/* Contraparte: categoría o cuenta destino */}
@@ -245,16 +260,19 @@ function Campo({
  * en el celular y es accesible sin que tengamos que reimplementarlo.
  */
 function Selector({
-  id, nombre, opciones,
+  id, nombre, opciones, onChange,
 }: {
   id: string
   nombre: string
   opciones: Cuenta[]
+  /** Solo lo usa el selector de cuenta, para saber si es una deuda. */
+  onChange?: (valor: string) => void
 }) {
   return (
     <div className="relative">
       <select
         id={id} name={nombre} required
+        onChange={onChange ? (e) => onChange(e.target.value) : undefined}
         className="min-h-12 w-full appearance-none rounded-lg border
                    bg-transparent pl-3.5 pr-10 text-[15px]
                    focus:outline-none focus:ring-2 focus:ring-ring"

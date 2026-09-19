@@ -66,11 +66,21 @@ export async function registrarMovimiento(
 
   // ---- Ajuste: camino aparte, recibe el saldo real ----------------
   if (tipo === 'adjustment') {
-    if (monto < 0) return { error: 'El saldo no puede ser negativo' }
+    if (monto < 0) return { error: 'Escribe el saldo en positivo' }
+
+    /* En una deuda la persona escribe lo que DEBE, en positivo, y el
+       ledger la necesita negativa. La clase se consulta en la base, no
+       se acepta del formulario: si el signo dependiera de un campo que
+       viaja por la red, manipularlo convertiría una deuda en dinero y
+       el patrimonio saldría al revés. */
+    const { data: cta } = await supabase
+      .from('accounts').select('class').eq('id', cuenta).maybeSingle()
+
+    const saldoReal = cta?.class === 'liability' ? -monto : monto
 
     const { error } = await supabase.rpc('ajustar_saldo', {
       p_cuenta: cuenta,
-      p_saldo_real: monto,
+      p_saldo_real: saldoReal,
       p_notas: notas || null,
       p_ocurrido_en: ocurridoEn,
     })

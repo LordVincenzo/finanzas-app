@@ -34,10 +34,12 @@ export default async function InicioPage() {
   ] = await Promise.all([
     supabase.from('profiles')
       .select('display_name, avatar_url').eq('id', user.id).single(),
-    // Solo las dos columnas que se pintan. Las otras cuatro (liquido,
-    // ahorros, inversiones, deudas) se pedían y no se usaban.
+    // Las partes del patrimonio que se pintan en la tarjeta. Entre las
+    // cuatro suman el total de arriba: eso es lo que hace que la cifra
+    // grande se pueda comprobar de un vistazo en vez de tener que
+    // creerla.
     supabase.from('patrimonio_detalle')
-      .select('por_cobrar, patrimonio')
+      .select('por_cobrar, deudas, otros, patrimonio')
       .eq('owner_id', user.id).maybeSingle(),
     // La misma vista que usa /ahorros. Ella ya sabe cuánto de cada cuenta
     // está comprometido en metas; duplicar ese cálculo aquí sería pedir
@@ -119,6 +121,10 @@ export default async function InicioPage() {
 
   const total = Number(detalle?.patrimonio ?? 0)
   const porCobrar = Number(detalle?.por_cobrar ?? 0)
+  /* Las dos partes que faltaban en el desglose: sin ellas, la tarjeta
+     enseñaba un patrimonio que no cuadraba con sus propios repartos. */
+  const deudas = Number(detalle?.deudas ?? 0)
+  const otros = Number(detalle?.otros ?? 0)
 
   // Tres cifras distintas, no una:
   //   saldo      lo que hay en las cuentas
@@ -210,6 +216,8 @@ export default async function InicioPage() {
             patrimonio={total}
             libre={libre}
             porCobrar={porCobrar}
+            deudas={deudas}
+            otros={otros}
             comprometido={comprometido}
             enCuentas={enCuentas}
             cuentas={cuentasWallet}

@@ -10,9 +10,7 @@ import { formatearCOP } from '@/lib/format'
 import { useReducido, usePreferenciaLocal } from '@/lib/navegador'
 import { Monto } from '@/components/seccion'
 import { CifraAnimada } from '@/components/cifra-animada'
-import {
-  TarjetaDestacada, Reparto, DosRepartos,
-} from '@/components/tarjeta-destacada'
+import { TarjetaDestacada, Reparto } from '@/components/tarjeta-destacada'
 
 type Icono = React.ComponentType<{ className?: string }>
 
@@ -76,11 +74,18 @@ function estiloDeRango(k: number) {
  * tapada, y un Server Component no puede reaccionar a ese estado.
  */
 export function CarruselPatrimonio({
-  patrimonio, libre, porCobrar, comprometido, enCuentas, cuentas,
+  patrimonio, libre, porCobrar, deudas, otros, comprometido, enCuentas, cuentas,
 }: {
   patrimonio: number
   libre: number
   porCobrar: number
+  /** Ya viene NEGATIVO: una deuda es un saldo negativo, y de esa regla
+   *  sale que el patrimonio se calcule sumando y no restando. */
+  deudas: number
+  /** Lo que es tuyo y no encaja en las otras casillas — hoy, «Pendiente
+   *  de ubicar». Estaba dentro del patrimonio y fuera del desglose, así
+   *  que las partes no sumaban el total. */
+  otros: number
   comprometido: number
   enCuentas: number
   cuentas: CuentaWallet[]
@@ -133,35 +138,68 @@ export function CarruselPatrimonio({
 
   const transicion = reducido ? 'none' : 'transform 320ms ease, opacity 320ms ease'
 
+  /* Qué se enseña debajo del patrimonio.
+   *
+   * POR QUÉ NO ES UNA LISTA FIJA. Antes eran "Disponible" y, si había,
+   * "Por cobrar". Las deudas no salían por ninguna parte, así que con
+   * una tarjeta de crédito usada la tarjeta decía Patrimonio $5,48M y
+   * Disponible $5,86M: dos cifras que no cuadran y nada que lo
+   * explique. En una app de finanzas, un número que no cuadra hace
+   * dudar de todos los demás.
+   *
+   * Ahora sale cada parte que no esté en cero, y entre todas suman el
+   * patrimonio de arriba. Cuando solo hay una, se lee como antes. */
+  const partes: React.ReactNode[] = []
+
+  const soloDisponible = porCobrar === 0 && deudas === 0 && otros === 0
+
+  partes.push(
+    <Reparto
+      key="disponible"
+      etiqueta={soloDisponible ? 'Disponible para gastar' : 'Disponible'}
+      valor={oculto ? MASCARA : formatearCOP(libre)}
+      nota={!oculto && comprometido > 0
+        ? soloDisponible
+          ? `De ${formatearCOP(enCuentas)} en cuentas, ${formatearCOP(comprometido)} reservados en metas`
+          : `+ ${formatearCOP(comprometido)} en metas`
+        : undefined}
+    />
+  )
+
+  if (porCobrar > 0) {
+    partes.push(
+      <Reparto key="porcobrar" etiqueta="Por cobrar"
+               valor={oculto ? MASCARA : formatearCOP(porCobrar)} />
+    )
+  }
+
+  /* `deudas` ya viene negativo —una deuda es un saldo negativo, de esa
+     regla sale todo lo demás— así que formatearCOP le pone el signo y
+     no hay que darle la vuelta a nada aquí. El signo dice lo que hay
+     que decir sin depender de un color, que en esta tarjeta va sobre
+     fondo oscuro y no se lee igual. */
+  if (deudas !== 0) {
+    partes.push(
+      <Reparto key="deudas" etiqueta="Deudas"
+               valor={oculto ? MASCARA : formatearCOP(deudas)} />
+    )
+  }
+
+  if (otros !== 0) {
+    partes.push(
+      <Reparto key="otros" etiqueta="Por ubicar"
+               valor={oculto ? MASCARA : formatearCOP(otros)}
+               nota={oculto ? undefined : 'De una liquidación con tu pareja'} />
+    )
+  }
+
   const resumen = (
     <div className="relative h-full w-full">
       <TarjetaDestacada
         etiqueta="Patrimonio"
         valor={oculto ? MASCARA : <CifraAnimada valor={patrimonio} />}
       >
-        {porCobrar > 0 ? (
-          <DosRepartos>
-            <Reparto
-              etiqueta="Disponible"
-              valor={oculto ? MASCARA : formatearCOP(libre)}
-              nota={!oculto && comprometido > 0
-                ? `+ ${formatearCOP(comprometido)} en metas`
-                : undefined}
-            />
-            <Reparto
-              etiqueta="Por cobrar"
-              valor={oculto ? MASCARA : formatearCOP(porCobrar)}
-            />
-          </DosRepartos>
-        ) : (
-          <Reparto
-            etiqueta="Disponible para gastar"
-            valor={oculto ? MASCARA : formatearCOP(libre)}
-            nota={!oculto && comprometido > 0
-              ? `De ${formatearCOP(enCuentas)} en cuentas, ${formatearCOP(comprometido)} reservados en metas`
-              : undefined}
-          />
-        )}
+        <Partes>{partes}</Partes>
       </TarjetaDestacada>
 
       {/* ARRIBA, no abajo. Estaban en `bottom-3 right-3`, encima de la
@@ -294,6 +332,39 @@ function TarjetaCuentaWallet({
           </>
         )}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Las partes del patrimonio, de una a cuatro.
+ *
+ * Siempre dos columnas, no una por parte. En un celular, cuatro cifras
+ * en pesos colombianos en la misma fila salen a unos 85px cada una y
+ * "$1.200.000" no cabe: se corta y se lee "$1.200.00", que es un número
+ * distinto y creíble. Dos columnas y dos filas es más alto pero legible,
+ * y la altura aquí sobra.
+ *
+ * Una sola parte ocupa el ancho entero, como antes.
+ */
+function Partes({ children }: { children: React.ReactNode[] }) {
+  if (children.length === 1) return <>{children}</>
+
+  const filas: React.ReactNode[][] = []
+  for (let i = 0; i < children.length; i += 2) {
+    filas.push(children.slice(i, i + 2))
+  }
+
+  return (
+    <div className="divide-y divide-destacado">
+      {filas.map((fila, i) => (
+        <div key={i}
+             className={fila.length === 2
+               ? 'grid grid-cols-2 divide-x divide-destacado'
+               : ''}>
+          {fila}
+        </div>
+      ))}
     </div>
   )
 }

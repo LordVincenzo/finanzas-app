@@ -18,7 +18,21 @@ Ninguna dependencia de terceros: ni librería de red, ni de JSON, ni de
 interfaz. Solo el SDK de Android y lo que trae el JDK. En una app que ve
 tus notificaciones, cada librería es algo más que auditar.
 
-## Compilar e instalar
+## Compilar SIN instalar nada (recomendado)
+
+Android Studio pide unos 8 GB de RAM. Si tu PC no da, GitHub lo compila
+por ti:
+
+1. Sube la rama: `git push`
+2. En GitHub → pestaña **Actions** → **APK de Android** → **Run workflow**
+3. Cuando termine (unos 3 minutos), entra a la ejecución y descarga
+   **oyente-finanzas-apk** de la sección *Artifacts*
+4. Descomprime, pasa el `.apk` al celular e instálalo (te pedirá
+   permitir «orígenes desconocidos»)
+
+El mismo APK sirve para los dos teléfonos.
+
+## Compilar en tu PC (si tienes Android Studio)
 
 1. Abre **Android Studio** → *Open* → elige la carpeta `android/` de
    este proyecto (no la raíz).

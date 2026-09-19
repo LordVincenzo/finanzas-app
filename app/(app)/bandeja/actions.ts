@@ -67,15 +67,31 @@ export async function confirmarMensaje(
   // qué lado es cuál, nunca el cliente.
   const { origen, destino } = ladosDelMovimiento(tipo, cuenta, contraparte)
 
+  /* Una transferencia entre cuentas propias llegó como DOS avisos que
+     la 0024 enlazó. Si la persona confirma que son lo mismo, se crea UN
+     movimiento de tipo transfer y se marcan los dos mensajes — si no,
+     el historial mostraría un gasto y un ingreso que se anulan, y
+     "gastos del mes" e "ingresos del mes" saldrían inflados por el
+     mismo importe. */
+  const esPareja = formData.get('pareja') === '1'
+
   const supabase = await createClient()
-  const { error } = await supabase.rpc('confirmar_ingesta', {
-    p_id: datos.data.id,
-    p_tipo: tipo,
-    p_monto: monto,
-    p_cuenta_origen: origen,
-    p_cuenta_destino: destino,
-    p_descripcion: datos.data.descripcion,
-  })
+  const { error } = esPareja
+    ? await supabase.rpc('confirmar_pareja_ingesta', {
+        p_id: datos.data.id,
+        p_monto: monto,
+        p_cuenta_origen: origen,
+        p_cuenta_destino: destino,
+        p_descripcion: datos.data.descripcion,
+      })
+    : await supabase.rpc('confirmar_ingesta', {
+        p_id: datos.data.id,
+        p_tipo: tipo,
+        p_monto: monto,
+        p_cuenta_origen: origen,
+        p_cuenta_destino: destino,
+        p_descripcion: datos.data.descripcion,
+      })
 
   if (error) return { error: traducir(error.message) }
 

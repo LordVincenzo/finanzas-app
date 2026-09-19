@@ -20,6 +20,13 @@ export type MensajeBandeja = {
   direccion: 'salida' | 'entrada' | null
   cuenta_id: string | null
   categoria_id: string | null
+  /* Cuando una transferencia entre cuentas propias dispara dos avisos,
+     la 0024 los enlaza. Aquí viene el otro lado, para poder ofrecer
+     "esto es una sola transferencia" sin otra consulta. */
+  pareja_id: string | null
+  pareja_fuente: string | null
+  pareja_texto: string | null
+  pareja_direccion: 'salida' | 'entrada' | null
 }
 
 export type Dispositivo = {
@@ -49,7 +56,7 @@ export async function cargarBandeja(): Promise<DatosBandeja> {
     { data: todas },
   ] = await Promise.all([
     supabase.from('bandeja_pendiente')
-      .select('id, fuente, texto, recibido_en, monto, comercio, direccion, cuenta_id, categoria_id')
+      .select('id, fuente, texto, recibido_en, monto, comercio, direccion, cuenta_id, categoria_id, pareja_id, pareja_fuente, pareja_texto, pareja_direccion')
       .eq('owner_id', user.id),
     supabase.from('ingest_tokens')
       .select('id, nombre, created_at, last_used_at')
@@ -73,8 +80,24 @@ export async function cargarBandeja(): Promise<DatosBandeja> {
         && !['receivable', 'partner_receivable'].includes(a.type)
   )
 
+  /* Una pareja son dos avisos del MISMO movimiento, así que se enseña
+     una sola tarjeta: la del lado que SALIÓ. Es la que suele traer el
+     nombre de quien recibe ("a Juan Pérez"), y "enviaste" es la acción
+     que hiciste tú. Confirmar esa cierra las dos, porque
+     confirmar_pareja_ingesta() marca ambas.
+
+     Si por lo que sea las dos fueran del mismo sentido, no se esconde
+     ninguna: mejor dos tarjetas de más que un movimiento desaparecido. */
+  const todos = (mensajes ?? []) as MensajeBandeja[]
+  const ocultas = new Set(
+    todos
+      .filter((m) => m.pareja_id && m.direccion === 'entrada'
+                  && m.pareja_direccion === 'salida')
+      .map((m) => m.id)
+  )
+
   return {
-    mensajes: (mensajes ?? []) as MensajeBandeja[],
+    mensajes: todos.filter((m) => !ocultas.has(m.id)),
     dispositivos: (dispositivos ?? []) as Dispositivo[],
     cuentas: cuentas.map((a) => ({ id: a.id, name: a.name })),
     categoriasGasto: (todas ?? [])

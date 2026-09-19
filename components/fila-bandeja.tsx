@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, ArrowLeftRight } from 'lucide-react'
 import {
   confirmarMensaje, ignorarMensaje, type EstadoBandeja,
 } from '@/app/(app)/bandeja/actions'
@@ -51,12 +51,22 @@ export function FilaBandeja({
   const [ignorar, accionIgnorar, ignorando] =
     useActionState(ignorarMensaje, estadoInicial)
 
+  /* ¿Llegó con pareja? Entonces los dos avisos son, probablemente, una
+     sola transferencia tuya entre cuentas propias. Se propone tratarlos
+     así, pero se PREGUNTA: decidirlo solo sería la suposición
+     silenciosa que esta bandeja existe para evitar. */
+  const tienePareja = Boolean(mensaje.pareja_id && mensaje.pareja_texto)
+  const [comoPareja, setComoPareja] = useState(tienePareja)
+
   /* Si el lector dijo que entró dinero, se propone "Ingreso"; si dijo
      que salió o no dijo nada, "Gasto", que es lo más frecuente. */
-  const [tipo, setTipo] = useState<string>(
+  const [tipoElegido, setTipo] = useState<string>(
     mensaje.direccion === 'entrada' ? 'income' : 'expense'
   )
 
+  // Tratarlos como uno solo obliga al tipo: es un traslado entre dos
+  // cuentas tuyas, no un gasto ni un ingreso.
+  const tipo = comoPareja ? 'transfer' : tipoElegido
   const esTransferencia = tipo === 'transfer'
   const categorias = tipo === 'income' ? categoriasIngreso : categoriasGasto
   const contrapartes = esTransferencia ? cuentas : categorias
@@ -81,17 +91,70 @@ export function FilaBandeja({
 
       <p className="mt-1.5 text-[14px] leading-snug">{mensaje.texto}</p>
 
+      {/* La pareja: el otro aviso del mismo movimiento. */}
+      {tienePareja && (
+        <div className="mt-3 rounded-xl bg-muted p-3">
+          <div className="flex items-start gap-2">
+            <ArrowLeftRight className="mt-0.5 size-4 shrink-0
+                                       text-muted-foreground" />
+            <div className="min-w-0">
+              <p className="text-[13px] font-medium">
+                Parece una transferencia tuya
+              </p>
+              <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">
+                <span className="uppercase">{mensaje.pareja_fuente}</span>
+                {' avisó a la vez: '}
+                {mensaje.pareja_texto}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-2.5 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setComoPareja(true)}
+              aria-pressed={comoPareja}
+              className={`min-h-9 flex-1 rounded-lg text-[12px] font-medium
+                          transition ${comoPareja
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-background text-muted-foreground'}`}
+            >
+              Es una sola
+            </button>
+            <button
+              type="button"
+              onClick={() => setComoPareja(false)}
+              aria-pressed={!comoPareja}
+              className={`min-h-9 flex-1 rounded-lg text-[12px] font-medium
+                          transition ${!comoPareja
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-background text-muted-foreground'}`}
+            >
+              Son dos cosas
+            </button>
+          </div>
+
+          <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+            {comoPareja
+              ? 'Se registrará un solo traslado entre tus cuentas, y los dos avisos quedarán resueltos.'
+              : 'Se registrará solo este aviso. El otro seguirá esperando en la bandeja.'}
+          </p>
+        </div>
+      )}
+
       <form action={accionConfirmar} className="mt-4 space-y-2.5">
         <input type="hidden" name="id" value={mensaje.id} />
         <input type="hidden" name="tipo" value={tipo} />
+        {comoPareja && <input type="hidden" name="pareja" value="1" />}
 
         <div className="flex gap-2">
           <div className="relative w-36 shrink-0">
             <select
               value={tipo}
               onChange={(e) => setTipo(e.target.value)}
+              disabled={comoPareja}
               aria-label="Tipo de movimiento"
-              className={SELECT}
+              className={`${SELECT} disabled:opacity-60`}
             >
               {TIPOS.map((t) => (
                 <option key={t.valor} value={t.valor}>{t.etiqueta}</option>
@@ -177,7 +240,9 @@ export function FilaBandeja({
                        font-medium text-primary-foreground shadow-card
                        transition active:scale-[0.99] disabled:opacity-50"
           >
-            {confirmando ? 'Registrando…' : 'Confirmar'}
+            {confirmando
+              ? 'Registrando…'
+              : comoPareja ? 'Confirmar el traslado' : 'Confirmar'}
           </button>
         </div>
       </form>

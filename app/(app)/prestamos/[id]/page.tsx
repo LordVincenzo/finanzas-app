@@ -5,6 +5,7 @@ import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { formatearCOP, formatearFecha } from '@/lib/format'
 import { BarraProgreso } from '@/components/barra-progreso'
 import { FormularioAbono } from '@/components/formulario-abono'
+import { BotonAccion } from '@/components/boton-accion'
 import { Seccion, Lista } from '@/components/seccion'
 import { eliminarAbono, eliminarPrestamo } from '../actions'
 
@@ -168,14 +169,16 @@ export default async function DetallePrestamoPage({
                     {a.note ? ` · ${a.note}` : ''}
                   </p>
                 </div>
-                <form action={eliminarAbono}>
-                  <input type="hidden" name="id" value={a.id} />
-                  <input type="hidden" name="prestamo" value={id} />
-                  <button className="shrink-0 text-[12px] text-destructive
-                                     underline">
-                    Deshacer
-                  </button>
-                </form>
+                <BotonAccion
+                  accion={eliminarAbono}
+                  campos={{ id: a.id, prestamo: id }}
+                  claseFormulario="shrink-0"
+                  claseError="text-right"
+                  className="text-[12px] text-destructive underline
+                             disabled:opacity-50"
+                >
+                  Deshacer
+                </BotonAccion>
               </div>
             ))}
           </Lista>
@@ -183,12 +186,15 @@ export default async function DetallePrestamoPage({
       )}
 
       {/* Siempre disponible: un préstamo mal registrado debe poder borrarse */}
-      <form action={eliminarPrestamo} className="mt-8">
-        <input type="hidden" name="id" value={id} />
-        <button className="text-[13px] text-destructive underline">
-          Eliminar préstamo
-        </button>
-      </form>
+      <BotonAccion
+        accion={eliminarPrestamo}
+        campos={{ id }}
+        textoEnviando="Eliminando…"
+        claseFormulario="mt-8"
+        className="text-[13px] text-destructive underline disabled:opacity-50"
+      >
+        Eliminar préstamo
+      </BotonAccion>
     </main>
   )
 }

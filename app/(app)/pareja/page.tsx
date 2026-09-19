@@ -8,6 +8,7 @@ import {
   eliminarLiquidacion,
 } from './actions'
 import { AvisoPendienteUbicar } from '@/components/aviso-pendiente-ubicar'
+import { BotonAccion } from '@/components/boton-accion'
 import { FormularioGastoCompartido } from '@/components/formulario-gasto-compartido'
 import { FormularioLiquidar } from '@/components/formulario-liquidar'
 import { Seccion, Lista, Fila } from '@/components/seccion'
@@ -57,22 +58,27 @@ export default async function ParejaPage() {
                 <span className="font-medium">{inv.inviter_name}</span> quiere
                 vincularse contigo.
               </p>
-              <div className="mt-3 flex gap-2">
-                <form action={aceptar} className="flex-1">
-                  <input type="hidden" name="id" value={inv.id} />
-                  <button className="min-h-10 w-full rounded-xl bg-primary
-                                     text-[13px] font-medium
-                                     text-primary-foreground">
-                    Aceptar
-                  </button>
-                </form>
-                <form action={rechazar} className="flex-1">
-                  <input type="hidden" name="id" value={inv.id} />
-                  <button className="min-h-10 w-full rounded-xl border
-                                     text-[13px]">
-                    Rechazar
-                  </button>
-                </form>
+              <div className="mt-3 flex items-start gap-2">
+                <BotonAccion
+                  accion={aceptar}
+                  campos={{ id: inv.id }}
+                  textoEnviando="Aceptando…"
+                  claseFormulario="flex-1"
+                  className="min-h-10 w-full rounded-xl bg-primary text-[13px]
+                             font-medium text-primary-foreground
+                             disabled:opacity-50"
+                >
+                  Aceptar
+                </BotonAccion>
+                <BotonAccion
+                  accion={rechazar}
+                  campos={{ id: inv.id }}
+                  claseFormulario="flex-1"
+                  className="min-h-10 w-full rounded-xl border border-border
+                             text-[13px] disabled:opacity-50"
+                >
+                  Rechazar
+                </BotonAccion>
               </div>
             </div>
           ))}
@@ -104,13 +110,15 @@ export default async function ParejaPage() {
                       titulo={inv.invitee_email}
                       detalle="Pendiente"
                       valor={
-                        <form action={cancelar}>
-                          <input type="hidden" name="id" value={inv.id} />
-                          <button className="text-[12px] font-medium
-                                             text-destructive">
-                            Cancelar
-                          </button>
-                        </form>
+                        <BotonAccion
+                          accion={cancelar}
+                          campos={{ id: inv.id }}
+                          claseError="text-right"
+                          className="text-[12px] font-medium text-destructive
+                                     disabled:opacity-50"
+                        >
+                          Cancelar
+                        </BotonAccion>
                       }
                     />
                   ))}
@@ -210,13 +218,16 @@ export default async function ParejaPage() {
                       valor={formatearCOP(Number(g.total_amount))}
                       extra={
                         g.payer_id === yo ? (
-                          <form action={eliminarGastoCompartido}>
-                            <input type="hidden" name="id" value={g.id} />
-                            <button className="shrink-0 pl-2 text-[12px]
-                                               font-medium text-destructive">
-                              Quitar
-                            </button>
-                          </form>
+                          <BotonAccion
+                            accion={eliminarGastoCompartido}
+                            campos={{ id: g.id }}
+                            claseFormulario="shrink-0 pl-2"
+                            claseError="text-right"
+                            className="text-[12px] font-medium text-destructive
+                                       disabled:opacity-50"
+                          >
+                            Quitar
+                          </BotonAccion>
                         ) : undefined
                       }
                     />
@@ -243,13 +254,16 @@ export default async function ParejaPage() {
                       detalle={`${formatearFecha(l.occurred_on)}${l.note ? ` · ${l.note}` : ''}`}
                       valor={formatearCOP(Number(l.amount))}
                       extra={
-                        <form action={eliminarLiquidacion}>
-                          <input type="hidden" name="id" value={l.id} />
-                          <button className="shrink-0 pl-2 text-[12px]
-                                             font-medium text-destructive">
-                            Quitar
-                          </button>
-                        </form>
+                        <BotonAccion
+                          accion={eliminarLiquidacion}
+                          campos={{ id: l.id }}
+                          claseFormulario="shrink-0 pl-2"
+                          claseError="text-right"
+                          className="text-[12px] font-medium text-destructive
+                                     disabled:opacity-50"
+                        >
+                          Quitar
+                        </BotonAccion>
                       }
                     />
                   ))}
@@ -324,11 +338,16 @@ export default async function ParejaPage() {
             </div>
           </Seccion>
 
-          <form action={salir} className="mt-8 px-1">
-            <button className="text-[13px] font-medium text-destructive">
-              Desvincular
-            </button>
-          </form>
+          <BotonAccion
+            accion={salir}
+            campos={{}}
+            textoEnviando="Desvinculando…"
+            claseFormulario="mt-8 px-1"
+            className="text-[13px] font-medium text-destructive
+                       disabled:opacity-50"
+          >
+            Desvincular
+          </BotonAccion>
         </>
       )}
     </main>

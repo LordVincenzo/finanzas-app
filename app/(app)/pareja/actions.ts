@@ -34,47 +34,82 @@ export async function invitar(
   return { ok: 'Invitación enviada' }
 }
 
-export async function aceptar(formData: FormData) {
+/* Todas devuelven estado en vez de lanzar o de tragarse el error.
+   Antes: aceptar() y salir() lanzaban —se veía la pantalla de error de
+   Next en vez del motivo—, y rechazar(), cancelar(),
+   cambiarVisibilidad(), eliminarGastoCompartido() y eliminarLiquidacion()
+   descartaban el error del RPC, así que la pantalla se recargaba igual y
+   parecía que había funcionado. Lo segundo es peor en una app de dinero:
+   crees que borraste un gasto compartido y sigue en los dos ledgers. */
+
+export async function aceptar(
+  _previo: EstadoPareja,
+  formData: FormData
+): Promise<EstadoPareja> {
   const id = String(formData.get('id') ?? '')
   const supabase = await createClient()
   const { error } = await supabase.rpc('aceptar_invitacion', { p_id: id })
-  if (error) throw new Error(traducir(error.message))
+  if (error) return { error: traducir(error.message) }
   revalidarLedger()
+  return { ok: 'Vinculados' }
 }
 
-export async function rechazar(formData: FormData) {
+export async function rechazar(
+  _previo: EstadoPareja,
+  formData: FormData
+): Promise<EstadoPareja> {
   const id = String(formData.get('id') ?? '')
   const supabase = await createClient()
-  await supabase.rpc('rechazar_invitacion', { p_id: id })
+  const { error } = await supabase.rpc('rechazar_invitacion', { p_id: id })
+  if (error) return { error: traducir(error.message) }
   revalidarLedger()
+  return {}
 }
 
-export async function cancelar(formData: FormData) {
+export async function cancelar(
+  _previo: EstadoPareja,
+  formData: FormData
+): Promise<EstadoPareja> {
   const id = String(formData.get('id') ?? '')
   const supabase = await createClient()
-  await supabase.rpc('cancelar_invitacion', { p_id: id })
+  const { error } = await supabase.rpc('cancelar_invitacion', { p_id: id })
+  if (error) return { error: traducir(error.message) }
   revalidarLedger()
+  return {}
 }
 
-export async function salir() {
+export async function salir(
+  _previo: EstadoPareja,
+  _formData: FormData
+): Promise<EstadoPareja> {
   const supabase = await createClient()
   const { error } = await supabase.rpc('salir_pareja')
-  if (error) throw new Error(traducir(error.message))
+  if (error) return { error: traducir(error.message) }
   revalidarLedger()
+  return {}
 }
 
 /** Cambia una cuenta entre privada y compartida. */
-export async function cambiarVisibilidad(formData: FormData) {
+export async function cambiarVisibilidad(
+  _previo: EstadoPareja,
+  formData: FormData
+): Promise<EstadoPareja> {
   const id = String(formData.get('id') ?? '')
   const nueva = String(formData.get('visibilidad') ?? '')
 
-  if (nueva !== 'private' && nueva !== 'shared_view') return
+  if (nueva !== 'private' && nueva !== 'shared_view') {
+    return { error: 'Visibilidad no válida' }
+  }
 
   const supabase = await createClient()
   // El RLS ya garantiza que solo puedas tocar tus propias cuentas.
-  await supabase.from('accounts').update({ visibility: nueva }).eq('id', id)
+  const { error } = await supabase
+    .from('accounts').update({ visibility: nueva }).eq('id', id)
+
+  if (error) return { error: traducir(error.message) }
 
   revalidarLedger()
+  return {}
 }
 
 export async function crearGastoCompartido(
@@ -139,11 +174,16 @@ export async function liquidar(
   return { ok: 'Liquidación registrada' }
 }
 
-export async function eliminarGastoCompartido(formData: FormData) {
+export async function eliminarGastoCompartido(
+  _previo: EstadoPareja,
+  formData: FormData
+): Promise<EstadoPareja> {
   const id = String(formData.get('id') ?? '')
   const supabase = await createClient()
-  await supabase.rpc('eliminar_gasto_compartido', { p_id: id })
+  const { error } = await supabase.rpc('eliminar_gasto_compartido', { p_id: id })
+  if (error) return { error: traducir(error.message) }
   revalidarLedger()
+  return {}
 }
 
 /**
@@ -157,10 +197,14 @@ export async function eliminarGastoCompartido(formData: FormData) {
  * La puede borrar cualquiera de los dos, no solo quien pagó: cualquiera
  * pudo haberla registrado (el formulario cubre "yo pago" y "me pagan").
  */
-export async function eliminarLiquidacion(formData: FormData) {
+export async function eliminarLiquidacion(
+  _previo: EstadoPareja,
+  formData: FormData
+): Promise<EstadoPareja> {
   const id = String(formData.get('id') ?? '')
   const supabase = await createClient()
   const { error } = await supabase.rpc('eliminar_liquidacion', { p_id: id })
-  if (error) throw new Error(traducir(error.message))
+  if (error) return { error: traducir(error.message) }
   revalidarLedger()
+  return {}
 }

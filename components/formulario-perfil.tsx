@@ -76,8 +76,9 @@ export function FormularioPerfil({
 
       <button
         type="submit" disabled={enviando}
-        className="min-h-12 w-full rounded-lg bg-foreground font-medium
-                   text-background transition disabled:opacity-50"
+        className="min-h-12 w-full rounded-xl bg-primary text-[15px]
+                   font-medium text-primary-foreground shadow-card
+                   transition active:scale-[0.99] disabled:opacity-50"
       >
         {enviando ? 'Guardando…' : 'Guardar cambios'}
       </button>

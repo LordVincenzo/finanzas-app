@@ -92,21 +92,23 @@ export async function aportar(
  * eliminar_aporte lo rechazaba, la pantalla se recargaba igual y el
  * aporte seguía ahí sin ninguna explicación.
  *
- * PENDIENTE: sigue lanzando la excepción, así que el error se ve como
- * la pantalla de Next y no como un mensaje. Arreglarlo necesita un
- * componente cliente para el botón (las dos pantallas de detalle son
- * de servidor), y va con el resto del manejo de errores.
+ * Ya no lanza: el botón es un componente cliente (BotonAccion) que pinta
+ * el mensaje al lado, que es donde la persona está mirando.
  */
-export async function eliminarAporte(formData: FormData) {
+export async function eliminarAporte(
+  _previo: EstadoMeta,
+  formData: FormData
+): Promise<EstadoMeta> {
   const id = String(formData.get('id') ?? '')
-  if (!id) return
+  if (!id) return { error: 'No se identificó el aporte' }
 
   const supabase = await createClient()
   const { error } = await supabase.rpc('eliminar_aporte', { p_id: id })
 
-  if (error) throw new Error(traducir(error.message))
+  if (error) return { error: traducir(error.message) }
 
   revalidarMeta(String(formData.get('meta') ?? ''))
+  return {}
 }
 
 /**

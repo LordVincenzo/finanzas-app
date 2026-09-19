@@ -164,12 +164,22 @@ export function CarruselPatrimonio({
         )}
       </TarjetaDestacada>
 
-      {/* stopPropagation: esta fila vive dentro del área que detecta el
+      {/* ARRIBA, no abajo. Estaban en `bottom-3 right-3`, encima de la
+          esquina inferior derecha de la tarjeta — que es justo donde cae
+          el valor del segundo reparto cuando hay algo por cobrar. Con un
+          préstamo activo, "Por cobrar $1.200.000" quedaba 68px debajo de
+          los botones y se leía "$1.200.00". Solo pasaba con dos columnas,
+          por eso no se veía sin datos.
+
+          Arriba hay hueco en las dos variantes: la etiqueta
+          "PATRIMONIO" es texto pequeño y no llega al borde derecho.
+
+          stopPropagation: esta fila vive dentro del área que detecta el
           arrastre para cambiar de tarjeta; sin esto, tocar un botón
           podría interpretarse como el inicio de un swipe. */}
       <div
         onPointerDown={(e) => e.stopPropagation()}
-        className="absolute bottom-3 right-3 flex items-center gap-2"
+        className="absolute right-3 top-3 flex items-center gap-2"
       >
         <Link
           href="/movimientos/nuevo?tipo=transfer"

@@ -5,6 +5,7 @@ import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { formatearCOP, formatearFecha } from '@/lib/format'
 import { FormularioAporte } from '@/components/formulario-aporte'
 import { EliminarMeta } from '@/components/eliminar-meta'
+import { BotonAccion } from '@/components/boton-accion'
 import { CifraAnimada } from '@/components/cifra-animada'
 import { TarjetaDestacada } from '@/components/tarjeta-destacada'
 import { eliminarAporte } from '@/app/(app)/ahorros/actions'
@@ -172,13 +173,16 @@ export default async function DetalleMetaEscritorioPage({
                         </p>
                       </div>
                       {a.profile_id === user.id && (
-                        <form action={eliminarAporte}>
-                          <input type="hidden" name="id" value={a.id} />
-                          <input type="hidden" name="meta" value={id} />
-                          <button className="shrink-0 text-[12px] font-medium text-destructive">
-                            Quitar
-                          </button>
-                        </form>
+                        <BotonAccion
+                          accion={eliminarAporte}
+                          campos={{ id: a.id, meta: id }}
+                          claseFormulario="shrink-0"
+                          claseError="text-right"
+                          className="text-[12px] font-medium text-destructive
+                                     disabled:opacity-50"
+                        >
+                          Quitar
+                        </BotonAccion>
                       )}
                     </div>
                   )

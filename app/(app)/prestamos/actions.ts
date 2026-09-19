@@ -107,12 +107,20 @@ export async function registrarAbono(
   return {}
 }
 
-export async function eliminarAbono(formData: FormData) {
+/* Antes descartaba el error: si el RPC rechazaba el borrado, la pantalla
+   se recargaba con el abono todavía ahí y sin decir nada. En algo que
+   mueve dinero del ledger, un fallo silencioso es peor que un error. */
+export async function eliminarAbono(
+  _previo: EstadoPrestamo,
+  formData: FormData
+): Promise<EstadoPrestamo> {
   const id = String(formData.get('id') ?? '')
   const prestamo = String(formData.get('prestamo') ?? '')
   const supabase = await createClient()
-  await supabase.rpc('eliminar_pago_prestamo', { p_pago: id })
+  const { error } = await supabase.rpc('eliminar_pago_prestamo', { p_pago: id })
+  if (error) return { error: traducir(error.message) }
   revalidarPrestamo(prestamo)
+  return {}
 }
 
 /**
@@ -126,13 +134,16 @@ export async function eliminarAbono(formData: FormData) {
  * copia de esta función en app/escritorio/prestamos/actions.ts que solo
  * cambiaba esa línea.
  */
-export async function eliminarPrestamo(formData: FormData) {
+export async function eliminarPrestamo(
+  _previo: EstadoPrestamo,
+  formData: FormData
+): Promise<EstadoPrestamo> {
   const origen = leerOrigen(formData.get('origen'))
 
   const id = String(formData.get('id') ?? '')
   const supabase = await createClient()
   const { error } = await supabase.rpc('eliminar_prestamo', { p_prestamo: id })
-  if (error) throw new Error(traducir(error.message))
+  if (error) return { error: traducir(error.message) }
 
   revalidarLedger()
   redirect(rutaDe(origen, 'prestamos'))

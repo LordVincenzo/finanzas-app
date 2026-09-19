@@ -11,6 +11,7 @@ import {
   eliminarLiquidacion,
 } from '@/app/(app)/pareja/actions'
 import { AvisoPendienteUbicar } from '@/components/aviso-pendiente-ubicar'
+import { BotonAccion } from '@/components/boton-accion'
 
 /**
  * Pareja en escritorio.
@@ -51,12 +52,15 @@ export default async function ParejaEscritorioPage() {
           </p>
         </div>
         {pareja && (
-          <form action={salir}>
-            <button className="text-[13px] font-medium text-destructive
-                               transition hover:opacity-80">
-              Desvincular
-            </button>
-          </form>
+          <BotonAccion
+            accion={salir}
+            campos={{}}
+            textoEnviando="Desvinculando…"
+            className="text-[13px] font-medium text-destructive transition
+                       hover:opacity-80 disabled:opacity-50"
+          >
+            Desvincular
+          </BotonAccion>
         )}
       </div>
 
@@ -81,20 +85,24 @@ export default async function ParejaEscritorioPage() {
                 vincularse contigo.
               </p>
               <div className="flex shrink-0 gap-2">
-                <form action={aceptar}>
-                  <input type="hidden" name="id" value={inv.id} />
-                  <button className="h-9 rounded-xl bg-primary px-4 text-[13px]
-                                     font-medium text-primary-foreground">
-                    Aceptar
-                  </button>
-                </form>
-                <form action={rechazar}>
-                  <input type="hidden" name="id" value={inv.id} />
-                  <button className="h-9 rounded-xl border border-border px-4
-                                     text-[13px]">
-                    Rechazar
-                  </button>
-                </form>
+                <BotonAccion
+                  accion={aceptar}
+                  campos={{ id: inv.id }}
+                  textoEnviando="Aceptando…"
+                  className="h-9 rounded-xl bg-primary px-4 text-[13px]
+                             font-medium text-primary-foreground
+                             disabled:opacity-50"
+                >
+                  Aceptar
+                </BotonAccion>
+                <BotonAccion
+                  accion={rechazar}
+                  campos={{ id: inv.id }}
+                  className="h-9 rounded-xl border border-border px-4
+                             text-[13px] disabled:opacity-50"
+                >
+                  Rechazar
+                </BotonAccion>
               </div>
             </div>
           ))}
@@ -130,13 +138,16 @@ export default async function ParejaEscritorioPage() {
                       <p className="truncate text-[14px]">{inv.invitee_email}</p>
                       <p className="text-[12px] text-muted-foreground">Pendiente</p>
                     </div>
-                    <form action={cancelar}>
-                      <input type="hidden" name="id" value={inv.id} />
-                      <button className="shrink-0 text-[12px] font-medium
-                                         text-destructive">
-                        Cancelar
-                      </button>
-                    </form>
+                    <BotonAccion
+                      accion={cancelar}
+                      campos={{ id: inv.id }}
+                      claseFormulario="shrink-0"
+                      claseError="text-right"
+                      className="text-[12px] font-medium text-destructive
+                                 disabled:opacity-50"
+                    >
+                      Cancelar
+                    </BotonAccion>
                   </div>
                 ))}
               </div>
@@ -304,13 +315,16 @@ export default async function ParejaEscritorioPage() {
                           </td>
                           <td className="px-5 py-3 text-right">
                             {g.payer_id === yo && (
-                              <form action={eliminarGastoCompartido}>
-                                <input type="hidden" name="id" value={g.id} />
-                                <button className="text-[12px] font-medium
-                                                   text-destructive">
-                                  Quitar
-                                </button>
-                              </form>
+                              <BotonAccion
+                                accion={eliminarGastoCompartido}
+                                campos={{ id: g.id }}
+                                claseError="text-right"
+                                className="text-[12px] font-medium
+                                           text-destructive
+                                           disabled:opacity-50"
+                              >
+                                Quitar
+                              </BotonAccion>
                             )}
                           </td>
                         </tr>
@@ -355,13 +369,15 @@ export default async function ParejaEscritorioPage() {
                           <span className="text-[14px] font-medium tabular-nums">
                             {formatearCOP(Number(l.amount))}
                           </span>
-                          <form action={eliminarLiquidacion}>
-                            <input type="hidden" name="id" value={l.id} />
-                            <button className="text-[12px] font-medium
-                                               text-destructive">
-                              Quitar
-                            </button>
-                          </form>
+                          <BotonAccion
+                            accion={eliminarLiquidacion}
+                            campos={{ id: l.id }}
+                            claseError="text-right"
+                            className="text-[12px] font-medium text-destructive
+                                       disabled:opacity-50"
+                          >
+                            Quitar
+                          </BotonAccion>
                         </div>
                       </div>
                     )

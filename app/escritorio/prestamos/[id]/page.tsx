@@ -5,6 +5,7 @@ import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { formatearCOP, formatearFecha } from '@/lib/format'
 import { BarraProgreso } from '@/components/barra-progreso'
 import { FormularioAbono } from '@/components/formulario-abono'
+import { BotonAccion } from '@/components/boton-accion'
 import { eliminarAbono, eliminarPrestamo } from '@/app/(app)/prestamos/actions'
 
 function hoyEnBogota(): string {
@@ -116,13 +117,15 @@ export default async function DetallePrestamoEscritorioPage({
           )}
 
           {/* Siempre disponible: un préstamo mal registrado debe poder borrarse */}
-          <form action={eliminarPrestamo}>
-            <input type="hidden" name="id" value={id} />
-            <input type="hidden" name="origen" value="escritorio" />
-            <button className="text-[13px] font-medium text-destructive">
-              Eliminar préstamo
-            </button>
-          </form>
+          <BotonAccion
+            accion={eliminarPrestamo}
+            campos={{ id, origen: 'escritorio' }}
+            textoEnviando="Eliminando…"
+            className="text-[13px] font-medium text-destructive
+                       disabled:opacity-50"
+          >
+            Eliminar préstamo
+          </BotonAccion>
         </div>
 
         <div className="space-y-6 lg:col-span-2">
@@ -182,14 +185,16 @@ export default async function DetallePrestamoEscritorioPage({
                         {a.note ? ` · ${a.note}` : ''}
                       </p>
                     </div>
-                    <form action={eliminarAbono}>
-                      <input type="hidden" name="id" value={a.id} />
-                      <input type="hidden" name="prestamo" value={id} />
-                      <button className="shrink-0 text-[12px] font-medium
-                                         text-destructive underline">
-                        Deshacer
-                      </button>
-                    </form>
+                    <BotonAccion
+                      accion={eliminarAbono}
+                      campos={{ id: a.id, prestamo: id }}
+                      claseFormulario="shrink-0"
+                      claseError="text-right"
+                      className="text-[12px] font-medium text-destructive
+                                 underline disabled:opacity-50"
+                    >
+                      Deshacer
+                    </BotonAccion>
                   </div>
                 ))}
               </div>

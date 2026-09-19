@@ -34,8 +34,9 @@ export function InvitarPareja() {
 
       <button
         type="submit" disabled={enviando}
-        className="w-full rounded-lg bg-foreground py-2.5 text-sm font-medium
-                   text-background disabled:opacity-50"
+        className="min-h-12 w-full rounded-xl bg-primary text-[15px]
+                   font-medium text-primary-foreground shadow-card
+                   transition active:scale-[0.99] disabled:opacity-50"
       >
         {enviando ? 'Enviando…' : 'Enviar invitación'}
       </button>

@@ -6,16 +6,16 @@
 -- Sus patrimonios dejarían de ser comparables.
 --
 -- SOLUCIÓN: un gasto compartido escribe DOS transacciones espejo,
--- una en cada ledger. Cena de $120.000 pagada por Briand, 50/50:
+-- una en cada ledger. Cena de $120.000 pagada por Carlos, 50/50:
 --
---   Ledger de Briand              Ledger de Andrea
+--   Ledger de Carlos              Ledger de Marina
 --   Nu                -120.000    Alimentación        +60.000
---   Alimentación       +60.000    Balance con Briand  -60.000
---   Balance con Andrea +60.000
+--   Alimentación       +60.000    Balance con Carlos  -60.000
+--   Balance con Marina +60.000
 --   (suma 0)                      (suma 0)
 --
---   Patrimonio de Briand: -60.000   Patrimonio de Andrea: -60.000
---   Briand tiene +60.000 por cobrar; Andrea, -60.000 por pagar.
+--   Patrimonio de Carlos: -60.000   Patrimonio de Marina: -60.000
+--   Carlos tiene +60.000 por cobrar; Marina, -60.000 por pagar.
 --
 -- La cuenta "Balance con <pareja>" es de tipo partner_receivable:
 --   positivo -> te deben        negativo -> debes

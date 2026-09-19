@@ -11,12 +11,12 @@
 --
 --     Nu                 -120.000
 --     Alimentación        +60.000
---     Balance con Andrea  +60.000
+--     Balance con Marina  +60.000
 --
 -- La vista devolvía monto = 60.000: el historial mostraba la MITAD del
 -- gasto. Y como las dos líneas positivas empatan, `order by amount desc
 -- limit 1` puede devolver cualquiera de las dos, así que la columna
--- cuenta_destino podía decir "Alimentación" o "Balance con Andrea" sin
+-- cuenta_destino podía decir "Alimentación" o "Balance con Marina" sin
 -- ningún criterio estable.
 --
 -- POR QUÉ NO BASTA CON SUMAR TODAS LAS POSITIVAS: hay dos preguntas
@@ -69,7 +69,7 @@ select
   ao.class            as clase_origen,
   -- A dónde entró. El desempate prefiere la categoría sobre la cuenta
   -- de balance con la pareja: en un gasto compartido ambas valen lo
-  -- mismo, y "Alimentación" dice más que "Balance con Andrea".
+  -- mismo, y "Alimentación" dice más que "Balance con Marina".
   destino.account_id  as cuenta_destino_id,
   ad.name             as cuenta_destino,
   ad.class            as clase_destino,

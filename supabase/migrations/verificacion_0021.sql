@@ -5,14 +5,14 @@
 -- deuda, y después la liquidación que la cierra. Sin esa deuda previa el
 -- balance no parte de cero y las cifras no significan nada.
 --
---   Briand tiene 1.000.000 en Nu A. Andrea, 500.000 en Nu B.
---   Cena de 120.000 que paga Briand, 50/50.
---     Briand: Nu A -120.000, Alimentación +60.000, Balance +60.000
---     Andrea: Alimentación +60.000, Balance -60.000
+--   Carlos tiene 1.000.000 en Nu A. Marina, 500.000 en Nu B.
+--   Cena de 120.000 que paga Carlos, 50/50.
+--     Carlos: Nu A -120.000, Alimentación +60.000, Balance +60.000
+--     Marina: Alimentación +60.000, Balance -60.000
 --     Patrimonios: 940.000 y 440.000
---   Andrea le devuelve los 60.000 y lo registra ella.
---     Andrea: Nu B -60.000, Balance +60.000 -> 0
---     Briand (espejo): Balance -60.000 -> 0, Pendiente +60.000
+--   Marina le devuelve los 60.000 y lo registra ella.
+--     Marina: Nu B -60.000, Balance +60.000 -> 0
+--     Carlos (espejo): Balance -60.000 -> 0, Pendiente +60.000
 --     Patrimonios: 940.000 y 440.000   <- NINGUNO se mueve
 --
 -- Comprueba:
@@ -26,8 +26,8 @@
 --
 -- OJO CON LA SESIÓN ACTIVA. patrimonio_detalle, account_balances y
 -- cuentas_disponible son security_invoker: solo muestran las cuentas que
--- puede ver quien consulta. Comprobar el patrimonio de Briand desde la
--- sesión de Andrea devuelve NULL, no un número equivocado, y la
+-- puede ver quien consulta. Comprobar el patrimonio de Carlos desde la
+-- sesión de Marina devuelve NULL, no un número equivocado, y la
 -- aserción falla sin decir por qué. Por eso cada bloque dice de quién es
 -- la sesión, y se cambia antes de mirar los datos de cada uno.
 --
@@ -37,8 +37,8 @@
 
 do $$
 declare
-  v_a        uuid := gen_random_uuid();   -- Briand
-  v_b        uuid := gen_random_uuid();   -- Andrea
+  v_a        uuid := gen_random_uuid();   -- Carlos
+  v_b        uuid := gen_random_uuid();   -- Marina
   v_mail_a   text;
   v_mail_b   text;
   v_inv      uuid;
@@ -57,12 +57,12 @@ declare
   v_txt      text;
   v_bool     boolean;
 begin
-  v_mail_a := 'bri_' || left(v_a::text, 8) || '@test.local';
-  v_mail_b := 'and_' || left(v_b::text, 8) || '@test.local';
+  v_mail_a := 'car_' || left(v_a::text, 8) || '@test.local';
+  v_mail_b := 'mar_' || left(v_b::text, 8) || '@test.local';
 
   insert into auth.users (id, email, raw_user_meta_data) values
-    (v_a, v_mail_a, jsonb_build_object('display_name', 'Briand')),
-    (v_b, v_mail_b, jsonb_build_object('display_name', 'Andrea'));
+    (v_a, v_mail_a, jsonb_build_object('display_name', 'Carlos')),
+    (v_b, v_mail_b, jsonb_build_object('display_name', 'Marina'));
 
   perform set_config('role', 'authenticated', true);
 
@@ -77,7 +77,7 @@ begin
    where owner_id = v_a and class = 'expense' and lower(name) = 'alimentación'
    limit 1;
   assert v_cat_a is not null,
-    'PREPARACION FALLO: Briand no tiene la categoria Alimentacion';
+    'PREPARACION FALLO: Carlos no tiene la categoria Alimentacion';
 
   -- ================= SESIÓN: ANDREA =================================
   perform set_config('request.jwt.claims', jsonb_build_object(
@@ -94,14 +94,14 @@ begin
 
   select patrimonio into v_patri_a from patrimonio_detalle where owner_id = v_a;
   assert v_patri_a = 940000,
-    format('CENA FALLO: patrimonio de Briand = %s, esperaba 940000', v_patri_a);
+    format('CENA FALLO: patrimonio de Carlos = %s, esperaba 940000', v_patri_a);
 
   select a.id into v_bal_a from accounts a
    where a.owner_id = v_a and a.is_partner_balance;
   select balance into v_val from account_balances where account_id = v_bal_a;
   assert v_val = 60000,
-    format('CENA FALLO: Andrea deberia deberle 60000, el balance dice %s', v_val);
-  raise notice 'CENA OK -> Andrea le debe 60.000 a Briand';
+    format('CENA FALLO: Marina deberia deberle 60000, el balance dice %s', v_val);
+  raise notice 'CENA OK -> Marina le debe 60.000 a Carlos';
 
   -- ================= SESIÓN: ANDREA — paga y registra ===============
   perform set_config('request.jwt.claims', jsonb_build_object(
@@ -109,16 +109,16 @@ begin
 
   select patrimonio into v_patri_b from patrimonio_detalle where owner_id = v_b;
   assert v_patri_b = 440000,
-    format('CENA FALLO: patrimonio de Andrea = %s, esperaba 440000', v_patri_b);
+    format('CENA FALLO: patrimonio de Marina = %s, esperaba 440000', v_patri_b);
 
   v_liq := liquidar_con_pareja(60000, v_nu_b, true);
 
   -- Quien paga y registra: su patrimonio no se mueve (pagó una deuda).
   select patrimonio into v_val from patrimonio_detalle where owner_id = v_b;
   assert v_val = v_patri_b,
-    format('QUIEN PAGA FALLO: patrimonio de Andrea paso de %s a %s',
+    format('QUIEN PAGA FALLO: patrimonio de Marina paso de %s a %s',
            v_patri_b, v_val);
-  raise notice 'QUIEN PAGA OK -> patrimonio de Andrea intacto (%)', v_val;
+  raise notice 'QUIEN PAGA OK -> patrimonio de Marina intacto (%)', v_val;
 
   select balance into v_val from account_balances where account_id = v_nu_b;
   assert v_val = 440000,
@@ -133,20 +133,20 @@ begin
   -- apertura, que es de clase income y no cuenta como patrimonio.
   select patrimonio into v_val from patrimonio_detalle where owner_id = v_a;
   assert v_val = v_patri_a,
-    format('EL BUG DE 0021 SIGUE AHI: el patrimonio de Briand paso de %s a %s '
+    format('EL BUG DE 0021 SIGUE AHI: el patrimonio de Carlos paso de %s a %s '
            'al recibir un pago (deberia seguir igual)', v_patri_a, v_val);
-  raise notice 'QUIEN RECIBE OK -> patrimonio de Briand intacto (%)', v_val;
+  raise notice 'QUIEN RECIBE OK -> patrimonio de Carlos intacto (%)', v_val;
 
   -- Ya no se deben nada.
   select balance into v_val from account_balances where account_id = v_bal_a;
   assert v_val = 0,
-    format('BALANCE FALLO: Briand quedo en %s, esperaba 0', v_val);
+    format('BALANCE FALLO: Carlos quedo en %s, esperaba 0', v_val);
 
   -- El dinero está, pero sin ubicar.
   select a.id into v_pend_a from accounts a
    where a.owner_id = v_a and a.is_pending_location;
   assert v_pend_a is not null,
-    'FALLO: no se creo la cuenta "Pendiente de ubicar" de Briand';
+    'FALLO: no se creo la cuenta "Pendiente de ubicar" de Carlos';
 
   select balance into v_val from account_balances where account_id = v_pend_a;
   assert v_val = 60000,
@@ -162,7 +162,7 @@ begin
   raise notice 'DISPONIBLE OK -> el total cuadra sin ubicar el dinero';
 
   -- ================= BORRAR LA LIQUIDACIÓN ==========================
-  -- La borra Briand, que NO fue quien la registró: cualquiera de los dos
+  -- La borra Carlos, que NO fue quien la registró: cualquiera de los dos
   -- puede, porque cualquiera pudo haberla registrado mal.
   perform eliminar_liquidacion(v_liq);
 
@@ -171,7 +171,7 @@ begin
 
   select balance into v_val from account_balances where account_id = v_bal_a;
   assert v_val = 60000,
-    format('BORRAR FALLO: el balance de Briand quedo en %s, esperaba 60000',
+    format('BORRAR FALLO: el balance de Carlos quedo en %s, esperaba 60000',
            v_val);
 
   select balance into v_val from account_balances where account_id = v_pend_a;
@@ -180,7 +180,7 @@ begin
 
   select patrimonio into v_val from patrimonio_detalle where owner_id = v_a;
   assert v_val = v_patri_a,
-    format('BORRAR FALLO: patrimonio de Briand = %s, esperaba %s',
+    format('BORRAR FALLO: patrimonio de Carlos = %s, esperaba %s',
            v_val, v_patri_a);
   raise notice 'BORRAR OK -> revirtio los dos ledgers';
 
@@ -196,7 +196,7 @@ begin
 
   -- Con una transferencia normal. Sin funciones nuevas, sin ajustes.
   perform crear_movimiento('transfer', 60000, v_pend_a, v_nu_a,
-                           'Ubicar el pago de Andrea');
+                           'Ubicar el pago de Marina');
 
   select balance into v_val from account_balances where account_id = v_pend_a;
   assert v_val = 0, format('UBICAR FALLO: el pendiente quedo en %s', v_val);

@@ -182,7 +182,7 @@ export async function cargarPareja(): Promise<DatosPareja> {
      eliminar_movimiento() las rechazaba diciendo "Borrala desde Pareja"
      y en Pareja no estaban. Sin join a profiles: la pantalla ya sabe
      quién eres tú y cómo se llama tu pareja, así que from_profile y
-     to_profile bastan para escribir "Tú → Andrea". */
+     to_profile bastan para escribir "Tú → Marina". */
   const { data: liquidaciones } = pareja
     ? await supabase.from('couple_settlements')
         .select('id, from_profile, to_profile, amount, occurred_on, note')

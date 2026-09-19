@@ -51,7 +51,7 @@
 create table ingest_tokens (
   id          uuid primary key default gen_random_uuid(),
   owner_id    uuid not null references profiles(id) on delete cascade,
-  -- Para reconocerlo en la lista: "Celular de Briand", "Tablet".
+  -- Para reconocerlo en la lista: "Celular de Carlos", "Tablet".
   nombre      text not null check (length(trim(nombre)) between 1 and 60),
   token_hash  text not null unique,
   created_at  timestamptz not null default now(),

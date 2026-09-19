@@ -23,16 +23,16 @@
 -- 'asset' y 'liability'. O sea: la contrapartida NO existe para el
 -- patrimonio.
 --
---   Andrea te debe 60.000 y te paga. Ella lo registra.
+--   Marina te debe 60.000 y te paga. Ella lo registra.
 --
---     Andrea (registra)            Tú (recibes)
+--     Marina (registra)            Tú (recibes)
 --     Nu            -60.000        Balance   +60.000 -> 0
 --     Balance       +60.000 -> 0   Patrimonio inicial +60.000
 --     Patrimonio: igual   OK       Patrimonio: -60.000   MAL
 --
 -- Recibiste 60.000 en efectivo y tu patrimonio BAJA 60.000. Y al
 -- contrario si la registras tú con p_yo_pago = false: el patrimonio de
--- Andrea SUBE 60.000 aunque acabe de pagar. Se arregla solo cuando la
+-- Marina SUBE 60.000 aunque acabe de pagar. Se arregla solo cuando la
 -- otra persona hace un ajuste de saldo a mano, pero nada en su pantalla
 -- se lo dice. El aviso que existe ("El saldo de su cuenta lo ajusta
 -- ella") está en el formulario de quien registra, no de quien tiene que

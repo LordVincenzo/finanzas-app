@@ -89,12 +89,22 @@ $$;
 -- de proponer, en vez de desaparecer entera.
 -- =====================================================================
 
-create type ingest_regla_tipo as enum (
-  'fuente',     -- la app que mandó la notificación -> qué cuenta es
-  'comercio'    -- a quién se le pagó -> qué categoría es
-);
+-- Se puede volver a ejecutar entera sin quejarse. Las migraciones de
+-- este proyecto se pegan a mano en el editor de Supabase, y ahí es fácil
+-- correr dos veces la misma: sin estos guardas, el segundo intento
+-- muere en el primer CREATE y deja a quien lo ejecuta sin saber si lo
+-- de antes llegó a aplicarse o no.
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'ingest_regla_tipo') then
+    create type ingest_regla_tipo as enum (
+      'fuente',     -- la app que mandó la notificación -> qué cuenta es
+      'comercio'    -- a quién se le pagó -> qué categoría es
+    );
+  end if;
+end $$;
 
-create table ingest_reglas (
+create table if not exists ingest_reglas (
   id             uuid primary key default gen_random_uuid(),
   owner_id       uuid not null references profiles(id) on delete cascade,
   tipo           ingest_regla_tipo not null,
@@ -113,6 +123,8 @@ create table ingest_reglas (
 );
 
 alter table ingest_reglas enable row level security;
+
+drop policy if exists "reglas propias" on ingest_reglas;
 
 create policy "reglas propias" on ingest_reglas
   for all

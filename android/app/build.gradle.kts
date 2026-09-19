@@ -13,8 +13,19 @@ android {
         // mucho antes, pero por debajo de 24 no vale la pena probar.
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "2.0"
+
+        // A dónde apunta la app. Va aquí y no en una pantalla de
+        // ajustes porque nadie debería tener que escribir una URL para
+        // usar su propia app de finanzas. La pantalla de ajustes sigue
+        // existiendo para diagnosticar y para apuntar al PC durante el
+        // desarrollo, pero con esto ya arranca funcionando.
+        buildConfigField(
+            "String",
+            "SERVIDOR",
+            "\"https://finanzas-app-delta-six.vercel.app\""
+        )
     }
 
     buildTypes {
@@ -34,12 +45,24 @@ android {
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 }
 
 dependencies {
-    // Solo esto. Nada de librerías de red ni de JSON: HttpURLConnection
-    // y org.json vienen en el propio Android.
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
+
+    // androidx.webkit es de Google, no de un tercero, y está aquí por
+    // una razón de seguridad concreta.
+    //
+    // La forma clásica de comunicar la web con la app —
+    // addJavascriptInterface— inyecta el objeto en TODOS los marcos de
+    // la página, incluidos los iframes de otros dominios. En una app
+    // que puede acuñar un token de ingesta, eso es demasiado.
+    //
+    // addWebMessageListener, que viene de esta librería, ata el puente
+    // a un origen concreto: si la página no es la nuestra, window.Oyente
+    // sencillamente no existe. Ver Puente.kt.
+    implementation("androidx.webkit:webkit:1.12.1")
 }

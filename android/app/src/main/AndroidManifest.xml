@@ -14,17 +14,31 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
+        android:networkSecurityConfig="@xml/red"
         android:theme="@style/Theme.Oyente">
 
+        <!-- La app: el WebView con Finanzas dentro. Sin barra de título
+             del sistema, porque la web ya trae su propia cabecera y dos
+             encabezados uno encima de otro se ven mal. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name">
+            android:label="@string/app_name"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- La pantalla de diagnóstico. No exportada: solo se llega
+             desde dentro de la app, no desde otras apps. -->
+        <activity
+            android:name=".AjustesActivity"
+            android:exported="false"
+            android:label="Diagnóstico"
+            android:parentActivityName=".MainActivity" />
 
         <!-- El servicio que lee las notificaciones.
              BIND_NOTIFICATION_LISTENER_SERVICE lo declara la app, pero

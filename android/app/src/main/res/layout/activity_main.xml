@@ -1,153 +1,63 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Una sola pantalla, en el orden en que hay que hacer las cosas:
-  primero el permiso (sin él no llega nada), luego a dónde mandar, luego
-  probar. El estado va arriba del todo porque es lo que uno viene a
-  mirar cuando algo no funciona.
+  La app entera: un WebView a pantalla completa con tu Finanzas.
+
+  Encima, oculta, una pantalla de error propia. El error del WebView es
+  una página en inglés que habla de ERR_NAME_NOT_RESOLVED y no ofrece
+  salida; esta dice qué pasó, en qué dirección, y lleva a los ajustes,
+  que es justo lo que hace falta cuando no carga.
 -->
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:fitsSystemWindows="true">
+
+    <WebView
+        android:id="@+id/web"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
     <LinearLayout
+        android:id="@+id/error"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:gravity="center"
+        android:padding="32dp"
+        android:visibility="gone">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textSize="22sp"
+            android:text="Sin conexión"
+            android:textSize="20sp"
             android:textStyle="bold" />
 
         <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Lee las notificaciones de tus bancos y las manda a tu app de Finanzas. Nada más sale del teléfono."
-            android:textSize="13sp" />
-
-        <!-- Estado -->
-        <TextView
-            android:id="@+id/estado"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:background="#22000000"
-            android:padding="14dp"
-            android:textSize="14sp"
-            android:lineSpacingExtra="4dp" />
-
-        <!-- 1. Permiso -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="1 · Permiso"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Android tiene que autorizar la lectura de notificaciones. Busca «Oyente Finanzas» en la lista y actívalo."
-            android:textSize="13sp" />
-
-        <Button
-            android:id="@+id/permiso"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Abrir los ajustes de Android" />
-
-        <!-- 2. Servidor -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="2 · Dónde está Finanzas"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <EditText
-            android:id="@+id/servidor"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:hint="http://192.168.1.19:3000"
-            android:inputType="textUri"
-            android:importantForAutofill="no"
-            android:textSize="14sp" />
-
-        <!-- 3. Token -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="3 · Token"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="El que da Finanzas en «Por confirmar → Conectar un celular». Cada teléfono usa el suyo."
-            android:textSize="13sp" />
-
-        <EditText
-            android:id="@+id/token"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:hint="64 caracteres"
-            android:inputType="textVisiblePassword"
-            android:importantForAutofill="no"
-            android:textSize="13sp" />
-
-        <Button
-            android:id="@+id/guardar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Guardar" />
-
-        <!-- 4. Probar -->
-        <Button
-            android:id="@+id/probar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/probar" />
-
-        <TextView
-            android:id="@+id/resultado"
+            android:id="@+id/errorDetalle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:textSize="13sp" />
-
-        <!-- Qué escucha -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
-            android:text="Qué lee esta app"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/bancos"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:layout_marginBottom="24dp"
-            android:textSize="13sp"
+            android:gravity="center"
+            android:textSize="14sp"
             android:lineSpacingExtra="3dp" />
 
+        <Button
+            android:id="@+id/reintentar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:minWidth="200dp"
+            android:text="Reintentar" />
+
+        <Button
+            android:id="@+id/ajustes"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:minWidth="200dp"
+            android:text="Ajustes"
+            style="?attr/borderlessButtonStyle" />
+
     </LinearLayout>
-</ScrollView>
+</FrameLayout>

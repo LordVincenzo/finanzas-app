@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  La pantalla de diagnóstico. Ya no es la principal ni hace falta para
+  el uso normal: el token y el permiso los resuelve la propia web desde
+  dentro. Esto queda para cuando algo no funciona y hay que ver qué.
+
+  El estado va arriba del todo porque es lo único a lo que uno viene.
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Diagnóstico"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Para el uso normal no hace falta tocar nada aquí: el permiso y la conexión se activan desde «Por confirmar», dentro de la app."
+            android:textSize="13sp" />
+
+        <!-- Estado -->
+        <TextView
+            android:id="@+id/estado"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:background="#22000000"
+            android:padding="14dp"
+            android:textSize="14sp"
+            android:lineSpacingExtra="4dp" />
+
+        <!-- Permiso -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Permiso de notificaciones"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/permiso"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Abrir los ajustes de Android" />
+
+        <!-- Servidor -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Servidor"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Viene puesto de fábrica. Solo se cambia para apuntar al PC durante el desarrollo."
+            android:textSize="13sp" />
+
+        <EditText
+            android:id="@+id/servidor"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:hint="http://192.168.1.19:3000"
+            android:inputType="textUri"
+            android:importantForAutofill="no"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/guardar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Guardar" />
+
+        <Button
+            android:id="@+id/restablecer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Volver al de fábrica"
+            style="?attr/borderlessButtonStyle" />
+
+        <!-- Probar -->
+        <Button
+            android:id="@+id/probar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/probar" />
+
+        <TextView
+            android:id="@+id/resultado"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textSize="13sp" />
+
+        <!-- Qué escucha -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="Qué lee esta app"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/bancos"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="24dp"
+            android:textSize="13sp"
+            android:lineSpacingExtra="3dp" />
+
+    </LinearLayout>
+</ScrollView>

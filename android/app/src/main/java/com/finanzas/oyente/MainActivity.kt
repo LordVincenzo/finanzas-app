@@ -1,26 +1,55 @@
 package com.finanzas.oyente
 
-import android.content.ComponentName
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
-import android.widget.Toast
+import android.view.View
+import android.webkit.CookieManager
+import android.webkit.ValueCallback
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.finanzas.oyente.databinding.ActivityMainBinding
-import kotlin.concurrent.thread
 
 /**
- * La única pantalla: dónde está el servidor, cuál es el token, y si
- * Android nos dejó escuchar.
+ * La app: tu Finanzas, con el oyente de notificaciones dentro.
  *
- * Se configura una vez por teléfono y no se vuelve a abrir. Por eso no
- * tiene navegación ni menús: lo que hace falta es que quien la abra por
- * primera vez sepa exactamente qué falta para que funcione.
+ * POR QUÉ UN WEBVIEW Y NO LA VÍA "OFICIAL". Google recomienda envolver
+ * una web con una Trusted Web Activity, que usa Chrome de verdad. Pero
+ * una TWA está aislada por diseño: no se le puede tender un puente. Y
+ * sin puente hay que volver a copiar el token a mano de una pantalla a
+ * otra, que es justo lo que esta versión viene a quitar.
+ *
+ * LO QUE HAY QUE VIGILAR de un WebView, y que aquí está resuelto:
+ *
+ *   - Los enlaces a otros dominios se abren en el navegador del
+ *     teléfono, nunca aquí dentro. Un WebView con puente no es sitio
+ *     para páginas ajenas.
+ *   - El botón Atrás navega hacia atrás en la web antes de cerrar la
+ *     app. Sin esto, Atrás desde cualquier pantalla te echa fuera.
+ *   - El selector de archivos hay que implementarlo: sin él, subir la
+ *     foto de perfil no hace nada al tocar el botón, y encima en
+ *     silencio.
+ *   - Si no hay red, sale una pantalla propia con un botón a los
+ *     ajustes, en vez del error en inglés del WebView.
  */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var vista: ActivityMainBinding
     private lateinit var ajustes: Ajustes
+    private lateinit var puente: Puente
+
+    /** El callback del selector de archivos que está esperando respuesta. */
+    private var esperandoArchivos: ValueCallback<Array<Uri>>? = null
+
+    private lateinit var selectorArchivos: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,81 +58,157 @@ class MainActivity : AppCompatActivity() {
 
         ajustes = Ajustes(this)
 
-        vista.servidor.setText(ajustes.servidor)
-        vista.token.setText(ajustes.token)
-        vista.bancos.text = Bancos.resumen()
-
-        vista.guardar.setOnClickListener {
-            ajustes.servidor = vista.servidor.text.toString()
-            ajustes.token = vista.token.text.toString()
-            vista.servidor.setText(ajustes.servidor)   // ya normalizado
-            avisar(if (ajustes.configurado) "Guardado" else "Falta el servidor o el token")
-            refrescar()
+        selectorArchivos = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { resultado ->
+            // Hay que contestar SIEMPRE, incluso si la persona canceló:
+            // si no, el <input type="file"> de la web se queda colgado
+            // para siempre y no se puede volver a intentar.
+            val uris = WebChromeClient.FileChooserParams.parseResult(
+                resultado.resultCode, resultado.data
+            )
+            esperandoArchivos?.onReceiveValue(uris)
+            esperandoArchivos = null
         }
 
-        vista.permiso.setOnClickListener {
-            // No se puede conceder desde código: lo da la persona en los
-            // ajustes del sistema. Lo único que se puede hacer es
-            // llevarla hasta ahí.
-            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        configurarWeb()
+        configurarAtras()
+
+        vista.reintentar.setOnClickListener { cargar() }
+        vista.ajustes.setOnClickListener {
+            startActivity(Intent(this, AjustesActivity::class.java))
         }
 
-        vista.probar.setOnClickListener {
-            ajustes.servidor = vista.servidor.text.toString()
-            ajustes.token = vista.token.text.toString()
-            vista.probar.isEnabled = false
-            vista.probar.text = getString(R.string.probando)
-            thread {
-                val resultado = Enviador(applicationContext).probar()
-                runOnUiThread {
-                    vista.probar.isEnabled = true
-                    vista.probar.setText(R.string.probar)
-                    vista.resultado.text = resultado
-                    refrescar()
+        cargar()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Al volver de los ajustes de Android —donde se concede el
+        // acceso a notificaciones— la web tiene que enterarse de que
+        // ahora sí lo tiene. Es la misma señal que usa el navegador al
+        // volver a una pestaña, así que la web ya sabe escucharla.
+        vista.web.evaluateJavascript(
+            "document.dispatchEvent(new Event('visibilitychange'))", null
+        )
+    }
+
+    private fun configurarWeb() {
+        val web = vista.web
+
+        web.settings.apply {
+            javaScriptEnabled = true
+            // La sesión de Supabase y el service worker de la PWA
+            // necesitan almacenamiento; sin esto habría que iniciar
+            // sesión en cada arranque.
+            domStorageEnabled = true
+            useWideViewPort = true
+            loadWithOverviewMode = true
+            // El zoom con los dedos molesta en una app y descoloca el
+            // diseño, que ya está hecho para esta pantalla.
+            setSupportZoom(false)
+            builtInZoomControls = false
+        }
+
+        CookieManager.getInstance().setAcceptCookie(true)
+        CookieManager.getInstance().setAcceptThirdPartyCookies(web, true)
+
+        puente = Puente(applicationContext).apply {
+            tienePermiso = { tienePermisoDeNotificaciones(this@MainActivity) }
+            alPedirPermiso = {
+                startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+            }
+        }
+        puente.instalar(web, ajustes.servidor)
+
+        web.webViewClient = object : WebViewClient() {
+
+            /**
+             * Todo lo que no sea nuestro servidor se abre fuera.
+             *
+             * No es cosmético: window.Oyente vive en este WebView, y
+             * aunque el puente solo se inyecta en nuestro origen, una
+             * página ajena aquí dentro tendría nuestras cookies a un
+             * fallo de distancia. Fuera, en el navegador, no.
+             */
+            override fun shouldOverrideUrlLoading(
+                view: WebView, peticion: WebResourceRequest
+            ): Boolean {
+                val destino = peticion.url
+                if (esNuestro(destino)) return false
+
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, destino))
+                } catch (e: Exception) {
+                    // Sin navegador que lo abra no hay nada que hacer,
+                    // pero tampoco se carga aquí dentro.
+                }
+                return true
+            }
+
+            override fun onPageFinished(view: WebView, url: String) {
+                mostrarError(false)
+            }
+
+            override fun onReceivedError(
+                view: WebView, peticion: WebResourceRequest, error: WebResourceError
+            ) {
+                // Solo el marco principal: que falle una imagen no es
+                // motivo para tapar la app con una pantalla de error.
+                if (peticion.isForMainFrame) mostrarError(true)
+            }
+        }
+
+        web.webChromeClient = object : WebChromeClient() {
+            override fun onShowFileChooser(
+                webView: WebView,
+                callback: ValueCallback<Array<Uri>>,
+                parametros: FileChooserParams
+            ): Boolean {
+                // Si había otro esperando, cerrarlo: dejarlo colgado
+                // bloquea el <input> de la web para siempre.
+                esperandoArchivos?.onReceiveValue(null)
+                esperandoArchivos = callback
+                return try {
+                    selectorArchivos.launch(parametros.createIntent())
+                    true
+                } catch (e: Exception) {
+                    esperandoArchivos = null
+                    false
                 }
             }
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        refrescar()
+    /** ¿Esta URL es de nuestro servidor? */
+    private fun esNuestro(url: Uri): Boolean {
+        val nuestro = Uri.parse(ajustes.servidor)
+        return url.scheme == nuestro.scheme
+            && url.host == nuestro.host
+            && url.port == nuestro.port
     }
 
-    private fun refrescar() {
-        val escuchando = tienePermiso()
-        val cola = Cola(this).cuantos()
-
-        vista.estado.text = buildString {
-            append(if (escuchando) "✓ Escuchando notificaciones"
-                   else "✗ Falta el permiso de notificaciones")
-            append("\n")
-            append(if (ajustes.configurado) "✓ Servidor y token guardados"
-                   else "✗ Falta el servidor o el token")
-            append("\n")
-            append("Enviadas: ${ajustes.enviadas}")
-            if (cola > 0) append(" · $cola esperando")
-        }
-
-        vista.resultado.text = ajustes.ultimoResultado
+    private fun configurarAtras() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (vista.web.canGoBack()) vista.web.goBack() else finish()
+            }
+        })
     }
 
-    /**
-     * ¿Nos dio Android permiso de leer notificaciones?
-     *
-     * La lista de servicios autorizados vive en un ajuste del sistema,
-     * como texto separado por dos puntos. No hay una API mejor.
-     */
-    private fun tienePermiso(): Boolean {
-        val activos = Settings.Secure.getString(
-            contentResolver, "enabled_notification_listeners"
-        ) ?: return false
-        val propio = ComponentName(this, OyenteNotificaciones::class.java)
-        return activos.split(":").any {
-            ComponentName.unflattenFromString(it) == propio
+    private fun cargar() {
+        mostrarError(false)
+        vista.web.loadUrl(ajustes.servidor)
+    }
+
+    private fun mostrarError(hay: Boolean) {
+        vista.error.visibility = if (hay) View.VISIBLE else View.GONE
+        vista.web.visibility = if (hay) View.GONE else View.VISIBLE
+        if (hay) {
+            vista.errorDetalle.text =
+                "No se pudo abrir ${ajustes.servidor}\n\n" +
+                "Comprueba que tienes conexión. Si cambiaste de servidor, " +
+                "revísalo en Ajustes."
         }
     }
-
-    private fun avisar(texto: String) =
-        Toast.makeText(this, texto, Toast.LENGTH_SHORT).show()
 }

@@ -1,7 +1,7 @@
 import { Inbox } from 'lucide-react'
 import { cargarBandeja } from '@/lib/datos-bandeja'
 import { FilaBandeja } from '@/components/fila-bandeja'
-import { ConectarDispositivo } from '@/components/conectar-dispositivo'
+import { Conectar } from '@/components/conectar'
 
 /**
  * La bandeja de entrada, en el celular.
@@ -62,7 +62,7 @@ export default async function BandejaPage() {
 
       <div className="aparece mt-6"
            style={{ '--retraso': '140ms' } as React.CSSProperties}>
-        <ConectarDispositivo dispositivos={dispositivos} urlBase={urlBase} />
+        <Conectar dispositivos={dispositivos} urlBase={urlBase} />
       </div>
     </main>
   )

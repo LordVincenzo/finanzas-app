@@ -17,8 +17,17 @@ class Ajustes(contexto: Context) {
     private val prefs =
         contexto.applicationContext.getSharedPreferences("oyente", Context.MODE_PRIVATE)
 
+    /**
+     * A dónde se manda.
+     *
+     * Si no hay nada guardado, el de fábrica (BuildConfig.SERVIDOR):
+     * nadie debería tener que escribir una URL para usar su propia app.
+     * Guardar cadena vacía vuelve al de fábrica en vez de dejar la app
+     * apuntando a ninguna parte.
+     */
     var servidor: String
-        get() = prefs.getString(CLAVE_SERVIDOR, "") ?: ""
+        get() = prefs.getString(CLAVE_SERVIDOR, "")?.ifEmpty { null }
+            ?: BuildConfig.SERVIDOR
         set(valor) = prefs.edit().putString(CLAVE_SERVIDOR, limpiar(valor)).apply()
 
     var token: String

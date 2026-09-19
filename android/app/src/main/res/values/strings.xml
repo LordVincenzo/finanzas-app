@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Oyente Finanzas</string>
+    <!-- El nombre del icono en el teléfono. Es "Finanzas" a secas
+         porque ahora la app ES Finanzas: el oyente de notificaciones va
+         dentro, no es un programa aparte. Este mismo nombre es el que
+         aparece en Ajustes -> Acceso a notificaciones. -->
+    <string name="app_name">Finanzas</string>
     <string name="probar">Probar el envío</string>
     <string name="probando">Probando…</string>
 </resources>

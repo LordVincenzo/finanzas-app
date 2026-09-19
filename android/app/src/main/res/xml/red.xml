@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Por defecto, nada de HTTP sin cifrar: la app apunta a un dominio con
+  HTTPS y ahí viaja tu sesión de Supabase.
+
+  Las excepciones son las direcciones de desarrollo, para poder apuntar
+  la app al PC sin montar certificados en la red de casa. Son rangos
+  privados: no salen del router, así que permitir texto plano ahí no
+  expone nada a internet.
+
+  Si tu PC cambia de IP y no está en esta lista, la app no cargará
+  contra él. Se añade aquí, no se abre el permiso a todo.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <!-- El "localhost del PC" visto desde el emulador de Android -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <!-- El PC en la red de casa -->
+        <domain includeSubdomains="false">192.168.1.19</domain>
+    </domain-config>
+</network-security-config>

@@ -88,6 +88,34 @@ const CASOS: Caso[] = [
     texto: 'Compra por $99.000 en EXITO',
     espera: { monto: null, direccion: null },
   },
+
+  // ---- LOS DOS LADOS DE UNA TRANSFERENCIA REAL ----------------------
+  //
+  // Capturados de una transferencia de $100 entre dos cuentas propias,
+  // el 19 de septiembre de 2026. Van con TÍTULO Y CUERPO separados por
+  // un salto de línea, que es como los manda la app de Android.
+  //
+  // Están aquí por dos motivos que costaron un rato:
+  //
+  //   1. El monto de Nu vive SOLO en el título. Cuando la app mandaba
+  //      nada más el cuerpo, esto entraba sin monto.
+  //   2. "$100,00" lleva coma decimal. Si parsearCOP la tomara por
+  //      separador de miles, esto serían $10.000: cien veces más.
+  //
+  // Los dos montos iguales en direcciones opuestas son, además, lo que
+  // la bandeja usa para preguntar si es la misma transferencia.
+  {
+    fuente: 'nequi',
+    texto: 'Te enviaron plata por Bre-B\n'
+      + 'Te enviaron $100. Entra a tu app y revisa tu saldo.',
+    espera: { monto: 100, direccion: 'entrada' },
+  },
+  {
+    fuente: 'nu',
+    texto: 'Enviaste $100,00\n'
+      + 'Le enviaste a Bri***** Cas***** en su cuenta de Nequi.',
+    espera: { monto: 100, direccion: 'salida', comercio: 'Bri***** Cas*****' },
+  },
 ]
 
 let fallos = 0

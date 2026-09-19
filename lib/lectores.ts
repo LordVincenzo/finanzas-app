@@ -132,14 +132,31 @@ function leerNu(texto: string): Lectura {
   if (salida !== null) {
     return {
       monto: salida,
-      // "a Juan Pérez desde tu Cuenta Nu" -> "Juan Pérez"
-      comercio: primerGrupo(texto, /Enviaste\s+\$\s?[\d.,]+\s+a\s+(.+?)\s+desde/i),
+      comercio: destinatarioNu(texto),
       direccion: 'salida',
       cuentaTerminada: null,
     }
   }
 
   return NADA
+}
+
+/**
+ * A quién le enviaste, en Nu.
+ *
+ * Dos formatos, y el orden importa porque el segundo es el que manda de
+ * verdad — el primero estaba escrito de memoria y nunca llegó a
+ * coincidir con nada:
+ *
+ *   "Enviaste $50.000 a Juan Pérez desde tu Cuenta Nu"
+ *   "Le enviaste a Bri***** Cas***** en su cuenta de Nequi."
+ *
+ * Nu enmascara el nombre. Se deja tal cual: sirve para reconocer el
+ * movimiento y no hay nada que reconstruir.
+ */
+function destinatarioNu(texto: string): string | null {
+  return primerGrupo(texto, /Le enviaste a\s+(.+?)\s+en su cuenta/i)
+    ?? primerGrupo(texto, /Enviaste\s+\$\s?[\d.,]+\s+a\s+(.+?)\s+desde/i)
 }
 
 

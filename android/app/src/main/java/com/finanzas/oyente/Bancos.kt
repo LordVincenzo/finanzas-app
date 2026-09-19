@@ -16,10 +16,27 @@ package com.finanzas.oyente
  */
 object Bancos {
 
-    /** Paquete de la app -> nombre de la fuente en el servidor. */
+    /**
+     * Paquete de la app -> nombre de la fuente en el servidor.
+     *
+     * ESTOS NOMBRES SE COMPRUEBAN, NO SE DEDUCEN. Los dos primeros
+     * estuvieron mal desde el principio —`com.nequi.NeQuI` y
+     * `co.nu.production`, sacados de la URL de Play Store— y el fallo no
+     * se ve por ninguna parte: la notificación llega, no encaja, se
+     * descarta, y lo único que se nota es que la bandeja sigue vacía.
+     *
+     * El nombre de verdad lo enseña la pantalla de diagnóstico, que
+     * apunta el paquete de todo lo que llega (ver Vistas.kt). Antes de
+     * añadir un banco aquí, mírala.
+     */
     private val PAQUETES = mapOf(
-        "com.nequi.NeQuI" to "nequi",
-        "co.nu.production" to "nu",
+        // Comprobados con notificaciones reales.
+        "com.nequi.MobileApp" to "nequi",
+        "com.nu.production" to "nu",
+
+        // SIN COMPROBAR: vienen de la misma fuente equivocada que los de
+        // arriba. Cuando llegue una notificación de estos bancos, mira
+        // el diagnóstico y corrige el nombre si hace falta.
         "com.daviplata" to "daviplata",
         "com.davivienda.bancamovil" to "davivienda",
     )

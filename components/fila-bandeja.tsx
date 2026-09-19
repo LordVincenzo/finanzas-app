@@ -71,6 +71,18 @@ export function FilaBandeja({
   const categorias = tipo === 'income' ? categoriasIngreso : categoriasGasto
   const contrapartes = esTransferencia ? cuentas : categorias
 
+  /* Qué se propone del otro lado.
+   *
+   * Tratados como una sola transferencia, el otro lado es la cuenta del
+   * OTRO aviso, y eso ya lo sabemos: Nu dijo que salió, Nequi dijo que
+   * entró. Los dos selectores llegan resueltos y confirmar es un toque.
+   *
+   * Si no, es una categoría, y solo viene puesta si ya se aprendió de
+   * ese comercio — o sea, de la segunda vez en adelante. */
+  const propuestaContraparte = esTransferencia
+    ? (mensaje.pareja_cuenta_id ?? '')
+    : (mensaje.categoria_id ?? '')
+
   const error = confirmar.error ?? ignorar.error
 
   return (
@@ -203,8 +215,14 @@ export function FilaBandeja({
           </div>
 
           <div className="relative">
+            {/* La clave fuerza a redibujar el selector cuando cambia el
+                tipo. Sin ella, React conserva el valor elegido y una
+                categoría de gasto se quedaría seleccionada al pasar a
+                transferencia, donde ya no está en la lista: el selector
+                se vería vacío pero con valor puesto. */}
             <select name="contraparte" required
-                    defaultValue={mensaje.categoria_id ?? ''}
+                    key={tipo}
+                    defaultValue={propuestaContraparte}
                     aria-label={esTransferencia ? 'Entra a' : 'Categoría'}
                     className={SELECT}>
               <option value="" disabled>

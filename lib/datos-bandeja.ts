@@ -27,6 +27,10 @@ export type MensajeBandeja = {
   pareja_fuente: string | null
   pareja_texto: string | null
   pareja_direccion: 'salida' | 'entrada' | null
+  /** La cuenta que corresponde al banco del otro aviso. Con esto, una
+   *  transferencia entre cuentas propias llega con los dos lados
+   *  resueltos y confirmarla es un solo toque. */
+  pareja_cuenta_id: string | null
 }
 
 export type Dispositivo = {
@@ -56,7 +60,7 @@ export async function cargarBandeja(): Promise<DatosBandeja> {
     { data: todas },
   ] = await Promise.all([
     supabase.from('bandeja_pendiente')
-      .select('id, fuente, texto, recibido_en, monto, comercio, direccion, cuenta_id, categoria_id, pareja_id, pareja_fuente, pareja_texto, pareja_direccion')
+      .select('id, fuente, texto, recibido_en, monto, comercio, direccion, cuenta_id, categoria_id, pareja_id, pareja_fuente, pareja_texto, pareja_direccion, pareja_cuenta_id')
       .eq('owner_id', user.id),
     supabase.from('ingest_tokens')
       .select('id, nombre, created_at, last_used_at')

@@ -6,6 +6,7 @@ import {
   confirmarMensaje, ignorarMensaje, type EstadoBandeja,
 } from '@/app/(app)/bandeja/actions'
 import { formatearCOP, formatearFecha, formatearHora } from '@/lib/format'
+import { Monto } from '@/components/seccion'
 import type { MensajeBandeja, Opcion } from '@/lib/datos-bandeja'
 
 const estadoInicial: EstadoBandeja = {}
@@ -83,6 +84,39 @@ export function FilaBandeja({
     ? (mensaje.pareja_cuenta_id ?? '')
     : (mensaje.categoria_id ?? '')
 
+  /* La descripción tampoco se escribe si no hace falta.
+   *
+   * Venía del comercio, y en una transferencia no hay comercio: el
+   * campo salía vacío y era obligatorio, así que el movimiento más
+   * frecuente —el traslado entre cuentas propias— obligaba a teclear
+   * algo aunque todo lo demás viniera resuelto. */
+  const nombre = (id: string, lista: Opcion[]) =>
+    lista.find((c) => c.id === id)?.name ?? null
+
+  const nombreCuenta = mensaje.cuenta_id ? nombre(mensaje.cuenta_id, cuentas) : null
+  const nombreContra = propuestaContraparte
+    ? nombre(propuestaContraparte, contrapartes)
+    : null
+
+  const descripcionPropuesta =
+    mensaje.comercio?.trim()
+    || (esTransferencia && nombreCuenta && nombreContra
+          ? `De ${nombreCuenta} a ${nombreContra}`
+          : '')
+    || (nombreContra ?? '')
+
+  /* ¿Está todo resuelto? Entonces no hay nada que rellenar y sobra el
+     formulario entero: basta ver qué se va a registrar y confirmarlo.
+     Si falta algo —un comercio nuevo del que todavía no se ha
+     aprendido— se abre el formulario, que para eso está. */
+  const completo = Boolean(
+    mensaje.monto && mensaje.cuenta_id && propuestaContraparte
+    && descripcionPropuesta
+  )
+
+  const [editando, setEditando] = useState(false)
+  const conFormulario = editando || !completo
+
   const error = confirmar.error ?? ignorar.error
 
   return (
@@ -159,6 +193,43 @@ export function FilaBandeja({
         <input type="hidden" name="tipo" value={tipo} />
         {comoPareja && <input type="hidden" name="pareja" value="1" />}
 
+        {/* ---- Todo resuelto: se ve, no se rellena ------------------
+            Los valores van en campos ocultos, pero la misma
+            información está a la vista arriba. Esconderla sería lo
+            único que esta bandeja no puede hacer: que entre dinero a
+            una cuenta que nadie miró. */}
+        {!conFormulario && (
+          <>
+            <input type="hidden" name="monto" value={String(mensaje.monto)} />
+            <input type="hidden" name="cuenta" value={mensaje.cuenta_id!} />
+            <input type="hidden" name="contraparte" value={propuestaContraparte} />
+            <input type="hidden" name="descripcion" value={descripcionPropuesta} />
+
+            <div className="flex items-baseline justify-between gap-3
+                            rounded-xl bg-muted px-3.5 py-3">
+              {/* El color es un dato: verde solo si entra dinero, rojo
+                  solo si sale. Un traslado entre cuentas propias no es
+                  ninguna de las dos cosas, así que va neutro. */}
+              <Monto
+                valor={mensaje.monto!}
+                formato={formatearCOP}
+                tono={esTransferencia ? 'neutro'
+                      : tipo === 'income' ? 'positivo' : 'negativo'}
+                className="text-[16px] font-semibold"
+              />
+              <span className="min-w-0 truncate text-right text-[13px]
+                               text-muted-foreground">
+                {esTransferencia
+                  ? `${nombreCuenta} → ${nombreContra}`
+                  : tipo === 'income'
+                    ? `${nombreContra} → ${nombreCuenta}`
+                    : `${nombreCuenta} · ${nombreContra}`}
+              </span>
+            </div>
+          </>
+        )}
+
+        {conFormulario && (
         <div className="flex gap-2">
           <div className="relative w-36 shrink-0">
             <select
@@ -195,7 +266,9 @@ export function FilaBandeja({
             />
           </div>
         </div>
+        )}
 
+        {conFormulario && (
         <div className="grid gap-2 sm:grid-cols-2">
           <div className="relative">
             <select name="cuenta" required
@@ -237,14 +310,17 @@ export function FilaBandeja({
                          -translate-y-1/2 text-muted-foreground" />
           </div>
         </div>
+        )}
 
-        <input
-          name="descripcion" required maxLength={200}
-          defaultValue={mensaje.comercio ?? ''}
-          placeholder="En qué fue"
-          aria-label="Descripción"
-          className={CAMPO}
-        />
+        {conFormulario && (
+          <input
+            name="descripcion" required maxLength={200}
+            defaultValue={descripcionPropuesta}
+            placeholder="En qué fue"
+            aria-label="Descripción"
+            className={CAMPO}
+          />
+        )}
 
         {error && (
           <p className="text-[12px] text-destructive" role="alert">{error}</p>
@@ -262,6 +338,20 @@ export function FilaBandeja({
               ? 'Registrando…'
               : comoPareja ? 'Confirmar el traslado' : 'Confirmar'}
           </button>
+
+          {/* Solo cuando hay algo que cambiar. Si el formulario ya está
+              abierto porque falta un dato, un botón para abrirlo sobra. */}
+          {completo && !editando && (
+            <button
+              type="button"
+              onClick={() => setEditando(true)}
+              className="min-h-11 shrink-0 rounded-xl px-4 text-[13px]
+                         font-medium text-muted-foreground transition
+                         active:scale-[0.99]"
+            >
+              Cambiar
+            </button>
+          )}
         </div>
       </form>
 
@@ -280,7 +370,10 @@ export function FilaBandeja({
         </button>
       </form>
 
-      {mensaje.monto !== null && (
+      {/* Solo con el formulario abierto. Ahí sirve para comparar lo que
+          estás escribiendo con lo que dijo el banco; con el resumen
+          cerrado repetiría la cifra que ya está dos líneas más arriba. */}
+      {conFormulario && mensaje.monto !== null && (
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
           Leído del mensaje: {formatearCOP(mensaje.monto)}
           {mensaje.comercio ? ` · ${mensaje.comercio}` : ''}

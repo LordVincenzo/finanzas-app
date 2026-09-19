@@ -58,3 +58,53 @@ select
 from accounts a
 left join transaction_entries e on e.account_id = a.id
 group by a.owner_id;
+
+
+-- =====================================================================
+-- PERMISOS
+--
+-- DROP VIEW se lleva por delante los permisos de la vista. Supabase
+-- suele volver a darlos solo, por sus privilegios por defecto, pero
+-- "suele" no basta para algo cuyo fallo se ve como un patrimonio de $0:
+-- la app pide la vista, la API responde que no, y el código cae al
+-- valor por defecto sin que nada diga que hubo un error.
+--
+-- La seguridad no se apoya en esto. La vista es security_invoker, así
+-- que cada quien ve lo suyo por RLS; el grant solo abre la puerta.
+-- =====================================================================
+
+grant select on patrimonio_detalle to authenticated;
+
+
+-- =====================================================================
+-- COMPROBACIÓN
+--
+-- Aborta si la columna no quedó, en vez de terminar en verde y dejar la
+-- app en $0 sin explicación. Ejecutar esto dos veces no hace daño.
+-- =====================================================================
+
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'patrimonio_detalle'
+      and column_name = 'otros'
+  ) then
+    raise exception 'LA VISTA NO QUEDO: falta la columna "otros"';
+  end if;
+
+  raise notice 'patrimonio_detalle al dia: liquido, ahorros, inversiones, por_cobrar, otros, deudas, patrimonio';
+end $$;
+
+
+-- =====================================================================
+-- Y QUE LA API SE ENTERE
+--
+-- PostgREST —lo que Supabase pone delante de la base— cachea el esquema.
+-- Recién creada la columna, existe en la base pero su API todavía no la
+-- conoce, así que rechaza la consulta ENTERA y la app se queda sin
+-- ningún dato. Esto le dice que vuelva a leer.
+-- =====================================================================
+
+notify pgrst, 'reload schema';

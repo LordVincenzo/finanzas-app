@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { leerNotificacion } from '@/lib/lectores'
 
 /**
  * La puerta de entrada de la bandeja: aquí llega lo que el celular lee
@@ -87,11 +88,24 @@ export async function POST(request: NextRequest) {
     { auth: { persistSession: false } }
   )
 
+  /* Se interpreta AQUÍ, antes de guardar. El texto original se guarda
+     entero igual, así que siempre se podrá reinterpretar; guardar lo
+     leído deja ver de un vistazo qué entendió el lector de cada mensaje.
+     El día que un banco cambie su formato, los nuevos empiezan a entrar
+     con monto vacío y eso salta a la vista en la bandeja.
+
+     Lo que salga de aquí es una propuesta, no un dato cerrado: la
+     persona lo ve y puede cambiarlo antes de confirmar. */
+  const leido = leerNotificacion(fuente, mensaje)
+
   const { data, error } = await supabase.rpc('recibir_ingesta', {
     p_token: token,
     p_fuente: fuente || 'desconocida',
     p_texto: mensaje,
     p_recibido: recibido,
+    p_monto: leido.monto,
+    p_comercio: leido.comercio,
+    p_direccion: leido.direccion,
   })
 
   if (error) {
@@ -111,6 +125,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     ok: true,
     duplicado: data === null,
+    leido: { monto: leido.monto, comercio: leido.comercio, direccion: leido.direccion },
     id: data ?? null,
   })
 }

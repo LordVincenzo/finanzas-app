@@ -8,8 +8,14 @@ Colombia: pesos enteros (COP), zona `America/Bogota`.
 ```bash
 npm run dev          # desarrollo en localhost:3000
 npm run build        # comprobar que compila antes de subir
-node scripts/iconos.mjs   # regenerar iconos de la PWA
+npm run lint         # tiene que salir en cero antes de subir
+node scripts/iconos.mjs          # regenerar iconos de la PWA
+node scripts/probar-lectores.mts # probar los lectores de notificaciones
 ```
+
+**No corras `npm run build` con `npm run dev` abierto.** Los dos escriben
+en `.next` y el build lee `.next/dev/types/validator.ts` a medio generar:
+el error apunta a un archivo generado y no dice nada útil.
 
 Las migraciones SQL se ejecutan a mano en Supabase → SQL Editor, en orden
 numérico. No hay CLI de Supabase en este proyecto.
@@ -165,6 +171,12 @@ lib/revalidar.ts    `revalidarLedger()` — la lista de pantallas cuyos
 lib/datos-pareja.ts las ~15 consultas de la pantalla de Pareja, que las
                     dos interfaces comparten. Filtros de privacidad
                     finos: no puede haber dos copias
+lib/lectores.ts     leer el texto de una notificación bancaria, un lector
+                    por entidad. Añadir un banco es añadir un lector: no
+                    hay nada más del sistema que sepa que Nequi existe.
+                    Se prueba contra los textos REALES con
+                    `node scripts/probar-lectores.mts`
+lib/datos-bandeja.ts las consultas de la bandeja, para las dos interfaces
 lib/navegador.ts    leer el navegador sin romper la hidratación:
                     `useHidratado`, `useReducido`, `usePreferenciaLocal`.
                     Con `useSyncExternalStore`, NO con setState dentro de

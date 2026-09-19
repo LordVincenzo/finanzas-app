@@ -9,6 +9,12 @@
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
+    /* Permite escribir la extensión .ts en un import. Lo usa
+       lib/lectores.ts para importar ./format.ts, y hace falta porque ese
+       módulo se ejecuta con `node` a secas —sin bundler ni alias— desde
+       scripts/probar-lectores.mts. Es inocuo con noEmit: TypeScript aquí
+       solo comprueba tipos, no genera archivos. */
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",

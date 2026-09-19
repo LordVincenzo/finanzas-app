@@ -51,6 +51,18 @@ export function formatearFecha(fecha: string | Date): string {
   }).format(d)
 }
 
+/** "2026-09-19" — el día de hoy en Bogotá.
+ *
+ *  Con Intl y no con toISOString(): este último da UTC, y a las 8 de
+ *  la noche en Bogotá UTC ya es el día siguiente. Una meta que vence
+ *  hoy se daría por vencida cinco horas antes de tiempo. */
+export function hoyEnBogota(): string {
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'America/Bogota',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date())
+}
+
 /** "2026-03" — el mes actual en Bogotá, para agrupar por mes. */
 export function mesActualBogota(): string {
   return new Intl.DateTimeFormat('sv-SE', {

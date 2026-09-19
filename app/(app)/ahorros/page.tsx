@@ -3,6 +3,7 @@ import { Plus, Users } from 'lucide-react'
 import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { formatearCOP } from '@/lib/format'
 import { BarraProgreso } from '@/components/barra-progreso'
+import { RitmoMeta } from '@/components/ritmo-meta'
 import { CifraAnimada } from '@/components/cifra-animada'
 import {
   TarjetaDestacada, Reparto, DosRepartos,
@@ -133,6 +134,19 @@ export default async function AhorrosPage() {
                     retraso={260 + i * 60}
                   />
                 </div>
+
+                {/* La barra dice dónde vas; esto dice qué hacer. Sin la
+                    cuota mensual, una meta es una lista de deseos con
+                    una barra al lado. */}
+                <RitmoMeta
+                  meta={{
+                    target_amount: Number(m.target_amount),
+                    acumulado: Number(m.acumulado),
+                    target_date: m.target_date,
+                  }}
+                  compacto
+                  className="mt-2"
+                />
 
                 {/* Sin esta línea, ver el acumulado de la meta y otro
                     número en "comprometido" parece un error. */}

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Plus, Users, ChevronRight } from 'lucide-react'
+import { RitmoMeta } from '@/components/ritmo-meta'
 import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { formatearCOP } from '@/lib/format'
 import { BarraProgreso } from '@/components/barra-progreso'
@@ -98,6 +99,15 @@ export default async function AhorrosEscritorioPage() {
                   </div>
                   <div className="mt-3">
                     <BarraProgreso progreso={Number(m.progreso)} />
+                    <RitmoMeta
+                      meta={{
+                        target_amount: Number(m.target_amount),
+                        acumulado: Number(m.acumulado),
+                        target_date: m.target_date,
+                      }}
+                      compacto
+                      className="mt-2"
+                    />
                   </div>
                 </Link>
               )

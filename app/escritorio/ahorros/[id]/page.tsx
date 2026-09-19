@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ChevronLeft, Users } from 'lucide-react'
+import { RitmoMeta } from '@/components/ritmo-meta'
 import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { formatearCOP, formatearFecha } from '@/lib/format'
 import { FormularioAporte } from '@/components/formulario-aporte'
@@ -105,6 +106,20 @@ export default async function DetalleMetaEscritorioPage({
               </div>
             </div>
           </TarjetaDestacada>
+
+          {/* Fuera de la tarjeta: los colores de estado (rojo si la
+              fecha paso, verde si esta lograda) no se leen sobre el
+              fondo oscuro de la destacada. */}
+          <div className="mt-3 rounded-2xl bg-card px-4 py-3.5
+                          shadow-card ring-1 ring-border/70">
+            <RitmoMeta
+              meta={{
+                target_amount: Number(meta.target_amount),
+                acumulado: Number(meta.acumulado),
+                target_date: meta.target_date,
+              }}
+            />
+          </div>
 
           <FormularioAporte metaId={id} cuentas={cuentas ?? []} />
 

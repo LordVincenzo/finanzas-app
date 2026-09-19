@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ChevronLeft, Users } from 'lucide-react'
+import { RitmoMeta } from '@/components/ritmo-meta'
 import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { formatearCOP, formatearFecha } from '@/lib/format'
 import { FormularioAporte } from '@/components/formulario-aporte'
@@ -106,6 +107,22 @@ export default async function DetalleMetaPage({
             </div>
           </div>
         </TarjetaDestacada>
+      </div>
+
+      {/* Qué hay que hacer para llegar. Va FUERA de la tarjeta destacada
+          y no dentro: ahí arriba todo es texto sobre fondo oscuro y esto
+          usa los colores de estado —rojo si la fecha pasó, verde si está
+          lograda— que solo se leen bien sobre el fondo normal. */}
+      <div className="aparece mt-3 rounded-2xl bg-card px-4 py-3.5
+                      shadow-card ring-1 ring-border/70"
+           style={{ '--retraso': '120ms' } as React.CSSProperties}>
+        <RitmoMeta
+          meta={{
+            target_amount: Number(meta.target_amount),
+            acumulado: Number(meta.acumulado),
+            target_date: meta.target_date,
+          }}
+        />
       </div>
 
       {/* Reparto de aportes: solo tiene sentido en metas conjuntas.

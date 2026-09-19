@@ -13,6 +13,7 @@ import { CarruselPatrimonio, type CuentaWallet } from '@/components/carrusel-pat
 import { TarjetaDestacadaVacia } from '@/components/tarjeta-destacada'
 import { contarPendientes } from '@/lib/datos-bandeja'
 import { Comparacion } from '@/components/comparacion'
+import { RitmoMeta } from '@/components/ritmo-meta'
 
 export default async function InicioPage() {
   const supabase = await createClient()
@@ -92,7 +93,7 @@ export default async function InicioPage() {
        más las shared_view/joint de ella. No lo "arregles" añadiendo el
        filtro: escondería las metas compartidas. */
     supabase.from('metas_resumen')
-      .select('id, name, target_amount, acumulado, progreso, visibility')
+      .select('id, name, target_amount, acumulado, progreso, visibility, target_date')
       .eq('is_archived', false)
       .order('progreso', { ascending: false })
       .limit(2),
@@ -417,6 +418,15 @@ export default async function InicioPage() {
                     retraso={450 + i * 60}
                   />
                 </div>
+                <RitmoMeta
+                  meta={{
+                    target_amount: Number(meta.target_amount),
+                    acumulado: Number(meta.acumulado),
+                    target_date: meta.target_date,
+                  }}
+                  compacto
+                  className="mt-2"
+                />
               </Link>
             ))}
           </div>

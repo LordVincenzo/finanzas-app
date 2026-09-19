@@ -1,19 +1,13 @@
 import Link from 'next/link'
-import { ChevronRight, Wallet, HeartHandshake, HandCoins, BarChart3 } from 'lucide-react'
+import {
+  ChevronRight, Wallet, HeartHandshake, HandCoins, BarChart3, Inbox,
+} from 'lucide-react'
 import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { cerrarSesion } from '@/app/auth/actions'
+import { contarPendientes } from '@/lib/datos-bandeja'
 import { Seccion, Lista } from '@/components/seccion'
 import { SelectorTema } from '@/components/selector-tema'
 import { AvatarPerfil } from '@/components/avatar-perfil'
-
-const ENLACES = [
-  { href: '/cuentas',   icono: Wallet,         etiqueta: 'Cuentas',
-    detalle: 'Dónde tienes tu dinero' },
-  { href: '/prestamos', icono: HandCoins,      etiqueta: 'Préstamos',
-    detalle: 'Dinero que te deben' },
-  { href: '/pareja',    icono: HeartHandshake, etiqueta: 'Pareja',
-    detalle: 'Balance y gastos compartidos' },
-]
 
 export default async function MasPage() {
   const supabase = await createClient()
@@ -22,6 +16,29 @@ export default async function MasPage() {
     .from('profiles')
     .select('display_name, avatar_url')
     .eq('id', user.id).single()
+
+  const pendientes = await contarPendientes()
+
+  /* "Por confirmar" va aquí y no solo en Inicio.
+     En Inicio aparece únicamente cuando hay algo esperando, que está
+     bien para no ensuciar la pantalla con un aviso vacío — pero
+     entonces no había NINGUNA forma de llegar a la bandeja con la
+     bandeja vacía, y ahí es justo donde se activa la lectura de
+     notificaciones. Para que llegaran mensajes había que entrar, y para
+     entrar hacía falta que ya hubieran llegado.
+     Dentro del APK no hay barra de direcciones para saltárselo. */
+  const ENLACES = [
+    { href: '/bandeja',   icono: Inbox,          etiqueta: 'Por confirmar',
+      detalle: pendientes > 0
+        ? `${pendientes} esperando`
+        : 'Lo que leen tus bancos, y activar la lectura' },
+    { href: '/cuentas',   icono: Wallet,         etiqueta: 'Cuentas',
+      detalle: 'Dónde tienes tu dinero' },
+    { href: '/prestamos', icono: HandCoins,      etiqueta: 'Préstamos',
+      detalle: 'Dinero que te deben' },
+    { href: '/pareja',    icono: HeartHandshake, etiqueta: 'Pareja',
+      detalle: 'Balance y gastos compartidos' },
+  ]
 
   return (
     <main className="px-4 pt-4 pb-[calc(8rem+env(safe-area-inset-bottom))]">

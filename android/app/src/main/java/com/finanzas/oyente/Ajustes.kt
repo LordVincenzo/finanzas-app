@@ -17,6 +17,32 @@ class Ajustes(contexto: Context) {
     private val prefs =
         contexto.applicationContext.getSharedPreferences("oyente", Context.MODE_PRIVATE)
 
+    init {
+        migrar()
+    }
+
+    /**
+     * Arrastres de versiones anteriores.
+     *
+     * La 1 no traía servidor de fábrica: había que escribirlo a mano, y
+     * lo normal era poner el PC de casa. La 2 se instala ENCIMA de la 1
+     * —mismo applicationId— y conserva lo guardado, así que sin esto la
+     * app nueva seguiría abriendo una IP de la red local: en casa
+     * funcionaría a medias y fuera de casa no cargaría nada, sin que
+     * nada explique por qué.
+     *
+     * Se borra el servidor guardado una sola vez. El token NO se toca:
+     * sigue siendo válido y volver a pedirlo crearía un dispositivo
+     * duplicado en la lista.
+     */
+    private fun migrar() {
+        if (prefs.getInt(CLAVE_VERSION, 1) >= VERSION) return
+        prefs.edit()
+            .remove(CLAVE_SERVIDOR)
+            .putInt(CLAVE_VERSION, VERSION)
+            .apply()
+    }
+
     /**
      * A dónde se manda.
      *
@@ -63,6 +89,10 @@ class Ajustes(contexto: Context) {
     }
 
     private companion object {
+        /** Sube cuando un ajuste guardado deja de ser válido. Ver migrar(). */
+        const val VERSION = 2
+
+        const val CLAVE_VERSION = "version_ajustes"
         const val CLAVE_SERVIDOR = "servidor"
         const val CLAVE_TOKEN = "token"
         const val CLAVE_ENVIADAS = "enviadas"

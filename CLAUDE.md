@@ -182,9 +182,32 @@ lib/navegador.ts    leer el navegador sin romper la hidratación:
                     Con `useSyncExternalStore`, NO con setState dentro de
                     un useEffect — ese patrón provoca un render en
                     cascada y lo marca react-hooks/set-state-in-effect
+lib/puente.ts       hablar con la app de Android cuando la web corre
+                    dentro del APK. `useDentroDeLaApp()` dice si hay
+                    puente; el estado del oyente es un almacén externo,
+                    por lo mismo que navegador.ts
+android/            la app de Android: un WebView con esta misma web
+                    dentro y, en el mismo proceso, el servicio que lee
+                    las notificaciones del banco. Se compila aparte,
+                    con Gradle; ver android/README.md
 supabase/migrations/  esquema versionado + scripts verificacion_*.sql
 proxy.ts            refresco de sesión en cada petición
 ```
+
+**Una sola app en el teléfono.** El APK lleva la web dentro, así que la
+misma página corre en un navegador y dentro de la app. Lo que cambia es
+que dentro hay puente: `window.Oyente`, que Android solo inyecta si la
+página viene de nuestro origen.
+
+Eso es lo que quita el token a mano. Dentro del APK la sesión ya está
+iniciada, así que la página llama a `crear_token_ingesta()` ella misma y
+se lo pasa al oyente; copiarlo de una pantalla a otra solo hacía falta
+cuando eran dos programas que no se conocían.
+
+Un componente que dependa del puente **tiene que funcionar sin él**: la
+misma pantalla se abre desde el escritorio. `components/conectar.tsx` es
+el patrón — elige entre la tarjeta de permisos (dentro) y la del token
+para copiar (fuera), y nunca enseña las dos.
 
 **Dos interfaces, no una que se adapta.** `app/(app)/` es la app de celular;
 `app/escritorio/` es una vista de escritorio aparte, con su propio layout y

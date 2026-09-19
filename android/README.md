@@ -1,22 +1,45 @@
-# Oyente Finanzas — la app de Android
+# Finanzas — la app de Android
 
-Lee las notificaciones de Nequi, Nu, DaviPlata y Davivienda y las manda
-a la bandeja de entrada de Finanzas. Reemplaza a MacroDroid.
+La app de finanzas y el lector de notificaciones bancarias, en un solo
+APK y un solo icono. Dentro hay un WebView con la web desplegada y, en
+el mismo proceso, el servicio que lee las notificaciones de Nequi, Nu,
+DaviPlata y Davivienda y las manda a la bandeja.
 
 ## Por qué existe
 
-Con MacroDroid hay que repetir cuatro macros en cada teléfono, y sobre
-todo: MacroDroid pide acceso a **todas** las notificaciones del
-dispositivo — WhatsApp, códigos de banco, todo. Esta app tiene el mismo
-permiso, porque Android no deja pedir menos, pero **solo manda lo de
-cuatro paquetes concretos**, y esa lista está en `Bancos.kt`, a la
-vista.
+Antes eran dos cosas instaladas: la web añadida a la pantalla de inicio
+y un oyente aparte. Conectarlas era copiar un token de 64 caracteres de
+una pantalla a otra y escribir a mano la dirección del servidor. Una vez
+por teléfono, y otra vez cada vez que algo se rompiera.
 
-## Lo que NO tiene
+Ahora la web va dentro, y dentro **ya sabe quién eres**: pide el token
+ella misma y se lo pasa al oyente por el puente (`Puente.kt` /
+`lib/puente.ts`). Lo único que se pide es el permiso de Android, que
+ninguna app puede concederse a sí misma.
 
-Ninguna dependencia de terceros: ni librería de red, ni de JSON, ni de
-interfaz. Solo el SDK de Android y lo que trae el JDK. En una app que ve
-tus notificaciones, cada librería es algo más que auditar.
+Antes de eso estaba MacroDroid, que además de las cuatro macros por
+teléfono pedía acceso a **todas** las notificaciones del dispositivo.
+Esta app tiene el mismo permiso —Android no deja pedir menos— pero
+**solo manda lo de cuatro paquetes concretos**, y esa lista está en
+`Bancos.kt`, a la vista.
+
+## Dependencias
+
+Tres, todas de Google, y cada una por un motivo:
+
+- `appcompat` y `material` — la pantalla de diagnóstico.
+- `webkit` — por seguridad, no por comodidad. La forma clásica de
+  comunicar web y app (`addJavascriptInterface`) inyecta el objeto en
+  **todos** los marcos de la página, iframes de otros dominios
+  incluidos; aquí se acuña un token que escribe en tu bandeja. De esta
+  librería sale `addWebMessageListener`, que ata el puente a un origen:
+  si la página no es la nuestra, `window.Oyente` no existe, y lo
+  comprueba el WebView antes de inyectar en vez de nuestro código en
+  cada método nuevo.
+
+Ni librería de red ni de JSON: `HttpURLConnection` y `org.json` vienen
+en Android. En una app que ve tus notificaciones, cada librería es algo
+más que auditar.
 
 ## Compilar (recomendado)
 
@@ -80,17 +103,24 @@ por USB y la depuración activada (Ajustes → Acerca del teléfono → toca 7
 veces «Número de compilación» → Opciones de desarrollador → Depuración
 USB).
 
-## Configurar (una vez por teléfono)
+## Instalar y usar (una vez por teléfono)
 
-1. Abre **Oyente Finanzas**.
-2. **Permiso** → te lleva a los ajustes de Android → activa «Oyente
-   Finanzas» en la lista.
-3. **Servidor**: `http://192.168.1.19:3000` mientras corras la app en el
-   PC; el dominio real cuando esté desplegada.
-4. **Token**: el que da Finanzas en *Por confirmar → Conectar un
-   celular*. **Cada teléfono usa el suyo**, así se puede revocar uno sin
-   tocar el otro.
-5. **Probar el envío** → debería aparecer un mensaje en la bandeja.
+1. Pasa el `.apk` al teléfono e instálalo (pedirá permitir «orígenes
+   desconocidos», y Play Protect avisará de que no reconoce al
+   desarrollador: es normal, no está firmada por Play Store).
+2. Abre **Finanzas** e inicia sesión.
+3. Ve a **Por confirmar**. Sale una tarjeta: **«Activar lectura de
+   notificaciones»** → tócala → Android te lleva a una lista → activa
+   **Finanzas**.
+4. Vuelve. Ya está.
+
+No hay token que copiar ni servidor que escribir: la página lo resuelve
+sola por el puente, y la dirección viene compilada dentro (ver
+`SERVIDOR` en `app/build.gradle.kts`).
+
+Si algo no va, la pantalla de **Diagnóstico** (botón *Ajustes* de la
+pantalla de error) enseña cuántas se han enviado, qué dijo el último
+intento y cuántas esperan en la cola.
 
 ## Añadir un banco
 

@@ -65,7 +65,7 @@ export default async function MovimientosPage({
           <Link
             key={f.valor}
             href={`/movimientos?mes=${mes}${f.valor ? `&tipo=${f.valor}` : ''}`}
-            className={`flex h-9 shrink-0 items-center rounded-full px-3.5
+            className={`flex h-11 shrink-0 items-center rounded-full px-4
                         text-[13px] font-medium transition ${
               tipo === f.valor
                 ? 'bg-primary text-primary-foreground shadow-card'

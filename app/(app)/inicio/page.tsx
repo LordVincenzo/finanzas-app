@@ -300,8 +300,12 @@ export default async function InicioPage() {
         <Seccion
           titulo="En qué gastaste"
           accion={
+            /* -my-3 py-3 sube el área táctil de 18 a 42px sin mover el
+               texto ni cambiar la altura de la cabecera. Un enlace de
+               18px se falla con el pulgar una de cada tres veces. */
             <Link href="/movimientos"
-                  className="text-[12px] font-medium text-primary">
+                  className="-my-3 -mr-1 py-3 pr-1 text-[12px] font-medium
+                             text-primary">
               Ver todo
             </Link>
           }
@@ -322,7 +326,8 @@ export default async function InicioPage() {
           titulo="Tus metas"
           accion={
             <Link href="/ahorros"
-                  className="text-[12px] font-medium text-primary">
+                  className="-my-3 -mr-1 py-3 pr-1 text-[12px] font-medium
+                             text-primary">
               Ver todas
             </Link>
           }

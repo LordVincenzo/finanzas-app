@@ -178,7 +178,8 @@ export function FormularioMovimiento({
             <button
               type="button"
               onClick={() => setEditarFecha(true)}
-              className="text-[13px] text-muted-foreground underline"
+              className="-my-3 -mr-1 py-3 pr-1 text-[13px]
+                         text-muted-foreground underline"
             >
               Cambiar
             </button>

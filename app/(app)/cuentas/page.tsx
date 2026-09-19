@@ -6,7 +6,7 @@ import { ETIQUETAS_TIPO, ORDEN_TIPOS_CUENTA, cuentaVisible } from '@/lib/tipos'
 import { Seccion, Lista, Fila, Monto } from '@/components/seccion'
 import { CifraAnimada } from '@/components/cifra-animada'
 import {
-  TarjetaDestacada, Reparto, DosRepartos, TresRepartos,
+  TarjetaDestacada, Reparto, Repartos,
 } from '@/components/tarjeta-destacada'
 
 type CuentaFila = {
@@ -111,21 +111,28 @@ export default async function CuentasPage() {
               : undefined}
             retraso={50}
           >
-            {/* La columna de "Debes" solo sale si debes algo: una
-                columna en $0 ocupa sitio sin decir nada. Antes no existía
-                y una tarjeta de crédito bajaba el patrimonio en silencio. */}
-            {deudas !== 0 ? (
-              <TresRepartos>
-                <Reparto etiqueta="Por cobrar" valor={formatearCOP(porCobrar)} />
-                <Reparto etiqueta="Debes" valor={formatearCOP(Math.abs(deudas))} />
-                <Reparto etiqueta="Patrimonio" valor={formatearCOP(patrimonio)} />
-              </TresRepartos>
-            ) : (
-              <DosRepartos>
-                <Reparto etiqueta="Por cobrar" valor={formatearCOP(porCobrar)} />
-                <Reparto etiqueta="Patrimonio" valor={formatearCOP(patrimonio)} />
-              </DosRepartos>
-            )}
+            {/* "Debes" solo sale si debes algo: un reparto en $0 ocupa
+                sitio sin decir nada. Antes no existía y una tarjeta de
+                crédito bajaba el patrimonio en silencio.
+
+                Con <Repartos> y no con <TresRepartos>: en un celular de
+                390px, tres columnas dejan 83px de texto y "$5.436.500"
+                necesita 95. Se recortaba a "$5.436.50" — un saldo mal
+                leído, que es el peor error que puede cometer esta app y
+                además no avisa. Repartos baja lo que no cabe a otra
+                fila. */}
+            <Repartos>
+              {[
+                <Reparto key="cobrar" etiqueta="Por cobrar"
+                         valor={formatearCOP(porCobrar)} />,
+                deudas !== 0 ? (
+                  <Reparto key="debes" etiqueta="Debes"
+                           valor={formatearCOP(Math.abs(deudas))} />
+                ) : null,
+                <Reparto key="patrimonio" etiqueta="Patrimonio"
+                         valor={formatearCOP(patrimonio)} />,
+              ]}
+            </Repartos>
           </TarjetaDestacada>
         </div>
       )}

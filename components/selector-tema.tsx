@@ -24,14 +24,14 @@ export function SelectorTema() {
             type="button"
             onClick={() => setTheme(valor)}
             aria-label={etiqueta}
-            className={`flex items-center gap-1 rounded-full px-2.5 py-1
+            className={`flex min-h-10 items-center gap-1.5 rounded-full px-3
                         text-[11px] transition ${
                           listo && theme === valor
                             ? 'bg-background shadow-sm'
                             : 'text-muted-foreground'
                         }`}
           >
-            <Icono className="size-3" />
+            <Icono className="size-3.5" />
             {etiqueta}
           </button>
         ))}

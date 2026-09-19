@@ -27,20 +27,20 @@ export function SelectorMes({ mes, tipo }: { mes: string; tipo: string }) {
       <Link
         href={`/movimientos?mes=${moverMes(mes, -1)}${sufijo}`}
         aria-label="Mes anterior"
-        className="flex size-7 items-center justify-center rounded-full
+        className="flex size-11 items-center justify-center rounded-full
                    text-muted-foreground transition active:scale-95"
       >
         <ChevronLeft className="size-4" />
       </Link>
 
-      <span className="min-w-[86px] text-center text-[11px] capitalize">
+      <span className="min-w-[86px] text-center text-[12px] capitalize">
         {nombreMes(mes)}
       </span>
 
       <Link
         href={`/movimientos?mes=${moverMes(mes, 1)}${sufijo}`}
         aria-label="Mes siguiente"
-        className="flex size-7 items-center justify-center rounded-full
+        className="flex size-11 items-center justify-center rounded-full
                    text-muted-foreground transition active:scale-95"
       >
         <ChevronRight className="size-4" />

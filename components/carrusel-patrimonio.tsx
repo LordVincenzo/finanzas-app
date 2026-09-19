@@ -10,7 +10,7 @@ import { formatearCOP } from '@/lib/format'
 import { useReducido, usePreferenciaLocal } from '@/lib/navegador'
 import { Monto } from '@/components/seccion'
 import { CifraAnimada } from '@/components/cifra-animada'
-import { TarjetaDestacada, Reparto } from '@/components/tarjeta-destacada'
+import { TarjetaDestacada, Reparto, Repartos } from '@/components/tarjeta-destacada'
 
 type Icono = React.ComponentType<{ className?: string }>
 
@@ -199,7 +199,7 @@ export function CarruselPatrimonio({
         etiqueta="Patrimonio"
         valor={oculto ? MASCARA : <CifraAnimada valor={patrimonio} />}
       >
-        <Partes>{partes}</Partes>
+        <Repartos>{partes}</Repartos>
       </TarjetaDestacada>
 
       {/* ARRIBA, no abajo. Estaban en `bottom-3 right-3`, encima de la
@@ -219,24 +219,35 @@ export function CarruselPatrimonio({
         onPointerDown={(e) => e.stopPropagation()}
         className="absolute right-3 top-3 flex items-center gap-2"
       >
+        {/* El área táctil va en el enlace y el fondo en el span de
+            dentro: así el círculo se sigue viendo de 32px —más grande
+            taparía la cifra— pero se toca en 44, que es el mínimo de
+            esta app. Con los dos en el mismo elemento no se puede tener
+            una cosa sin la otra. */}
         <Link
           href="/movimientos/nuevo?tipo=transfer"
           aria-label="Transferir entre cuentas"
-          className="flex size-8 items-center justify-center rounded-full
-                     bg-white/15 text-destacado backdrop-blur-sm
+          className="-m-1.5 flex items-center justify-center p-1.5
                      transition active:scale-90"
         >
-          <ArrowLeftRight className="size-4" />
+          <span className="flex size-8 items-center justify-center
+                           rounded-full bg-white/15 text-destacado
+                           backdrop-blur-sm">
+            <ArrowLeftRight className="size-4" />
+          </span>
         </Link>
         <button
           type="button"
           onClick={alternarOculto}
           aria-label={oculto ? 'Mostrar montos' : 'Ocultar montos'}
-          className="flex size-8 items-center justify-center rounded-full
-                     bg-white/15 text-destacado backdrop-blur-sm
+          className="-m-1.5 flex items-center justify-center p-1.5
                      transition active:scale-90"
         >
-          {oculto ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          <span className="flex size-8 items-center justify-center
+                           rounded-full bg-white/15 text-destacado
+                           backdrop-blur-sm">
+            {oculto ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </span>
         </button>
       </div>
     </div>
@@ -332,39 +343,6 @@ function TarjetaCuentaWallet({
           </>
         )}
       </div>
-    </div>
-  )
-}
-
-/**
- * Las partes del patrimonio, de una a cuatro.
- *
- * Siempre dos columnas, no una por parte. En un celular, cuatro cifras
- * en pesos colombianos en la misma fila salen a unos 85px cada una y
- * "$1.200.000" no cabe: se corta y se lee "$1.200.00", que es un número
- * distinto y creíble. Dos columnas y dos filas es más alto pero legible,
- * y la altura aquí sobra.
- *
- * Una sola parte ocupa el ancho entero, como antes.
- */
-function Partes({ children }: { children: React.ReactNode[] }) {
-  if (children.length === 1) return <>{children}</>
-
-  const filas: React.ReactNode[][] = []
-  for (let i = 0; i < children.length; i += 2) {
-    filas.push(children.slice(i, i + 2))
-  }
-
-  return (
-    <div className="divide-y divide-destacado">
-      {filas.map((fila, i) => (
-        <div key={i}
-             className={fila.length === 2
-               ? 'grid grid-cols-2 divide-x divide-destacado'
-               : ''}>
-          {fila}
-        </div>
-      ))}
     </div>
   )
 }

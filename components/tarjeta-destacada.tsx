@@ -132,6 +132,44 @@ export function Reparto({
   )
 }
 
+/**
+ * Tantos repartos como haga falta, de dos en dos.
+ *
+ * PARA EL CELULAR. En 390px, tres columnas dejan unos 83px de texto por
+ * columna y "$5.436.500" a 18px necesita unos 95: se recorta y se lee
+ * "$5.436.50", que es un número distinto y perfectamente creíble. Un
+ * saldo mal leído es el peor error que puede cometer esta app, y no
+ * avisa: se ve bien hasta que alguien tiene un millón más.
+ *
+ * Por eso aquí el número de columnas no se elige: son dos, y lo que
+ * sobra baja a otra fila. Es más alto y cabe siempre.
+ *
+ * Las versiones de abajo con número fijo siguen existiendo para el
+ * escritorio, donde hay 1200px y tres o cuatro columnas caben de verdad.
+ */
+export function Repartos({ children }: { children: React.ReactNode[] }) {
+  const partes = children.filter(Boolean)
+  if (partes.length <= 1) return <>{partes}</>
+
+  const filas: React.ReactNode[][] = []
+  for (let i = 0; i < partes.length; i += 2) {
+    filas.push(partes.slice(i, i + 2))
+  }
+
+  return (
+    <div className="divide-y divide-destacado">
+      {filas.map((fila, i) => (
+        <div key={i}
+             className={fila.length === 2
+               ? 'grid grid-cols-2 divide-x divide-destacado'
+               : ''}>
+          {fila}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /** Fila de dos repartos, con la línea vertical entre ellos. */
 export function DosRepartos({ children }: { children: React.ReactNode }) {
   return (

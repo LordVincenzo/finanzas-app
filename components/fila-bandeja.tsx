@@ -343,7 +343,7 @@ export function FilaBandeja({
         <button
           type="submit"
           disabled={confirmando || ignorando}
-          className="min-h-9 w-full rounded-xl text-[13px]
+          className="min-h-11 w-full rounded-xl text-[13px]
                      text-muted-foreground transition
                      hover:text-foreground disabled:opacity-50"
         >

@@ -78,7 +78,8 @@ export default async function NuevoMovimientoPage({
     <main className="px-5 pt-6">
       <Link
         href="/movimientos"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground"
+        className="-my-2.5 -ml-1 inline-flex items-center gap-1 py-2.5 pl-1
+                   pr-2 text-sm text-muted-foreground"
       >
         <ChevronLeft className="size-4" /> Movimientos
       </Link>

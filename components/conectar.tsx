@@ -80,7 +80,8 @@ function Conectados({ dispositivos }: { dispositivos: Dispositivo[] }) {
             </div>
             <form action={accion}>
               <input type="hidden" name="id" value={d.id} />
-              <button className="shrink-0 text-[12px] font-medium text-destructive">
+              <button className="-my-3 shrink-0 px-2 py-3 text-[12px]
+                                 font-medium text-destructive">
                 Revocar
               </button>
             </form>

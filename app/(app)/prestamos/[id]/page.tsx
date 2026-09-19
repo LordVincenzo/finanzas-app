@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ChevronLeft, Check, AlertCircle, Clock } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { formatearCOP, formatearFecha } from '@/lib/format'
 import { BarraProgreso } from '@/components/barra-progreso'
 import { FormularioAbono } from '@/components/formulario-abono'
@@ -28,7 +28,7 @@ export default async function DetallePrestamoPage({
 }) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await requerirUsuario(supabase)
 
   const { data: prestamo } = await supabase
     .from('prestamos_resumen').select('*').eq('id', id).maybeSingle()
@@ -43,7 +43,7 @@ export default async function DetallePrestamoPage({
         .select('id, amount, occurred_on, note, installment_id')
         .eq('loan_id', id).order('occurred_on', { ascending: false }),
       supabase.from('accounts')
-        .select('id, name').eq('owner_id', user!.id)
+        .select('id, name').eq('owner_id', user.id)
         .eq('class', 'asset').eq('is_active', true)
         .neq('type', 'receivable').neq('type', 'partner_receivable')
         .order('name'),

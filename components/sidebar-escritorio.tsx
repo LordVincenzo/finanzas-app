@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, BarChart3, ArrowLeftRight, Wallet, PiggyBank, HandCoins, ChevronLeft,
+  LayoutDashboard, BarChart3, ArrowLeftRight, Wallet, PiggyBank, HandCoins,
+  HeartHandshake, UserRound, ChevronLeft,
 } from 'lucide-react'
 
 const ENLACES = [
@@ -13,7 +14,11 @@ const ENLACES = [
   { href: '/escritorio/cuentas', etiqueta: 'Cuentas', icono: Wallet },
   { href: '/escritorio/ahorros', etiqueta: 'Ahorros', icono: PiggyBank },
   { href: '/escritorio/prestamos', etiqueta: 'Préstamos', icono: HandCoins },
+  { href: '/escritorio/pareja', etiqueta: 'Pareja', icono: HeartHandshake },
 ]
+
+// Perfil va aparte, abajo: son ajustes, no una sección que se consulte.
+const AJUSTES = { href: '/escritorio/perfil', etiqueta: 'Perfil', icono: UserRound }
 
 export function SidebarEscritorio() {
   const ruta = usePathname()
@@ -49,13 +54,28 @@ export function SidebarEscritorio() {
         })}
       </div>
 
-      <Link
-        href="/inicio"
-        className="mt-auto flex items-center gap-2 px-3 text-[13px]
-                   text-muted-foreground transition hover:text-foreground"
-      >
-        <ChevronLeft className="size-4" /> Volver a la app
-      </Link>
+      <div className="mt-auto space-y-1">
+        <Link
+          href={AJUSTES.href}
+          className={`flex items-center gap-3 rounded-xl px-3 py-2.5
+                     text-[14px] transition ${
+            ruta.startsWith(AJUSTES.href)
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          }`}
+        >
+          <AJUSTES.icono className="size-4 shrink-0" />
+          {AJUSTES.etiqueta}
+        </Link>
+
+        <Link
+          href="/inicio"
+          className="flex items-center gap-2 px-3 pt-2 text-[13px]
+                     text-muted-foreground transition hover:text-foreground"
+        >
+          <ChevronLeft className="size-4" /> Volver a la app
+        </Link>
+      </div>
     </nav>
   )
 }

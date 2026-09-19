@@ -4,6 +4,7 @@ import { useActionState, useMemo, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { crearPrestamo, type EstadoPrestamo } from '@/app/(app)/prestamos/actions'
 import { formatearCOP, parsearCOP } from '@/lib/format'
+import type { Origen } from '@/lib/interfaz'
 
 type Cuenta = { id: string; name: string }
 type Cuota = { fecha: string; monto: number }
@@ -24,10 +25,11 @@ function sumarMeses(iso: string, meses: number): string {
 }
 
 export function FormularioPrestamo({
-  cuentas, hoy,
+  cuentas, hoy, origen = 'celular',
 }: {
   cuentas: Cuenta[]
   hoy: string
+  origen?: Origen
 }) {
   const [estado, accion, enviando] = useActionState(crearPrestamo, estadoInicial)
   const [montoTexto, setMontoTexto] = useState('')
@@ -64,6 +66,9 @@ export function FormularioPrestamo({
   return (
     <form action={accion} className="mt-5 space-y-4">
       <input type="hidden" name="cuotas" value={JSON.stringify(activas)} />
+      {/* A qué lista volver al terminar. La acción lo traduce contra una
+          tabla blanca, nunca lo usa tal cual en redirect(). */}
+      <input type="hidden" name="origen" value={origen} />
 
       <div>
         <label htmlFor="persona" className="mb-1.5 block text-[13px] font-medium">
@@ -95,7 +100,7 @@ export function FormularioPrestamo({
           />
         </div>
         <p className="mt-1.5 text-[12px] text-muted-foreground">
-          Prestar no reduce tu patrimonio: pasa a "por cobrar".
+          Prestar no reduce tu patrimonio: pasa a «por cobrar».
         </p>
       </div>
 

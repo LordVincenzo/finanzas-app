@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { formatearCOP } from '@/lib/format'
 import { ETIQUETAS_TIPO, ORDEN_TIPOS_CUENTA, cuentaVisible } from '@/lib/tipos'
 import { SaldoEditable } from '@/components/saldo-editable'
@@ -20,11 +20,22 @@ const TIPOS_POR_COBRAR = ['receivable', 'partner_receivable']
 
 export default async function CuentasEscritorioPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await requerirUsuario(supabase)
 
-  const [{ data }, { data: resumen }, { data: patri }] = await Promise.all([
+  const [
+    { data },
+    { data: resumen },
+    { data: patri },
+    { data: ctaPendiente },
+  ] = await Promise.all([
+    /* owner_id explícito. Aquí el error era peor que en el celular: las
+       cuentas shared_view de tu pareja salían en el bloque "Tus cuentas"
+       con el saldo editable, y al hacer clic el RPC contestaba "Solo
+       puedes ajustar tus propias cuentas" — un control que se ofrecía
+       sin poder funcionar. */
     supabase.from('account_balances')
       .select('account_id, name, type, class, balance')
+      .eq('owner_id', user.id)
       .in('class', ['asset', 'liability'])
       .eq('is_active', true)
       .order('name'),
@@ -33,13 +44,21 @@ export default async function CuentasEscritorioPage() {
     // además avisar, cuenta por cuenta, cuánto de su saldo ya está
     // reservado en una meta.
     supabase.from('cuentas_disponible')
-      .select('account_id, saldo, asignado, disponible').eq('owner_id', user!.id),
+      .select('account_id, saldo, asignado, disponible').eq('owner_id', user.id),
     supabase.from('patrimonio_detalle')
-      .select('por_cobrar').eq('owner_id', user!.id).maybeSingle(),
+      .select('por_cobrar').eq('owner_id', user.id).maybeSingle(),
+    /* Cuál es tu cuenta "Pendiente de ubicar", para esconderla cuando
+       está en $0 (ver cuentaVisible en lib/tipos.ts). Dentro del mismo
+       Promise.all: no añade espera. */
+    supabase.from('accounts')
+      .select('id')
+      .eq('owner_id', user.id).eq('is_pending_location', true)
+      .maybeSingle(),
   ])
 
   const cuentas = (data ?? []) as CuentaFila[]
-  const visibles = cuentas.filter((c) => cuentaVisible(c.type, Number(c.balance)))
+  const visibles = cuentas.filter((c) =>
+    cuentaVisible(c.type, Number(c.balance), c.account_id === ctaPendiente?.id))
 
   const filas = resumen ?? []
   const disponible = filas.reduce((s, c) => s + Number(c.disponible), 0)
@@ -74,7 +93,7 @@ export default async function CuentasEscritorioPage() {
             Clic sobre un saldo para ajustarlo.
           </p>
         </div>
-        <Link href="/cuentas/nueva"
+        <Link href="/escritorio/cuentas/nueva"
               className="flex h-9 items-center gap-1.5 rounded-full bg-primary
                          px-4 text-[13px] font-medium text-primary-foreground
                          shadow-card transition hover:opacity-90">
@@ -88,7 +107,7 @@ export default async function CuentasEscritorioPage() {
           <p className="mx-auto mt-1.5 max-w-[40ch] text-[13px] text-muted-foreground">
             Registra dónde tienes tu dinero hoy: Nu, Nequi, efectivo, lo que uses.
           </p>
-          <Link href="/cuentas/nueva"
+          <Link href="/escritorio/cuentas/nueva"
                 className="mt-4 inline-flex h-11 items-center rounded-xl bg-primary
                            px-5 text-[14px] font-medium text-primary-foreground shadow-card">
             Crear la primera

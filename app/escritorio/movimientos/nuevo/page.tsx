@@ -1,9 +1,9 @@
 import Link from 'next/link'
-import { ChevronLeft } from 'lucide-react'
 import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import {
   FormularioMovimiento, type TipoMovimiento,
 } from '@/components/formulario-movimiento'
+import { PaginaFormulario } from '@/components/pagina-escritorio'
 
 const TIPOS_VALIDOS: TipoMovimiento[] = ['expense', 'income', 'transfer', 'adjustment']
 
@@ -17,7 +17,13 @@ function ahoraEnBogota(): string {
   return partes.replace(' ', 'T')
 }
 
-export default async function NuevoMovimientoPage({
+/**
+ * Desde el escritorio no se podía registrar un movimiento: había
+ * filtros e historial, pero ninguna forma de añadir un gasto. Era el
+ * hueco más raro de las dos interfaces, porque con teclado es más
+ * rápido que en el celular.
+ */
+export default async function NuevoMovimientoEscritorioPage({
   searchParams,
 }: {
   searchParams: Promise<{ tipo?: string }>
@@ -28,11 +34,7 @@ export default async function NuevoMovimientoPage({
   const supabase = await createClient()
   const user = await requerirUsuario(supabase)
 
-  /* Solo tus cuentas y tus categorías. Sin owner_id entraban las que tu
-     pareja comparte, y elegir una acababa en un error del RPC: el RLS de
-     transaction_entries solo deja meter líneas en cuentas tuyas o
-     conjuntas, no en las que ella te deja VER. Un desplegable no debe
-     ofrecer opciones que no se pueden usar. */
+  // Solo tus cuentas y tus categorías — ver el comentario del celular.
   const { data } = await supabase
     .from('accounts')
     .select('id, name, class, type')
@@ -56,42 +58,47 @@ export default async function NuevoMovimientoPage({
 
   if (cuentas.length === 0) {
     return (
-      <main className="px-5 pt-8">
-        <h1 className="text-2xl font-semibold">Registrar movimiento</h1>
-        <div className="mt-8 rounded-2xl border border-dashed p-8 text-center">
-          <p className="text-sm text-muted-foreground">
-            Primero necesitas al menos una cuenta.
+      <PaginaFormulario
+        volverA="/escritorio/movimientos"
+        volverTexto="Movimientos"
+        titulo="Registrar movimiento"
+      >
+        <div className="mt-6 rounded-2xl border border-dashed border-border
+                        px-6 py-12 text-center">
+          <p className="text-[15px] font-medium">
+            Primero necesitas al menos una cuenta
+          </p>
+          <p className="mx-auto mt-1.5 max-w-[40ch] text-[13px]
+                        text-muted-foreground">
+            Un movimiento siempre sale de algún sitio y entra en otro.
           </p>
           <Link
-            href="/cuentas/nueva"
-            className="mt-4 inline-block rounded-lg bg-foreground px-4 py-2
-                       text-sm font-medium text-background"
+            href="/escritorio/cuentas/nueva"
+            className="mt-4 inline-flex h-11 items-center rounded-xl bg-primary
+                       px-5 text-[14px] font-medium text-primary-foreground
+                       shadow-card"
           >
             Crear una cuenta
           </Link>
         </div>
-      </main>
+      </PaginaFormulario>
     )
   }
 
   return (
-    <main className="px-5 pt-6">
-      <Link
-        href="/movimientos"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground"
-      >
-        <ChevronLeft className="size-4" /> Movimientos
-      </Link>
-
-      <h1 className="mt-4 text-2xl font-semibold">Registrar movimiento</h1>
-
+    <PaginaFormulario
+      volverA="/escritorio/movimientos"
+      volverTexto="Movimientos"
+      titulo="Registrar movimiento"
+    >
       <FormularioMovimiento
         cuentas={cuentas}
         categoriasGasto={categoriasGasto}
         categoriasIngreso={categoriasIngreso}
         ahora={ahoraEnBogota()}
         tipoInicial={tipoInicial}
+        origen="escritorio"
       />
-    </main>
+    </PaginaFormulario>
   )
 }

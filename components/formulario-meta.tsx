@@ -3,6 +3,7 @@
 import { useActionState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { crearMeta, type EstadoMeta } from '@/app/(app)/ahorros/actions'
+import type { Origen } from '@/lib/interfaz'
 
 const estadoInicial: EstadoMeta = {}
 
@@ -10,11 +11,20 @@ const CAMPO = `min-h-12 w-full rounded-xl border bg-transparent px-3.5
                text-[15px] placeholder:text-muted-foreground/50
                focus:outline-none focus:ring-2 focus:ring-ring`
 
-export function FormularioMeta({ tienePareja }: { tienePareja: boolean }) {
+export function FormularioMeta({
+  tienePareja, origen = 'celular',
+}: {
+  tienePareja: boolean
+  origen?: Origen
+}) {
   const [estado, accion, enviando] = useActionState(crearMeta, estadoInicial)
 
   return (
     <form action={accion} className="mt-5 space-y-4">
+      {/* A qué lista volver al terminar. La acción lo traduce contra una
+          tabla blanca, nunca lo usa tal cual en redirect(). */}
+      <input type="hidden" name="origen" value={origen} />
+
       <div>
         <label htmlFor="nombre" className="mb-1.5 block text-[13px] font-medium">
           Nombre

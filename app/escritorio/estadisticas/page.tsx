@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { mesActualBogota, restarMeses, etiquetaMesCorta } from '@/lib/format'
 import { GraficaBarrasComparadas } from '@/components/grafica-barras-comparadas'
 import { GraficaPatrimonio } from '@/components/grafica-patrimonio'
@@ -8,7 +8,7 @@ const MAX_CATEGORIAS = 5
 
 export default async function EstadisticasPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await requerirUsuario(supabase)
 
   const mesActual = mesActualBogota()
   const meses = Array.from({ length: 12 }, (_, i) => restarMeses(mesActual, 11 - i))
@@ -17,13 +17,13 @@ export default async function EstadisticasPage() {
   const [{ data: movs }, { data: cats }, { data: patri }] = await Promise.all([
     supabase.from('movimientos_mensuales')
       .select('mes, type, monto')
-      .eq('owner_id', user!.id).gte('mes', desde),
+      .eq('owner_id', user.id).gte('mes', desde),
     supabase.from('categorias_mensuales')
       .select('mes, categoria, monto')
-      .eq('owner_id', user!.id).gte('mes', desde),
+      .eq('owner_id', user.id).gte('mes', desde),
     supabase.from('patrimonio_mensual')
       .select('mes, patrimonio')
-      .eq('owner_id', user!.id).gte('mes', desde),
+      .eq('owner_id', user.id).gte('mes', desde),
   ])
 
   // Ingresos y gastos: un mapa por mes, en 0 si ese mes no tuvo filas.

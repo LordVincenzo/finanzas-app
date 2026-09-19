@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ChevronRight, Users, AlertCircle } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import {
   formatearCOP, formatearFecha, formatearHora, mesActualBogota, hoyBogota,
 } from '@/lib/format'
@@ -19,7 +19,7 @@ const NOMBRE_MES_ACTUAL = new Intl.DateTimeFormat('es-CO', {
 
 export default async function PanoramaPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await requerirUsuario(supabase)
 
   const mes = mesActualBogota()
   const desde = `${mes}-01`
@@ -36,9 +36,13 @@ export default async function PanoramaPage() {
   ] = await Promise.all([
     supabase.from('patrimonio_detalle')
       .select('por_cobrar, patrimonio')
-      .eq('owner_id', user!.id).maybeSingle(),
+      .eq('owner_id', user.id).maybeSingle(),
     supabase.from('cuentas_disponible')
-      .select('saldo, asignado, disponible').eq('owner_id', user!.id),
+      .select('saldo, asignado, disponible').eq('owner_id', user.id),
+    /* SIN owner_id a propósito: una meta conjunta pertenece a la pareja y
+       las dos personas tienen que verla. El RLS ya recorta a las tuyas
+       más las shared_view/joint de ella. No lo "arregles" añadiendo el
+       filtro: escondería las metas compartidas. */
     supabase.from('metas_resumen')
       .select('id, name, target_amount, acumulado, progreso, visibility')
       .eq('is_archived', false)
@@ -51,8 +55,11 @@ export default async function PanoramaPage() {
       .select('id, person_name, principal, pagado, pendiente, status, cuotas_vencidas')
       .neq('status', 'cancelled')
       .order('loan_date', { ascending: false }),
+    // owner_id explícito en las dos: son tus movimientos y tus cifras
+    // del mes, no las de la pareja. Ver el comentario de /inicio.
     supabase.from('movimientos_detalle')
       .select('*')
+      .eq('owner_id', user.id)
       .order('occurred_at', { ascending: false })
       .limit(MAX_MOVIMIENTOS),
     // Mes actual, día a día: con una sola cuenta creada hace poco, un
@@ -60,6 +67,7 @@ export default async function PanoramaPage() {
     // en /escritorio/estadisticas.
     supabase.from('movimientos_detalle')
       .select('occurred_on, type, monto, cuenta_origen, cuenta_destino')
+      .eq('owner_id', user.id)
       .gte('occurred_on', desde).lte('occurred_on', hoy)
       .in('type', ['expense', 'income']),
   ])

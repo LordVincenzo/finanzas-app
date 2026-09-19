@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidarLedger } from '@/lib/revalidar'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { parsearCOP } from '@/lib/format'
@@ -11,11 +11,6 @@ function traducir(mensaje: string): string {
   return mensaje.replace(/^.*?:\s*/, '').trim() || 'Algo salió mal'
 }
 
-function revalidarTodo() {
-  revalidatePath('/pareja')
-  revalidatePath('/cuentas')
-  revalidatePath('/inicio')
-}
 
 const esquemaEmail = z.object({
   email: z.string().trim().email('Escribe un correo válido'),
@@ -35,7 +30,7 @@ export async function invitar(
 
   if (error) return { error: traducir(error.message) }
 
-  revalidarTodo()
+  revalidarLedger()
   return { ok: 'Invitación enviada' }
 }
 
@@ -44,28 +39,28 @@ export async function aceptar(formData: FormData) {
   const supabase = await createClient()
   const { error } = await supabase.rpc('aceptar_invitacion', { p_id: id })
   if (error) throw new Error(traducir(error.message))
-  revalidarTodo()
+  revalidarLedger()
 }
 
 export async function rechazar(formData: FormData) {
   const id = String(formData.get('id') ?? '')
   const supabase = await createClient()
   await supabase.rpc('rechazar_invitacion', { p_id: id })
-  revalidarTodo()
+  revalidarLedger()
 }
 
 export async function cancelar(formData: FormData) {
   const id = String(formData.get('id') ?? '')
   const supabase = await createClient()
   await supabase.rpc('cancelar_invitacion', { p_id: id })
-  revalidarTodo()
+  revalidarLedger()
 }
 
 export async function salir() {
   const supabase = await createClient()
   const { error } = await supabase.rpc('salir_pareja')
   if (error) throw new Error(traducir(error.message))
-  revalidarTodo()
+  revalidarLedger()
 }
 
 /** Cambia una cuenta entre privada y compartida. */
@@ -79,7 +74,7 @@ export async function cambiarVisibilidad(formData: FormData) {
   // El RLS ya garantiza que solo puedas tocar tus propias cuentas.
   await supabase.from('accounts').update({ visibility: nueva }).eq('id', id)
 
-  revalidarTodo()
+  revalidarLedger()
 }
 
 export async function crearGastoCompartido(
@@ -115,8 +110,7 @@ export async function crearGastoCompartido(
 
   if (error) return { error: traducir(error.message) }
 
-  revalidarTodo()
-  revalidatePath('/movimientos')
+  revalidarLedger()
   return { ok: 'Gasto compartido registrado' }
 }
 
@@ -141,8 +135,7 @@ export async function liquidar(
 
   if (error) return { error: traducir(error.message) }
 
-  revalidarTodo()
-  revalidatePath('/movimientos')
+  revalidarLedger()
   return { ok: 'Liquidación registrada' }
 }
 
@@ -150,6 +143,24 @@ export async function eliminarGastoCompartido(formData: FormData) {
   const id = String(formData.get('id') ?? '')
   const supabase = await createClient()
   await supabase.rpc('eliminar_gasto_compartido', { p_id: id })
-  revalidarTodo()
-  revalidatePath('/movimientos')
+  revalidarLedger()
+}
+
+/**
+ * Borrar una liquidación mal registrada.
+ *
+ * Hasta la migración 0021 esto no existía. eliminar_movimiento() la
+ * rechazaba diciendo "Borrala desde Pareja", pero no había ni RPC ni
+ * botón: el mensaje mandaba a un sitio que no estaba, y una liquidación
+ * equivocada no se podía deshacer de ninguna manera.
+ *
+ * La puede borrar cualquiera de los dos, no solo quien pagó: cualquiera
+ * pudo haberla registrado (el formulario cubre "yo pago" y "me pagan").
+ */
+export async function eliminarLiquidacion(formData: FormData) {
+  const id = String(formData.get('id') ?? '')
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('eliminar_liquidacion', { p_id: id })
+  if (error) throw new Error(traducir(error.message))
+  revalidarLedger()
 }

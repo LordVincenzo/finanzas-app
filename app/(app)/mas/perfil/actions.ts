@@ -4,10 +4,27 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { leerOrigen, rutaDe } from '@/lib/interfaz'
 
 export type EstadoPerfil = { error?: string }
 
-const TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+/**
+ * Tipo permitido -> extensión del archivo.
+ *
+ * Antes la extensión salía del nombre que trae el navegador
+ * (`foto.name.split('.').pop()`) y se pegaba al path sin comprobar nada.
+ * El RLS del bucket impedía escribir en la carpeta de otra persona, así
+ * que no era una vía de entrada, pero el nombre de archivo lo decidía
+ * quien subía la foto. Aquí la decide el servidor, y de la misma tabla
+ * que valida el tipo: una sola lista, imposible que discrepen.
+ */
+const EXTENSION_POR_TIPO: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+}
+
 const TAMANO_MAXIMO = 5 * 1024 * 1024 // 5 MB
 
 const esquema = z.object({
@@ -18,6 +35,8 @@ export async function actualizarPerfil(
   _previo: EstadoPerfil,
   formData: FormData
 ): Promise<EstadoPerfil> {
+  const origen = leerOrigen(formData.get('origen'))
+
   const datos = esquema.safeParse({ nombre: formData.get('nombre') })
   if (!datos.success) return { error: datos.error.issues[0].message }
 
@@ -31,7 +50,8 @@ export async function actualizarPerfil(
 
   const foto = formData.get('foto')
   if (foto instanceof File && foto.size > 0) {
-    if (!TIPOS_PERMITIDOS.includes(foto.type)) {
+    const extension = EXTENSION_POR_TIPO[foto.type]
+    if (!extension) {
       return { error: 'La foto debe ser JPG, PNG, WEBP o GIF' }
     }
     if (foto.size > TAMANO_MAXIMO) {
@@ -43,7 +63,6 @@ export async function actualizarPerfil(
     // Si cambias de extensión entre una foto y otra sí queda un
     // archivo viejo huérfano — caso raro, no vale la pena resolverlo
     // todavía.
-    const extension = foto.name.split('.').pop() || 'jpg'
     const ruta = `${user.id}/avatar.${extension}`
 
     const { error: errorSubida } = await supabase.storage
@@ -63,7 +82,12 @@ export async function actualizarPerfil(
 
   if (error) return { error: error.message }
 
+  // Tu nombre y tu foto salen en el saludo de Inicio, en /mas, y ahora
+  // también en la pantalla de Perfil de escritorio. No va por
+  // revalidarLedger porque esto no toca el ledger.
   revalidatePath('/mas')
   revalidatePath('/inicio')
-  redirect('/mas')
+  revalidatePath('/escritorio')
+  revalidatePath('/escritorio/perfil')
+  redirect(rutaDe(origen, 'perfil'))
 }

@@ -1,10 +1,10 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ChevronLeft, Users } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { formatearCOP, formatearFecha } from '@/lib/format'
 import { FormularioAporte } from '@/components/formulario-aporte'
-import { EliminarMetaEscritorio } from '@/components/eliminar-meta-escritorio'
+import { EliminarMeta } from '@/components/eliminar-meta'
 import { CifraAnimada } from '@/components/cifra-animada'
 import { TarjetaDestacada } from '@/components/tarjeta-destacada'
 import { eliminarAporte } from '@/app/(app)/ahorros/actions'
@@ -16,7 +16,7 @@ export default async function DetalleMetaEscritorioPage({
 }) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await requerirUsuario(supabase)
 
   const { data: meta } = await supabase
     .from('metas_resumen')
@@ -35,7 +35,7 @@ export default async function DetalleMetaEscritorioPage({
         .eq('goal_id', id).order('occurred_on', { ascending: false }),
       supabase.from('cuentas_disponible')
         .select('account_id, name, disponible')
-        .eq('owner_id', user!.id)
+        .eq('owner_id', user.id)
         .order('disponible', { ascending: false }),
     ])
 
@@ -44,7 +44,7 @@ export default async function DetalleMetaEscritorioPage({
   const completada = restante <= 0
 
   const miParte = (porPersona ?? [])
-    .filter((p) => p.profile_id === user!.id)
+    .filter((p) => p.profile_id === user.id)
     .reduce((s, p) => s + Number(p.total), 0)
 
   return (
@@ -107,12 +107,13 @@ export default async function DetalleMetaEscritorioPage({
 
           <FormularioAporte metaId={id} cuentas={cuentas ?? []} />
 
-          {meta.owner_id === user!.id && (
-            <EliminarMetaEscritorio
+          {meta.owner_id === user.id && (
+            <EliminarMeta
               metaId={id}
               nombre={meta.name}
               acumulado={Number(meta.acumulado)}
               esConjunta={esConjunta}
+              origen="escritorio"
             />
           )}
         </div>
@@ -129,7 +130,7 @@ export default async function DetalleMetaEscritorioPage({
                   <div key={p.profile_id}
                        className="flex items-center justify-between px-5 py-3">
                     <dt className="text-[14px]">
-                      {p.profile_id === user!.id ? 'Tú' : p.display_name}
+                      {p.profile_id === user.id ? 'Tú' : p.display_name}
                     </dt>
                     <dd className="text-[14px] font-medium tabular-nums">
                       {formatearCOP(Number(p.total))}
@@ -170,7 +171,7 @@ export default async function DetalleMetaEscritorioPage({
                           {a.note ? ` · ${a.note}` : ''}
                         </p>
                       </div>
-                      {a.profile_id === user!.id && (
+                      {a.profile_id === user.id && (
                         <form action={eliminarAporte}>
                           <input type="hidden" name="id" value={a.id} />
                           <input type="hidden" name="meta" value={id} />

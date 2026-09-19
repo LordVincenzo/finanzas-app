@@ -1,27 +1,16 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { parsearCOP } from '@/lib/format'
+import { leerOrigen, rutaDe } from '@/lib/interfaz'
+import { revalidarLedger, revalidarMeta } from '@/lib/revalidar'
 
 export type EstadoMeta = { error?: string }
 
 function traducir(mensaje: string): string {
   return mensaje.replace(/^.*?:\s*/, '').trim() || 'Algo salió mal'
-}
-
-function revalidar() {
-  revalidatePath('/ahorros')
-  revalidatePath('/inicio')
-  revalidatePath('/cuentas')
-  // Estas acciones las puede disparar tanto el celular como la vista
-  // de escritorio (comparten el mismo formulario), así que las dos
-  // interfaces se refrescan siempre, sin importar desde cuál se llamó.
-  revalidatePath('/escritorio')
-  revalidatePath('/escritorio/ahorros')
-  revalidatePath('/escritorio/cuentas')
 }
 
 const esquemaMeta = z.object({
@@ -35,6 +24,8 @@ export async function crearMeta(
   _previo: EstadoMeta,
   formData: FormData
 ): Promise<EstadoMeta> {
+  const origen = leerOrigen(formData.get('origen'))
+
   const datos = esquemaMeta.safeParse({
     nombre: formData.get('nombre'),
     fecha: formData.get('fecha') ?? '',
@@ -59,10 +50,14 @@ export async function crearMeta(
 
   if (error) return { error: traducir(error.message) }
 
-  revalidar()
-  redirect('/ahorros')
+  revalidarLedger()
+  redirect(rutaDe(origen, 'ahorros'))
 }
 
+/**
+ * Aportar no navega: se queda en la misma pantalla en las dos
+ * interfaces, así que no necesita saber el origen.
+ */
 export async function aportar(
   _previo: EstadoMeta,
   formData: FormData
@@ -88,9 +83,7 @@ export async function aportar(
 
   if (error) return { error: traducir(error.message) }
 
-  revalidar()
-  revalidatePath(`/ahorros/${meta}`)
-  revalidatePath(`/escritorio/ahorros/${meta}`)
+  revalidarMeta(meta)
   return {}
 }
 
@@ -98,6 +91,11 @@ export async function aportar(
  * Antes descartaba el error del RPC: si el aporte era de otra persona,
  * eliminar_aporte lo rechazaba, la pantalla se recargaba igual y el
  * aporte seguía ahí sin ninguna explicación.
+ *
+ * PENDIENTE: sigue lanzando la excepción, así que el error se ve como
+ * la pantalla de Next y no como un mensaje. Arreglarlo necesita un
+ * componente cliente para el botón (las dos pantallas de detalle son
+ * de servidor), y va con el resto del manejo de errores.
  */
 export async function eliminarAporte(formData: FormData) {
   const id = String(formData.get('id') ?? '')
@@ -108,9 +106,7 @@ export async function eliminarAporte(formData: FormData) {
 
   if (error) throw new Error(traducir(error.message))
 
-  revalidar()
-  revalidatePath(`/ahorros/${formData.get('meta')}`)
-  revalidatePath(`/escritorio/ahorros/${formData.get('meta')}`)
+  revalidarMeta(String(formData.get('meta') ?? ''))
 }
 
 /**
@@ -129,6 +125,8 @@ export async function eliminarMeta(
   _previo: EstadoMeta,
   formData: FormData
 ): Promise<EstadoMeta> {
+  const origen = leerOrigen(formData.get('origen'))
+
   const id = String(formData.get('id') ?? '')
   if (!id) return { error: 'No se identificó la meta' }
 
@@ -137,6 +135,6 @@ export async function eliminarMeta(
 
   if (error) return { error: traducir(error.message) }
 
-  revalidar()
-  redirect('/ahorros')
+  revalidarLedger()
+  redirect(rutaDe(origen, 'ahorros'))
 }

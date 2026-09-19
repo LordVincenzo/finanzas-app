@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { formatearFecha, mesActualBogota } from '@/lib/format'
 import { FilaMovimiento, type Movimiento } from '@/components/fila-movimiento'
 import { Seccion, Lista } from '@/components/seccion'
@@ -20,6 +20,7 @@ export default async function MovimientosPage({
 }) {
   const { tipo = '', mes = mesActualBogota() } = await searchParams
   const supabase = await createClient()
+  const user = await requerirUsuario(supabase)
 
   const desde = `${mes}-01`
   const [anio, m] = mes.split('-').map(Number)
@@ -31,6 +32,10 @@ export default async function MovimientosPage({
     // gastaste. Solo difieren en un gasto compartido, donde parte del
     // pago no es tuyo sino algo que te deben.
     .select('id, type, description, occurred_at, occurred_on, monto, monto_total, cuenta_origen, cuenta_destino, clase_origen, clase_destino')
+    // Tu historial, no el de la pareja. Un gasto compartido escribe dos
+    // transacciones espejo, una en cada ledger: aquí tiene que salir la
+    // tuya y solo la tuya, o el mismo gasto aparecería dos veces.
+    .eq('owner_id', user.id)
     .gte('occurred_on', desde).lte('occurred_on', hasta)
     .order('occurred_at', { ascending: false })
 

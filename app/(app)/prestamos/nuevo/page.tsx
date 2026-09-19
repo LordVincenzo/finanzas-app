@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { FormularioPrestamo } from '@/components/formulario-prestamo'
 
 function hoyEnBogota(): string {
@@ -12,14 +12,16 @@ function hoyEnBogota(): string {
 
 export default async function NuevoPrestamoPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await requerirUsuario(supabase)
 
   const { data: disponibles } = await supabase
     .from('accounts')
     .select('id, name, type')
-    .eq('owner_id', user!.id)
+    .eq('owner_id', user.id)
     .eq('class', 'asset')
     .eq('is_active', true)
+    // "Pendiente de ubicar": primero se ubica, luego se presta.
+    .eq('is_pending_location', false)
     .neq('type', 'receivable')
     .order('name')
 

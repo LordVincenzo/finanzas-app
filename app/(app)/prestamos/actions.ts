@@ -1,33 +1,16 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { parsearCOP } from '@/lib/format'
+import { leerOrigen, rutaDe } from '@/lib/interfaz'
+import { revalidarLedger, revalidarPrestamo } from '@/lib/revalidar'
 
 export type EstadoPrestamo = { error?: string }
 
 function traducir(mensaje: string): string {
   return mensaje.replace(/^.*?:\s*/, '').trim() || 'Algo salió mal'
-}
-
-function revalidar(id?: string) {
-  revalidatePath('/prestamos')
-  revalidatePath('/cuentas')
-  revalidatePath('/inicio')
-  revalidatePath('/movimientos')
-  // Estas acciones las puede disparar tanto el celular como la vista
-  // de escritorio (comparten el mismo formulario), así que las dos
-  // interfaces se refrescan siempre, sin importar desde cuál se llamó.
-  revalidatePath('/escritorio')
-  revalidatePath('/escritorio/prestamos')
-  revalidatePath('/escritorio/cuentas')
-  revalidatePath('/escritorio/movimientos')
-  if (id) {
-    revalidatePath(`/prestamos/${id}`)
-    revalidatePath(`/escritorio/prestamos/${id}`)
-  }
 }
 
 const esquema = z.object({
@@ -41,6 +24,8 @@ export async function crearPrestamo(
   _previo: EstadoPrestamo,
   formData: FormData
 ): Promise<EstadoPrestamo> {
+  const origen = leerOrigen(formData.get('origen'))
+
   const datos = esquema.safeParse({
     persona: formData.get('persona'),
     cuenta: formData.get('cuenta'),
@@ -69,8 +54,10 @@ export async function crearPrestamo(
   if (cuotas.length > 0) {
     const suma = cuotas.reduce((s, c) => s + Number(c.monto), 0)
     if (suma !== monto) {
+      const sumaTexto = suma.toLocaleString('es-CO')
+      const montoTexto = monto.toLocaleString('es-CO')
       return {
-        error: `Las cuotas suman ${suma.toLocaleString('es-CO')} y el préstamo es ${monto.toLocaleString('es-CO')}`,
+        error: `Las cuotas suman ${sumaTexto} y el préstamo es ${montoTexto}`,
       }
     }
   }
@@ -87,10 +74,11 @@ export async function crearPrestamo(
 
   if (error) return { error: traducir(error.message) }
 
-  revalidar()
-  redirect('/prestamos')
+  revalidarLedger()
+  redirect(rutaDe(origen, 'prestamos'))
 }
 
+/** No navega: se queda en el detalle, igual en las dos interfaces. */
 export async function registrarAbono(
   _previo: EstadoPrestamo,
   formData: FormData
@@ -115,7 +103,7 @@ export async function registrarAbono(
 
   if (error) return { error: traducir(error.message) }
 
-  revalidar(prestamo)
+  revalidarPrestamo(prestamo)
   return {}
 }
 
@@ -124,7 +112,7 @@ export async function eliminarAbono(formData: FormData) {
   const prestamo = String(formData.get('prestamo') ?? '')
   const supabase = await createClient()
   await supabase.rpc('eliminar_pago_prestamo', { p_pago: id })
-  revalidar(prestamo)
+  revalidarPrestamo(prestamo)
 }
 
 /**
@@ -133,12 +121,19 @@ export async function eliminarAbono(formData: FormData) {
  *
  * Es lo que se necesita cuando registras algo por error. "Perdonar una
  * deuda" sería otra cosa: ahí el dinero debería convertirse en un gasto.
+ *
+ * El campo oculto `origen` decide a qué lista volver. Antes había una
+ * copia de esta función en app/escritorio/prestamos/actions.ts que solo
+ * cambiaba esa línea.
  */
 export async function eliminarPrestamo(formData: FormData) {
+  const origen = leerOrigen(formData.get('origen'))
+
   const id = String(formData.get('id') ?? '')
   const supabase = await createClient()
   const { error } = await supabase.rpc('eliminar_prestamo', { p_prestamo: id })
   if (error) throw new Error(traducir(error.message))
-  revalidar()
-  redirect('/prestamos')
+
+  revalidarLedger()
+  redirect(rutaDe(origen, 'prestamos'))
 }

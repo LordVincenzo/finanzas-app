@@ -77,7 +77,7 @@ export default async function PrestamosPage() {
           <p className="text-[15px] font-medium">No has registrado préstamos</p>
           <p className="mx-auto mt-1.5 max-w-[30ch] text-[13px] leading-snug
                         text-muted-foreground">
-            Prestar dinero no reduce tu patrimonio: lo mueve a "por cobrar".
+            Prestar dinero no reduce tu patrimonio: lo mueve a «por cobrar».
           </p>
           <Link href="/prestamos/nuevo"
                 className="mt-4 inline-flex min-h-11 items-center rounded-xl

@@ -1,16 +1,16 @@
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { FormularioMeta } from '@/components/formulario-meta'
 
 export default async function NuevaMetaPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await requerirUsuario(supabase)
 
   const { data: membresia } = await supabase
     .from('couple_members')
     .select('couple_id')
-    .eq('profile_id', user!.id)
+    .eq('profile_id', user.id)
     .eq('status', 'active')
     .maybeSingle()
 

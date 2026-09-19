@@ -1,14 +1,18 @@
 import Link from 'next/link'
 import { Plus, Users, ChevronRight } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { formatearCOP } from '@/lib/format'
 import { BarraProgreso } from '@/components/barra-progreso'
 
 export default async function AhorrosEscritorioPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await requerirUsuario(supabase)
 
   const [{ data: metas }, { data: cuentas }] = await Promise.all([
+    /* SIN owner_id a propósito: una meta conjunta pertenece a la pareja y
+       las dos personas tienen que verla. El RLS ya recorta a las tuyas
+       más las shared_view/joint de ella. No lo "arregles" añadiendo el
+       filtro: escondería las metas compartidas. */
     supabase.from('metas_resumen')
       .select('id, name, target_amount, acumulado, progreso, visibility, target_date')
       .eq('is_archived', false)
@@ -16,7 +20,7 @@ export default async function AhorrosEscritorioPage() {
     // Misma vista que Inicio, Cuentas y Ahorros del celular: fuente
     // única del "disponible" (ver CLAUDE.md).
     supabase.from('cuentas_disponible')
-      .select('asignado, disponible').eq('owner_id', user!.id),
+      .select('asignado, disponible').eq('owner_id', user.id),
   ])
 
   const listaMetas = metas ?? []
@@ -33,7 +37,7 @@ export default async function AhorrosEscritorioPage() {
             Una meta no mueve tu dinero: marca cuánto de lo que ya tienes está destinado a algo.
           </p>
         </div>
-        <Link href="/ahorros/nueva"
+        <Link href="/escritorio/ahorros/nueva"
               className="flex h-9 items-center gap-1.5 rounded-full bg-primary
                          px-4 text-[13px] font-medium text-primary-foreground
                          shadow-card transition hover:opacity-90">
@@ -48,7 +52,7 @@ export default async function AhorrosEscritorioPage() {
             Una meta no mueve tu dinero: marca cuánto de lo que ya tienes está
             destinado a algo.
           </p>
-          <Link href="/ahorros/nueva"
+          <Link href="/escritorio/ahorros/nueva"
                 className="mt-4 inline-flex h-11 items-center rounded-xl bg-primary
                            px-5 text-[14px] font-medium text-primary-foreground shadow-card">
             Crear la primera

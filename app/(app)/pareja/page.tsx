@@ -1,9 +1,13 @@
 import { ChevronDown } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
 import { formatearCOP, formatearFecha } from '@/lib/format'
+import { cargarPareja } from '@/lib/datos-pareja'
 import { InvitarPareja } from '@/components/invitar-pareja'
 import { ToggleVisibilidad } from '@/components/toggle-visibilidad'
-import { aceptar, rechazar, cancelar, salir, eliminarGastoCompartido } from './actions'
+import {
+  aceptar, rechazar, cancelar, salir, eliminarGastoCompartido,
+  eliminarLiquidacion,
+} from './actions'
+import { AvisoPendienteUbicar } from '@/components/aviso-pendiente-ubicar'
 import { FormularioGastoCompartido } from '@/components/formulario-gasto-compartido'
 import { FormularioLiquidar } from '@/components/formulario-liquidar'
 import { Seccion, Lista, Fila } from '@/components/seccion'
@@ -11,124 +15,35 @@ import { CifraAnimada } from '@/components/cifra-animada'
 import { TarjetaDestacada } from '@/components/tarjeta-destacada'
 
 export default async function ParejaPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const yo = user!.id
+  /* Las quince consultas de esta pantalla viven en lib/datos-pareja.ts.
+     La vista de escritorio muestra exactamente los mismos datos con otra
+     forma, y unos filtros de privacidad tan finos (qué clase de cuenta,
+     qué visibilidad, excluir la de balance) no pueden existir en dos
+     copias: olvidar uno en una de ellas sería una fuga silenciosa. */
+  const {
+    yo, pareja, recibidas, enviadas, misCuentas, suyas, balance,
+    misCuentasPago, misCategorias, compartidos, liquidaciones,
+    pendienteUbicar, hoy,
+  } = await cargarPareja()
 
-  // ¿Tengo pareja activa?
-  const { data: miMembresia } = await supabase
-    .from('couple_members')
-    .select('couple_id')
-    .eq('profile_id', yo)
-    .eq('status', 'active')
-    .maybeSingle()
-
-  const coupleId = miMembresia?.couple_id ?? null
-
-  // Invitaciones que he recibido
-  const { data: recibidas } = await supabase.rpc('invitaciones_recibidas')
-
-  // El otro miembro (si lo hay)
-  let pareja: { id: string; nombre: string } | null = null
-  if (coupleId) {
-    const { data: otros } = await supabase
-      .from('couple_members')
-      .select('profile_id')
-      .eq('couple_id', coupleId)
-      .eq('status', 'active')
-      .neq('profile_id', yo)
-
-    const otroId = otros?.[0]?.profile_id
-    if (otroId) {
-      const { data: perfil } = await supabase
-        .from('profiles').select('display_name').eq('id', otroId).maybeSingle()
-      pareja = { id: otroId, nombre: perfil?.display_name ?? 'Tu pareja' }
-    }
-  }
-
-  // Invitaciones que YO envié y siguen pendientes
-  const { data: enviadas } = coupleId
-    ? await supabase
-        .from('couple_invitations')
-        .select('id, invitee_email')
-        .eq('inviter_id', yo)
-        .eq('status', 'pending')
-    : { data: null }
-
-  // Mis cuentas, para elegir qué comparto
-  const { data: misCuentas } = await supabase
-    .from('accounts')
-    .select('id, name, visibility')
-    .eq('owner_id', yo)
-    .in('class', ['asset', 'liability'])
-    .eq('is_active', true)
-    .order('name')
-
-  /* Lo que mi pareja comparte conmigo.
-     Antes esta consulta pedía TODAS las cuentas ajenas y confiaba en que
-     el RLS recortara el resultado. Dos filtros faltaban:
-       - class: sin él, una categoría de gasto suya podría acabar en esta
-         lista. Las categorías dicen en qué gasta, y el modelo de
-         privacidad promete mostrar el saldo, no los movimientos.
-       - visibility: la sección se llama "qué comparte contigo", así que
-         debe pedir exactamente eso. */
-  const { data: cuentasSuyas } = pareja
-    ? await supabase
-        .from('accounts')
-        .select('id, name')
-        .neq('owner_id', yo)
-        .in('class', ['asset', 'liability'])
-        .in('visibility', ['shared_view', 'joint'])
-        .eq('is_active', true)
-        .order('name')
-    : { data: null }
-
-  // El saldo se pide con la función, que valida el permiso aparte.
-  const suyas = await Promise.all(
-    (cuentasSuyas ?? []).map(async (c) => {
-      const { data: saldo } = await supabase.rpc('saldo_cuenta_visible', {
-        p_cuenta: c.id,
-      })
-      return { account_id: c.id, name: c.name, balance: Number(saldo ?? 0) }
-    })
-  )
-
-  // Balance con la pareja y datos para los formularios
-  const { data: balanceRow } = pareja
-    ? await supabase.from('account_balances')
-        .select('balance')
-        .eq('owner_id', yo)
-        .eq('type', 'partner_receivable')
-        .maybeSingle()
-    : { data: null }
-
-  const balance = Number(balanceRow?.balance ?? 0)
-
-  const { data: misCuentasPago } = await supabase
-    .from('accounts').select('id, name')
-    .eq('owner_id', yo).eq('class', 'asset').eq('is_active', true)
-    .eq('is_partner_balance', false).eq('is_opening', false)
-    .neq('type', 'receivable').order('name')
-
-  const { data: misCategorias } = await supabase
-    .from('accounts').select('id, name')
-    .eq('owner_id', yo).eq('class', 'expense').order('name')
-
-  const { data: compartidos } = pareja
-    ? await supabase.from('gastos_compartidos_detalle')
-        .select('*').order('occurred_on', { ascending: false }).limit(20)
-    : { data: null }
-
-  const hoy = new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'America/Bogota',
-    year: 'numeric', month: '2-digit', day: '2-digit',
-  }).format(new Date())
 
   return (
     <main className="px-4 pt-4 pb-[calc(8rem+env(safe-area-inset-bottom))]">
       <h1 className="aparece px-1 text-[22px] font-semibold tracking-tight">
         Pareja
       </h1>
+
+      {/* Arriba de todo porque es lo único de esta pantalla que pide que
+          hagas algo. FUERA del bloque `pareja &&` a propósito: si os
+          desvinculáis después de una liquidación, ese dinero sigue
+          estando sin ubicar y seguiría siendo tuyo — esconder el aviso
+          sería esconder la única pista de dónde está. */}
+      {pendienteUbicar !== 0 && (
+        <div className="aparece mt-3"
+             style={{ '--retraso': '40ms' } as React.CSSProperties}>
+          <AvisoPendienteUbicar monto={pendienteUbicar} origen="celular" />
+        </div>
+      )}
 
       {/* --- Invitaciones recibidas --- */}
       {(recibidas ?? []).length > 0 && (
@@ -303,6 +218,38 @@ export default async function ParejaPage() {
                             </button>
                           </form>
                         ) : undefined
+                      }
+                    />
+                  ))}
+                </Lista>
+              </div>
+            </Seccion>
+          )}
+
+          {/* Las liquidaciones no se listaban en ninguna parte, así que
+              una mal registrada no había forma de deshacerla: el error de
+              eliminar_movimiento mandaba a "Pareja" y aquí no estaban. */}
+          {liquidaciones.length > 0 && (
+            <Seccion titulo="Liquidaciones">
+              <div className="aparece"
+                   style={{ '--retraso': '240ms' } as React.CSSProperties}>
+                <Lista>
+                  {liquidaciones.map((l) => (
+                    <Fila
+                      key={l.id}
+                      titulo={l.from_profile === yo
+                        ? `Le pagaste a ${pareja.nombre}`
+                        : `${pareja.nombre} te pagó`}
+                      detalle={`${formatearFecha(l.occurred_on)}${l.note ? ` · ${l.note}` : ''}`}
+                      valor={formatearCOP(Number(l.amount))}
+                      extra={
+                        <form action={eliminarLiquidacion}>
+                          <input type="hidden" name="id" value={l.id} />
+                          <button className="shrink-0 pl-2 text-[12px]
+                                             font-medium text-destructive">
+                            Quitar
+                          </button>
+                        </form>
                       }
                     />
                   ))}

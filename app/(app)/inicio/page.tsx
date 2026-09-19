@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Users, Wallet, HandCoins, Heart, ChevronRight } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { formatearCOP, mesActualBogota } from '@/lib/format'
 import { Seccion, Lista, Monto } from '@/components/seccion'
 import { BarraProgreso } from '@/components/barra-progreso'
@@ -12,7 +12,7 @@ import { TarjetaDestacadaVacia } from '@/components/tarjeta-destacada'
 
 export default async function InicioPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await requerirUsuario(supabase)
 
   const mes = mesActualBogota()
   const desde = `${mes}-01`
@@ -29,12 +29,15 @@ export default async function InicioPage() {
     { count: numCuentas },
     { count: numMovimientos },
     { count: numMetas },
+    { data: ctaPendiente },
   ] = await Promise.all([
     supabase.from('profiles')
-      .select('display_name, avatar_url').eq('id', user!.id).single(),
+      .select('display_name, avatar_url').eq('id', user.id).single(),
+    // Solo las dos columnas que se pintan. Las otras cuatro (liquido,
+    // ahorros, inversiones, deudas) se pedían y no se usaban.
     supabase.from('patrimonio_detalle')
-      .select('liquido, ahorros, inversiones, por_cobrar, deudas, patrimonio')
-      .eq('owner_id', user!.id).maybeSingle(),
+      .select('por_cobrar, patrimonio')
+      .eq('owner_id', user.id).maybeSingle(),
     // La misma vista que usa /ahorros. Ella ya sabe cuánto de cada cuenta
     // está comprometido en metas; duplicar ese cálculo aquí sería pedir
     // que los dos números se separen con el tiempo. account_id además
@@ -42,19 +45,36 @@ export default async function InicioPage() {
     // libre — sin eso, la billetera hace ver disponible dinero que ya
     // tiene dueño en una meta.
     supabase.from('cuentas_disponible')
-      .select('account_id, saldo, asignado, disponible').eq('owner_id', user!.id),
+      .select('account_id, saldo, asignado, disponible').eq('owner_id', user.id),
     // Saldo real por cuenta, tal cual lo muestra /cuentas: sin restar lo
     // comprometido en metas. Por cobrar y balance con pareja quedan
     // fuera porque ya salen en el desglose de la primera tarjeta.
+    //
+    // owner_id explícito: sin él entraban también las cuentas que tu
+    // pareja marcó como shared_view, mezcladas en tu billetera sin
+    // ninguna señal de que son suyas. Lo que ella comparte se ve en
+    // /pareja, que es donde dice de quién es.
     supabase.from('account_balances')
       .select('account_id, name, type, balance')
+      .eq('owner_id', user.id)
       .eq('class', 'asset').eq('is_active', true)
       .not('type', 'in', '("receivable","partner_receivable")')
       .order('name'),
+    /* Los gastos e ingresos del mes son TUYOS, así que se piden por
+       owner_id. Antes salía el número correcto por accidente: la vista
+       hace INNER JOIN con accounts, y las cuentas de tu pareja son
+       privadas, así que sus filas se caían por RLS. El día que ella
+       compartiera sus cuentas y sus movimientos, sus gastos habrían
+       empezado a sumarse a los tuyos sin ningún error visible. */
     supabase.from('movimientos_detalle')
       .select('type, monto, cuenta_destino')
+      .eq('owner_id', user.id)
       .gte('occurred_on', desde).lte('occurred_on', hasta)
       .in('type', ['expense', 'income']),
+    /* SIN owner_id a propósito: una meta conjunta pertenece a la pareja y
+       las dos personas tienen que verla. El RLS ya recorta a las tuyas
+       más las shared_view/joint de ella. No lo "arregles" añadiendo el
+       filtro: escondería las metas compartidas. */
     supabase.from('metas_resumen')
       .select('id, name, target_amount, acumulado, progreso, visibility')
       .eq('is_archived', false)
@@ -66,16 +86,30 @@ export default async function InicioPage() {
        falta el contenido para saber si hay al menos una. */
     supabase.from('accounts')
       .select('id', { count: 'exact', head: true })
-      .eq('owner_id', user!.id).eq('class', 'asset')
+      .eq('owner_id', user.id).eq('class', 'asset')
       .eq('is_active', true).eq('is_opening', false)
       .eq('is_partner_balance', false)
+      // Las tres cuentas de sistema quedan fuera: si no, una liquidación
+      // marcaría por sí sola el paso de "crea tu primera cuenta".
+      .eq('is_pending_location', false)
       .not('type', 'in', '("receivable","partner_receivable")'),
     supabase.from('transactions')
       .select('id', { count: 'exact', head: true })
-      .eq('owner_id', user!.id).neq('type', 'opening'),
+      .eq('owner_id', user.id).neq('type', 'opening'),
     supabase.from('savings_goals')
       .select('id', { count: 'exact', head: true })
-      .eq('owner_id', user!.id).eq('is_archived', false),
+      .eq('owner_id', user.id).eq('is_archived', false),
+
+    /* Cuál es tu cuenta "Pendiente de ubicar" (migración 0021). Es
+       contabilidad, no una billetera donde tengas el dinero, así que no
+       pinta en el carrusel: aparece en /cuentas cuando tiene saldo, y el
+       aviso de Pareja explica qué hacer con él.
+       Sale de `accounts` y no de `account_balances` porque esa vista es
+       de 0001 y no expone la columna. */
+    supabase.from('accounts')
+      .select('id')
+      .eq('owner_id', user.id).eq('is_pending_location', true)
+      .maybeSingle(),
   ])
 
   const total = Number(detalle?.patrimonio ?? 0)
@@ -92,13 +126,15 @@ export default async function InicioPage() {
 
   const asignadoPorCuenta = new Map((cuentas ?? []).map((c) => [c.account_id, Number(c.asignado)]))
 
-  const cuentasWallet: CuentaWallet[] = (cuentasActivos ?? []).map((c) => ({
-    account_id: c.account_id as string,
-    name: c.name as string,
-    type: c.type as string,
-    balance: Number(c.balance),
-    asignado: asignadoPorCuenta.get(c.account_id as string) ?? 0,
-  }))
+  const cuentasWallet: CuentaWallet[] = (cuentasActivos ?? [])
+    .filter((c) => c.account_id !== ctaPendiente?.id)
+    .map((c) => ({
+      account_id: c.account_id as string,
+      name: c.name as string,
+      type: c.type as string,
+      balance: Number(c.balance),
+      asignado: asignadoPorCuenta.get(c.account_id as string) ?? 0,
+    }))
 
   const movs = delMes ?? []
   const gastos = movs.filter((x) => x.type === 'expense')

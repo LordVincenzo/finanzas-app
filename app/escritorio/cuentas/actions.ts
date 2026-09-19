@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidarLedger } from '@/lib/revalidar'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -8,6 +8,10 @@ import { createClient } from '@/lib/supabase/server'
  * cliente (no por <form action>), así que recibe valores ya
  * validados en el navegador — la validación real, como siempre, es
  * la del RPC.
+ *
+ * Vive aquí y no en app/(app) porque no tiene equivalente en el
+ * celular: allí el ajuste se hace desde el formulario de movimiento.
+ * No navega, así que no necesita saber el origen.
  */
 export async function ajustarSaldoEscritorio(
   cuentaId: string,
@@ -26,17 +30,12 @@ export async function ajustarSaldoEscritorio(
   })
 
   if (error) {
-    return { error: error.message.replace(/^.*?:\s*/, '').trim() || 'No se pudo ajustar el saldo' }
+    return {
+      error: error.message.replace(/^.*?:\s*/, '').trim()
+        || 'No se pudo ajustar el saldo',
+    }
   }
 
-  // Mismas pantallas que revalida el ajuste desde el celular, más las
-  // de escritorio.
-  revalidatePath('/escritorio/cuentas')
-  revalidatePath('/escritorio')
-  revalidatePath('/cuentas')
-  revalidatePath('/inicio')
-  revalidatePath('/ahorros')
-  revalidatePath('/prestamos')
-  revalidatePath('/pareja')
+  revalidarLedger()
   return {}
 }

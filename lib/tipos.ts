@@ -43,10 +43,23 @@ export const ORDEN_TIPOS_CUENTA = [
 ]
 
 /**
- * Una cuenta por cobrar en $0 ya no dice nada: se oculta en los
- * listados. Regla única para no repetir el mismo filtro en cada
- * pantalla que lista cuentas.
+ * Cuándo una cuenta no dice nada y se oculta del listado. Regla única
+ * para no repetir el mismo filtro en cada pantalla que lista cuentas.
+ *
+ * - Una cuenta por cobrar en $0 ya se cobró: no aporta nada.
+ * - "Pendiente de ubicar" (`is_pending_location`, migración 0021) en $0
+ *   significa que no hay ningún cabo suelto. Es una cuenta de sistema
+ *   que solo existe para que una liquidación no tuerza el patrimonio de
+ *   quien no la registró; en cuanto está cuadrada, estorba. A diferencia
+ *   de las por cobrar, aquí el criterio no puede ser el tipo (es
+ *   'other', como cualquier cuenta "Otra" que crees tú), así que la
+ *   pantalla tiene que decir cuál es.
  */
-export function cuentaVisible(tipo: string, balance: number): boolean {
+export function cuentaVisible(
+  tipo: string,
+  balance: number,
+  esPendienteUbicar = false,
+): boolean {
+  if (esPendienteUbicar) return balance !== 0
   return !((tipo === 'receivable' || tipo === 'partner_receivable') && balance === 0)
 }

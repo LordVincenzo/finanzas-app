@@ -1,10 +1,11 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { parsearCOP } from '@/lib/format'
+import { leerOrigen, rutaDe } from '@/lib/interfaz'
+import { revalidarLedger } from '@/lib/revalidar'
 
 export type EstadoMovimiento = { error?: string }
 export type EstadoEliminar = { error?: string }
@@ -29,20 +30,17 @@ function aInstanteBogota(valorLocal: string): string {
   return `${valorLocal}:00-05:00`
 }
 
-/** Las pantallas cuyos números dependen del ledger. */
-function revalidarTodo() {
-  revalidatePath('/movimientos')
-  revalidatePath('/cuentas')
-  revalidatePath('/inicio')
-  revalidatePath('/ahorros')
-  revalidatePath('/prestamos')
-  revalidatePath('/pareja')
+/** Los mensajes de Postgres ya vienen en español; limpiamos el prefijo. */
+function traducir(mensaje: string): string {
+  return mensaje.replace(/^.*?:\s*/, '').trim() || 'No se pudo registrar el movimiento'
 }
 
 export async function registrarMovimiento(
   _previo: EstadoMovimiento,
   formData: FormData
 ): Promise<EstadoMovimiento> {
+  const origen = leerOrigen(formData.get('origen'))
+
   const datos = esquema.safeParse({
     tipo: formData.get('tipo'),
     cuenta: formData.get('cuenta'),
@@ -78,8 +76,8 @@ export async function registrarMovimiento(
     })
     if (error) return { error: traducir(error.message) }
 
-    revalidarTodo()
-    redirect('/movimientos')
+    revalidarLedger()
+    redirect(rutaDe(origen, 'movimientos'))
   }
 
   // ---- Gasto, ingreso y transferencia -----------------------------
@@ -101,7 +99,7 @@ export async function registrarMovimiento(
 
   // El servidor decide qué cuenta es origen y cuál destino según
   // el tipo. El formulario nunca envía esa decisión.
-  const [origen, destino] =
+  const [cuentaOrigen, cuentaDestino] =
     tipo === 'income'
       ? [contraparte, cuenta]   // el dinero viene de la categoría de ingreso
       : [cuenta, contraparte]   // gasto y transferencia salen de la cuenta
@@ -109,8 +107,8 @@ export async function registrarMovimiento(
   const { error } = await supabase.rpc('crear_movimiento', {
     p_tipo: tipo,
     p_monto: monto,
-    p_cuenta_origen: origen,
-    p_cuenta_destino: destino,
+    p_cuenta_origen: cuentaOrigen,
+    p_cuenta_destino: cuentaDestino,
     p_descripcion: descripcion,
     p_ocurrido_en: ocurridoEn,
     p_notas: notas || null,
@@ -119,19 +117,16 @@ export async function registrarMovimiento(
 
   if (error) return { error: traducir(error.message) }
 
-  revalidarTodo()
-  redirect('/movimientos')
-}
-
-/** Los mensajes de Postgres ya vienen en español; limpiamos el prefijo. */
-function traducir(mensaje: string): string {
-  return mensaje.replace(/^.*?:\s*/, '').trim() || 'No se pudo registrar el movimiento'
+  revalidarLedger()
+  redirect(rutaDe(origen, 'movimientos'))
 }
 
 /**
  * Antes lanzaba una excepción: el mensaje del RPC se perdía y el usuario
  * veía la pantalla de error de Next.js en vez de saber qué pasó.
  * Ahora devuelve estado, igual que el resto de acciones.
+ *
+ * No navega (se queda en la lista), así que no necesita el origen.
  */
 export async function eliminarMovimiento(
   _previo: EstadoEliminar,
@@ -147,6 +142,6 @@ export async function eliminarMovimiento(
     return { error: traducir(error.message) || 'No se pudo eliminar' }
   }
 
-  revalidarTodo()
+  revalidarLedger()
   return {}
 }

@@ -78,7 +78,7 @@ export function FilaMovimiento({ mov }: { mov: Movimiento }) {
           {compartido && (
             <p className="mt-2.5 text-[12px] leading-snug text-muted-foreground">
               Gasto compartido: pagaste el total, pero solo tu parte cuenta
-              como gasto tuyo. El resto pasó a "por cobrar".
+              como gasto tuyo. El resto pasó a «por cobrar».
             </p>
           )}
 

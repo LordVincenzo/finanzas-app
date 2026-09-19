@@ -4,14 +4,16 @@ import { useActionState, useState } from 'react'
 import { Camera } from 'lucide-react'
 import { actualizarPerfil, type EstadoPerfil } from '@/app/(app)/mas/perfil/actions'
 import { AvatarPerfil } from '@/components/avatar-perfil'
+import type { Origen } from '@/lib/interfaz'
 
 const estadoInicial: EstadoPerfil = {}
 
 export function FormularioPerfil({
-  nombreActual, fotoActual,
+  nombreActual, fotoActual, origen = 'celular',
 }: {
   nombreActual: string
   fotoActual: string | null
+  origen?: Origen
 }) {
   const [estado, accion, enviando] = useActionState(actualizarPerfil, estadoInicial)
   const [previa, setPrevia] = useState<string | null>(null)
@@ -24,6 +26,10 @@ export function FormularioPerfil({
 
   return (
     <form action={accion} className="mt-6 space-y-6">
+      {/* A qué pantalla volver al terminar. Sin esto, guardar el perfil
+          desde el escritorio te dejaba en /mas, la ruta del celular. */}
+      <input type="hidden" name="origen" value={origen} />
+
       <div className="flex justify-center">
         <label htmlFor="foto" className="relative cursor-pointer">
           {previa ? (

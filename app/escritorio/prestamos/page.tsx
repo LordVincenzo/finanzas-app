@@ -39,7 +39,7 @@ export default async function PrestamosEscritorioPage() {
             Prestar dinero no reduce tu patrimonio: lo mueve a &quot;por cobrar&quot;.
           </p>
         </div>
-        <Link href="/prestamos/nuevo"
+        <Link href="/escritorio/prestamos/nuevo"
               className="flex h-9 items-center gap-1.5 rounded-full bg-primary
                          px-4 text-[13px] font-medium text-primary-foreground
                          shadow-card transition hover:opacity-90">
@@ -53,7 +53,7 @@ export default async function PrestamosEscritorioPage() {
           <p className="mx-auto mt-1.5 max-w-[40ch] text-[13px] text-muted-foreground">
             Prestar dinero no reduce tu patrimonio: lo mueve a &quot;por cobrar&quot;.
           </p>
-          <Link href="/prestamos/nuevo"
+          <Link href="/escritorio/prestamos/nuevo"
                 className="mt-4 inline-flex h-11 items-center rounded-xl bg-primary
                            px-5 text-[14px] font-medium text-primary-foreground shadow-card">
             Registrar uno

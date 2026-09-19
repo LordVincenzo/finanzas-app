@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ChevronRight, Wallet, HeartHandshake, HandCoins, BarChart3 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { cerrarSesion } from '@/app/auth/actions'
 import { Seccion, Lista } from '@/components/seccion'
 import { SelectorTema } from '@/components/selector-tema'
@@ -17,11 +17,11 @@ const ENLACES = [
 
 export default async function MasPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await requerirUsuario(supabase)
   const { data: perfil } = await supabase
     .from('profiles')
     .select('display_name, avatar_url')
-    .eq('id', user!.id).single()
+    .eq('id', user.id).single()
 
   return (
     <main className="px-4 pt-4 pb-[calc(8rem+env(safe-area-inset-bottom))]">

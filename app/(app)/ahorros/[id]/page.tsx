@@ -1,9 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ChevronLeft, Users } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { formatearCOP, formatearFecha } from '@/lib/format'
-import { BarraProgreso } from '@/components/barra-progreso'
 import { FormularioAporte } from '@/components/formulario-aporte'
 import { EliminarMeta } from '@/components/eliminar-meta'
 import { CifraAnimada } from '@/components/cifra-animada'
@@ -17,7 +16,7 @@ export default async function DetalleMetaPage({
 }) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await requerirUsuario(supabase)
 
   const { data: meta } = await supabase
     .from('metas_resumen')
@@ -38,7 +37,7 @@ export default async function DetalleMetaPage({
       // sale primero, en vez de la primera del abecedario.
       supabase.from('cuentas_disponible')
         .select('account_id, name, disponible')
-        .eq('owner_id', user!.id)
+        .eq('owner_id', user.id)
         .order('disponible', { ascending: false }),
     ])
 
@@ -47,7 +46,7 @@ export default async function DetalleMetaPage({
   const completada = restante <= 0
 
   const miParte = (porPersona ?? [])
-    .filter((p) => p.profile_id === user!.id)
+    .filter((p) => p.profile_id === user.id)
     .reduce((s, p) => s + Number(p.total), 0)
 
   return (
@@ -125,7 +124,7 @@ export default async function DetalleMetaPage({
               <div key={p.profile_id}
                    className="flex items-center justify-between px-4 py-2.5">
                 <dt className="text-[14px]">
-                  {p.profile_id === user!.id ? 'Tú' : p.display_name}
+                  {p.profile_id === user.id ? 'Tú' : p.display_name}
                 </dt>
                 <dd className="text-[14px] font-medium tabular-nums">
                   {formatearCOP(Number(p.total))}
@@ -174,7 +173,7 @@ export default async function DetalleMetaPage({
                       {a.note ? ` · ${a.note}` : ''}
                     </p>
                   </div>
-                  {a.profile_id === user!.id && (
+                  {a.profile_id === user.id && (
                     <form action={eliminarAporte}>
                       <input type="hidden" name="id" value={a.id} />
                       <input type="hidden" name="meta" value={id} />
@@ -191,7 +190,7 @@ export default async function DetalleMetaPage({
         </section>
       )}
 
-      {meta.owner_id === user!.id && (
+      {meta.owner_id === user.id && (
         <EliminarMeta
           metaId={id}
           nombre={meta.name}

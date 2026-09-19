@@ -1,15 +1,15 @@
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { FormularioPerfil } from '@/components/formulario-perfil'
 
 export default async function EditarPerfilPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await requerirUsuario(supabase)
   const { data: perfil } = await supabase
     .from('profiles')
     .select('display_name, avatar_url')
-    .eq('id', user!.id).single()
+    .eq('id', user.id).single()
 
   return (
     <main className="px-5 pt-6">

@@ -21,14 +21,17 @@ export default function RecuperarPage() {
           autoComplete="email" placeholder="tu@correo.com"
         />
 
-        {/* Antes esto salía en gris y con role="status", como si todo
-            hubiera ido bien. Pero el campo se llama `error`: un fallo
-            real se leía como una confirmación.
+        {/* Dos campos, dos tratamientos. El aviso de "te enviamos un
+            enlace" viajaba antes dentro de `error` y se pintaba en rojo:
+            la confirmación se leía como un fallo. Ahora `ok` es
+            confirmación (role="status") y `error` es error
+            (role="alert"), que es lo que cada uno dice ser. */}
+        {estado.ok && (
+          <p className="text-[13px] text-muted-foreground" role="status">
+            {estado.ok}
+          </p>
+        )}
 
-            Si tu acción usa este campo para el mensaje de "enlace
-            enviado", conviene separarlo en dos —`error` y `ok`— como ya
-            hace EstadoPareja. Mientras tanto, se muestra como lo que
-            dice ser. */}
         {estado.error && (
           <p className="text-[13px] text-destructive" role="alert">
             {estado.error}

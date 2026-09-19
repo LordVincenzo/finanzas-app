@@ -1,12 +1,18 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { parsearCOP } from '@/lib/format'
+import { leerOrigen, rutaDe } from '@/lib/interfaz'
+import { revalidarLedger } from '@/lib/revalidar'
 
 export type EstadoCuenta = { error?: string }
+
+/** Los mensajes de Postgres ya vienen en español; limpiamos el prefijo. */
+function traducir(mensaje: string): string {
+  return mensaje.replace(/^.*?:\s*/, '').trim() || 'No se pudo crear la cuenta'
+}
 
 const esquema = z.object({
   nombre: z.string().trim().min(1, 'Escribe un nombre').max(60),
@@ -17,10 +23,17 @@ const esquema = z.object({
   visibilidad: z.enum(['private', 'shared_view']),
 })
 
+/**
+ * La usan las dos interfaces. El campo oculto `origen` decide a qué
+ * lista volver al terminar; la validación y el RPC son los mismos,
+ * porque duplicarlos sería duplicar el cálculo.
+ */
 export async function crearCuenta(
   _previo: EstadoCuenta,
   formData: FormData
 ): Promise<EstadoCuenta> {
+  const origen = leerOrigen(formData.get('origen'))
+
   const datos = esquema.safeParse({
     nombre: formData.get('nombre'),
     tipo: formData.get('tipo'),
@@ -57,10 +70,9 @@ export async function crearCuenta(
     if (error.message.includes('uq_account_name_per_owner')) {
       return { error: 'Ya tienes una cuenta con ese nombre' }
     }
-    return { error: error.message }
+    return { error: traducir(error.message) }
   }
 
-  revalidatePath('/cuentas')
-  revalidatePath('/inicio')
-  redirect('/cuentas')
+  revalidarLedger()
+  redirect(rutaDe(origen, 'cuentas'))
 }

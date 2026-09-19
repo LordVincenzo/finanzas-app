@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { formatearCOP } from '@/lib/format'
 import { ETIQUETAS_TIPO, ORDEN_TIPOS_CUENTA, cuentaVisible } from '@/lib/tipos'
 import { Seccion, Lista, Fila, Monto } from '@/components/seccion'
@@ -19,11 +19,22 @@ type CuentaFila = {
 
 export default async function CuentasPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await requerirUsuario(supabase)
 
-  const [{ data }, { data: resumen }, { data: patri }] = await Promise.all([
+  const [
+    { data },
+    { data: resumen },
+    { data: patri },
+    { data: ctaPendiente },
+  ] = await Promise.all([
+    /* owner_id explícito. Sin él, esta lista traía también las cuentas
+       shared_view de tu pareja, sin distinguirlas de las tuyas — y la
+       tarjeta "Disponible" de arriba sí filtra por dueño (sale de
+       cuentas_disponible). Las filas y el total no cuadraban. Lo que
+       ella comparte se ve en /pareja, con su nombre al lado. */
     supabase.from('account_balances')
       .select('account_id, name, type, class, balance')
+      .eq('owner_id', user.id)
       .in('class', ['asset', 'liability'])
       .eq('is_active', true)
       .order('name'),
@@ -34,10 +45,19 @@ export default async function CuentasPage() {
     // su saldo ya tiene dueño en una meta — sin eso, ver "$1.612.200"
     // en Nu hace pensar que todo ese dinero está libre.
     supabase.from('cuentas_disponible')
-      .select('account_id, saldo, asignado, disponible').eq('owner_id', user!.id),
+      .select('account_id, saldo, asignado, disponible').eq('owner_id', user.id),
     supabase.from('patrimonio_detalle')
       .select('por_cobrar, patrimonio')
-      .eq('owner_id', user!.id).maybeSingle(),
+      .eq('owner_id', user.id).maybeSingle(),
+    /* Cuál es tu cuenta "Pendiente de ubicar", para esconderla cuando
+       está en $0 (ver cuentaVisible en lib/tipos.ts). Va dentro del
+       mismo Promise.all, así que no añade ni un milisegundo de espera.
+       No sale de account_balances porque esa vista es de 0001 y no
+       expone is_pending_location. */
+    supabase.from('accounts')
+      .select('id')
+      .eq('owner_id', user.id).eq('is_pending_location', true)
+      .maybeSingle(),
   ])
 
   const cuentas = (data ?? []) as CuentaFila[]
@@ -52,7 +72,8 @@ export default async function CuentasPage() {
 
   const asignadoPorCuenta = new Map(filas.map((c) => [c.account_id, Number(c.asignado)]))
 
-  const visibles = cuentas.filter((c) => cuentaVisible(c.type, Number(c.balance)))
+  const visibles = cuentas.filter((c) =>
+    cuentaVisible(c.type, Number(c.balance), c.account_id === ctaPendiente?.id))
 
   const grupos = new Map<string, CuentaFila[]>()
   for (const c of visibles) {

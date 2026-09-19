@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Plus, Users } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { formatearCOP } from '@/lib/format'
 import { BarraProgreso } from '@/components/barra-progreso'
 import { CifraAnimada } from '@/components/cifra-animada'
@@ -10,14 +10,18 @@ import {
 
 export default async function AhorrosPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await requerirUsuario(supabase)
 
   const [{ data }, { data: cuentas }, { data: aportantes }] = await Promise.all([
+    /* SIN owner_id a propósito: una meta conjunta pertenece a la pareja y
+       las dos personas tienen que verla. El RLS ya recorta a las tuyas
+       más las shared_view/joint de ella. No lo "arregles" añadiendo el
+       filtro: escondería las metas compartidas. */
     supabase.from('metas_resumen')
       .select('id, name, target_amount, acumulado, progreso, visibility, target_date')
       .eq('is_archived', false).order('created_at', { ascending: false }),
     supabase.from('cuentas_disponible')
-      .select('saldo, asignado, disponible').eq('owner_id', user!.id),
+      .select('saldo, asignado, disponible').eq('owner_id', user.id),
     // Quién ha puesto qué en cada meta. La vista existía desde 0008 y
     // no se usaba en ninguna pantalla.
     supabase.from('metas_aportes_por_persona')
@@ -34,7 +38,7 @@ export default async function AhorrosPage() {
   for (const a of aportantes ?? []) {
     const lista = repartoPorMeta.get(a.goal_id) ?? []
     lista.push({
-      quien: a.profile_id === user!.id ? 'Tú' : (a.display_name ?? 'Tu pareja'),
+      quien: a.profile_id === user.id ? 'Tú' : (a.display_name ?? 'Tu pareja'),
       total: Number(a.total),
     })
     repartoPorMeta.set(a.goal_id, lista)

@@ -38,7 +38,16 @@ las 8 PM caería en septiembre.
 en `transactions` ni `transaction_entries`: `crear_movimiento`, `ajustar_saldo`,
 `crear_cuenta`, `crear_prestamo`, `registrar_pago_prestamo`, `aportar_meta`,
 `crear_gasto_compartido`, `liquidar_con_pareja`, `eliminar_movimiento`,
-`eliminar_meta`.
+`eliminar_meta`, `eliminar_liquidacion`.
+
+**Una liquidación no puede torcer el patrimonio del otro.** `liquidar_con_pareja`
+escribe en los dos ledgers, y quien registra sabe de qué cuenta suya salió el
+dinero pero no a cuál de las del otro entró. La contrapartida del espejo va a
+la cuenta de sistema **`Pendiente de ubicar`** (`is_pending_location`, clase
+`asset`), nunca a la de apertura: esa es de clase `income` y no cuenta como
+patrimonio, así que el dinero recibido se evaporaba del patrimonio de quien no
+registró la liquidación (migración 0021). El cabo suelto queda visible con
+saldo y se cierra con una transferencia normal, sin funciones nuevas.
 
 **RLS en todas las tablas.** Visibilidad por recurso: `private`, `shared_view`,
 `joint`. Se aplica en la base, no en la interfaz.
@@ -65,7 +74,11 @@ Cuatro bugs de este proyecto salieron de duplicar la misma cuenta en dos
 lugares. Antes de calcular algo, comprobar si ya existe una vista que lo haga:
 
 - `cuentas_disponible` — saldo, asignado y disponible por cuenta. **Fuente única
-  del "disponible"**: la usan Inicio, Cuentas y Ahorros.
+  del "disponible"**: la usan Inicio, Cuentas y Ahorros. Donde se muestra el
+  saldo de una cuenta suelta (billetera de Inicio, `/cuentas`,
+  `/escritorio/cuentas`) se muestra el disponible de esa fila, no el saldo
+  bruto — mostrar el bruto hace parecer disponible dinero que ya está
+  comprometido en una meta.
 - `patrimonio_detalle` — líquido, ahorros, inversiones, por cobrar, deudas.
 - `movimientos_detalle` — `monto` (lo que gastaste) vs `monto_total` (lo que se
   movió). Difieren en gastos compartidos.
@@ -84,7 +97,10 @@ consulte `cuentas_disponible` en vez de copiar la lista de tipos.
 Lo mismo aplica fuera de SQL: cómo se ve un movimiento según su tipo (color,
 signo, qué cuenta mostrar) vive solo en `lib/movimientos.ts`. La fila del
 celular y la tabla de `/escritorio/movimientos` lo importan de ahí — antes
-esa lógica vivía duplicada dentro del componente de la fila.
+esa lógica vivía duplicada dentro del componente de la fila. El orden de los
+grupos de cuentas y cuándo ocultar una "por cobrar" en $0 viven en
+`lib/tipos.ts` (`ORDEN_TIPOS_CUENTA`, `cuentaVisible`) por la misma razón:
+los usan tanto `/cuentas` como `/escritorio/cuentas`.
 
 ## Sistema visual
 
@@ -108,16 +124,43 @@ Tokens en `app/globals.css`. Primitivas en `components/seccion.tsx`
 
 ```
 app/(app)/          app de celular (PWA); sesión y NavInferior en su layout
-app/escritorio/     vista de escritorio — sidebar propio, tabla de
-                    movimientos con filtros combinados, más pantallas por
-                    construir (Cuentas, Préstamos). NO vive dentro de
-                    (app): layout y comprobación de sesión completamente
-                    aparte, así que (app)/layout.tsx no la protege
+app/escritorio/     vista de escritorio — Panorama (resumen de todo),
+                    Estadísticas, Movimientos, Cuentas, Ahorros,
+                    Préstamos, Pareja y Perfil, más las pantallas de
+                    creación (cuentas/nueva, ahorros/nueva,
+                    prestamos/nuevo, movimientos/nuevo). Ninguna enlaza
+                    a rutas de (app): hacerlo te expulsa al layout de
+                    celular en una pantalla de 1400px. Los formularios
+                    van sin acordeones — los <details> del celular
+                    existen por falta de ancho, no por diseño. Ahorros y
+                    Préstamos tienen su propio detalle en [id] (no
+                    reusan el del celular: ese redirige a (app)). Sidebar
+                    propio, sin barra de scroll visible (`.sin-scrollbar`
+                    en globals.css). NO vive dentro de (app): layout y
+                    comprobación de sesión completamente aparte, así que
+                    (app)/layout.tsx no la protege
 app/auth/           server actions de autenticación
 lib/supabase/       clientes de navegador y servidor
 lib/format.ts       formato y parseo de COP, fechas y horas
 lib/movimientos.ts  cómo se ve un movimiento según su tipo — un solo sitio,
                     lo usan la fila del celular y la tabla de escritorio
+lib/tipos.ts        tipos de cuenta, orden de sus grupos y cuándo ocultar
+                    una por cobrar en $0 — un solo sitio para /cuentas y
+                    /escritorio/cuentas
+lib/interfaz.ts     las dos interfaces: tipo `Origen`, `leerOrigen()` y la
+                    tabla blanca de rutas `rutaDe()`. Lo usan los
+                    formularios compartidos para saber a dónde volver
+lib/revalidar.ts    `revalidarLedger()` — la lista de pantallas cuyos
+                    números salen del ledger, en un solo sitio. Antes
+                    estaba copiada en cuatro archivos de acciones
+lib/datos-pareja.ts las ~15 consultas de la pantalla de Pareja, que las
+                    dos interfaces comparten. Filtros de privacidad
+                    finos: no puede haber dos copias
+lib/navegador.ts    leer el navegador sin romper la hidratación:
+                    `useHidratado`, `useReducido`, `usePreferenciaLocal`.
+                    Con `useSyncExternalStore`, NO con setState dentro de
+                    un useEffect — ese patrón provoca un render en
+                    cascada y lo marca react-hooks/set-state-in-effect
 supabase/migrations/  esquema versionado + scripts verificacion_*.sql
 proxy.ts            refresco de sesión en cada petición
 ```
@@ -128,6 +171,31 @@ navegación (sidebar en vez de barra flotante) — como una vista de cliente y
 una de admin, no un diseño responsive del mismo árbol de páginas. Comparten
 `app/layout.tsx` (fuentes, tema, `globals.css`) y las utilidades de `lib/` y
 `components/`, pero nada de la navegación ni del ancho de página.
+
+Los formularios y las acciones de servidor que no navegan (`aportar`,
+`registrarAbono`, `eliminarAporte`, `eliminarAbono`...) se comparten tal
+cual entre las dos interfaces: son UI y llamadas a RPC, no navegación.
+
+Las que sí redirigen al terminar (`crearCuenta`, `crearMeta`,
+`crearPrestamo`, `registrarMovimiento`, `eliminarMeta`,
+`eliminarPrestamo`) **no se duplican**: el formulario manda un campo
+oculto `origen` con `celular` o `escritorio`, y la acción lo traduce con
+`rutaDe()` de `lib/interfaz.ts`. Nunca se pasa ese valor directo a
+`redirect()` — la tabla blanca es lo que evita que un campo oculto
+manipulado mande a la persona a una URL ajena.
+
+Antes cada una tenía su gemela en `app/escritorio/<sección>/actions.ts`.
+Con `eliminarMeta`, de tres líneas, daba igual; con `crearPrestamo`
+—esquema zod, `parsearCOP` y validación de cuotas— significaba una quinta
+copia del mismo cálculo, que es de donde salieron cuatro bugs de este
+proyecto. Solo sigue teniendo archivo propio `app/escritorio/cuentas/
+actions.ts`, porque `ajustarSaldoEscritorio` no existe en el celular.
+
+Los componentes compartidos por las dos interfaces reciben `origen` como
+prop opcional (`'celular'` por defecto) y con él deciden dos cosas: a
+dónde volver y con qué densidad dibujarse (44px de área táctil en el
+celular, 40 con ratón). `components/eliminar-meta.tsx` es el ejemplo:
+antes era dos archivos casi idénticos.
 
 ## Cómo trabajar conmigo
 

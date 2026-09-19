@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { registrarMovimiento, type EstadoMovimiento } from '@/app/(app)/movimientos/actions'
+import type { Origen } from '@/lib/interfaz'
 
 type Cuenta = { id: string; name: string }
 
@@ -46,12 +47,14 @@ function resumenFecha(valor: string, ahora: string): string {
 
 export function FormularioMovimiento({
   cuentas, categoriasGasto, categoriasIngreso, ahora, tipoInicial,
+  origen = 'celular',
 }: {
   cuentas: Cuenta[]
   categoriasGasto: Cuenta[]
   categoriasIngreso: Cuenta[]
   ahora: string
   tipoInicial?: TipoMovimiento
+  origen?: Origen
 }) {
   const [tipo, setTipo] = useState<Tipo>(tipoInicial ?? 'expense')
   const [fecha, setFecha] = useState(ahora)
@@ -65,6 +68,9 @@ export function FormularioMovimiento({
   return (
     <form action={accion} className="mt-6 space-y-5">
       <input type="hidden" name="tipo" value={tipo} />
+      {/* A qué lista volver al terminar. La acción lo traduce contra una
+          tabla blanca, nunca lo usa tal cual en redirect(). */}
+      <input type="hidden" name="origen" value={origen} />
 
       {/* Selector de tipo */}
       <div className="grid grid-cols-4 gap-1 rounded-xl bg-muted p-1">

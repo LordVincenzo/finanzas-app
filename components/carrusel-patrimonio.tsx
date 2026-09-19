@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   Wallet, Landmark, PiggyBank, Banknote, TrendingUp, CircleDollarSign,
   Eye, EyeOff, ArrowLeftRight,
 } from 'lucide-react'
 import { formatearCOP } from '@/lib/format'
+import { useReducido, usePreferenciaLocal } from '@/lib/navegador'
 import { Monto } from '@/components/seccion'
 import { CifraAnimada } from '@/components/cifra-animada'
 import {
@@ -86,25 +87,17 @@ export function CarruselPatrimonio({
 }) {
   const total = 1 + cuentas.length
   const [activo, setActivo] = useState(0)
-  const [reducido, setReducido] = useState(false)
-  const [oculto, setOculto] = useState(false)
   const arrastreInicioY = useRef<number | null>(null)
 
-  useEffect(() => {
-    setReducido(window.matchMedia('(prefers-reduced-motion: reduce)').matches)
-    try {
-      setOculto(localStorage.getItem(CLAVE_OCULTO) === '1')
-    } catch {
-      // Privado o sin localStorage disponible: se queda visible.
-    }
-  }, [])
+  /* Los dos salen del navegador, y antes se leían con un setState dentro
+     de un useEffect: un render en cascada en cada montaje y un error de
+     react-hooks/set-state-in-effect. useSyncExternalStore es la
+     herramienta de React para esto — ver lib/navegador.ts. */
+  const reducido = useReducido()
+  const [oculto, setOculto] = usePreferenciaLocal(CLAVE_OCULTO)
 
   function alternarOculto() {
-    setOculto((actual) => {
-      const nuevo = !actual
-      try { localStorage.setItem(CLAVE_OCULTO, nuevo ? '1' : '0') } catch {}
-      return nuevo
-    })
+    setOculto(!oculto)
   }
 
   function siguiente() {

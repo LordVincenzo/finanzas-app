@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Sun, Moon, Smartphone } from 'lucide-react'
+import { useHidratado } from '@/lib/navegador'
 
 const OPCIONES = [
   { valor: 'system', etiqueta: 'Auto',   Icono: Smartphone },
@@ -12,10 +12,7 @@ const OPCIONES = [
 
 export function SelectorTema() {
   const { theme, setTheme } = useTheme()
-  const [listo, setListo] = useState(false)
-
-  // El tema real solo se conoce en el navegador.
-  useEffect(() => setListo(true), [])
+  const listo = useHidratado()
 
   return (
     <div className="flex items-center gap-3 px-3.5 py-2.5">

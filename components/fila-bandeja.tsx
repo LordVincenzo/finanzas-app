@@ -8,6 +8,7 @@ import {
 import { formatearCOP, formatearFecha, formatearHora } from '@/lib/format'
 import { Monto } from '@/components/seccion'
 import type { MensajeBandeja, Opcion } from '@/lib/datos-bandeja'
+import { borradorDe } from '@/lib/bandeja-propuesta'
 
 const estadoInicial: EstadoBandeja = {}
 
@@ -72,47 +73,27 @@ export function FilaBandeja({
   const categorias = tipo === 'income' ? categoriasIngreso : categoriasGasto
   const contrapartes = esTransferencia ? cuentas : categorias
 
-  /* Qué se propone del otro lado.
-   *
-   * Tratados como una sola transferencia, el otro lado es la cuenta del
-   * OTRO aviso, y eso ya lo sabemos: Nu dijo que salió, Nequi dijo que
-   * entró. Los dos selectores llegan resueltos y confirmar es un toque.
-   *
-   * Si no, es una categoría, y solo viene puesta si ya se aprendió de
-   * ese comercio — o sea, de la segunda vez en adelante. */
-  const propuestaContraparte = esTransferencia
-    ? (mensaje.pareja_cuenta_id ?? '')
-    : (mensaje.categoria_id ?? '')
-
-  /* La descripción tampoco se escribe si no hace falta.
-   *
-   * Venía del comercio, y en una transferencia no hay comercio: el
-   * campo salía vacío y era obligatorio, así que el movimiento más
-   * frecuente —el traslado entre cuentas propias— obligaba a teclear
-   * algo aunque todo lo demás viniera resuelto. */
-  const nombre = (id: string, lista: Opcion[]) =>
-    lista.find((c) => c.id === id)?.name ?? null
-
-  const nombreCuenta = mensaje.cuenta_id ? nombre(mensaje.cuenta_id, cuentas) : null
-  const nombreContra = propuestaContraparte
-    ? nombre(propuestaContraparte, contrapartes)
-    : null
-
-  const descripcionPropuesta =
-    mensaje.comercio?.trim()
-    || (esTransferencia && nombreCuenta && nombreContra
-          ? `De ${nombreCuenta} a ${nombreContra}`
-          : '')
-    || (nombreContra ?? '')
-
-  /* ¿Está todo resuelto? Entonces no hay nada que rellenar y sobra el
-     formulario entero: basta ver qué se va a registrar y confirmarlo.
-     Si falta algo —un comercio nuevo del que todavía no se ha
-     aprendido— se abre el formulario, que para eso está. */
-  const completo = Boolean(
-    mensaje.monto && mensaje.cuenta_id && propuestaContraparte
-    && descripcionPropuesta
+  /* Qué se propone, según lo aprendido y según lo que la persona haya
+     tocado en esta pantalla.
+     El cálculo vive en lib/bandeja-propuesta.ts porque lo comparten
+     tres sitios: esta fila, el botón de "confirmar todas" y la acción
+     de servidor de ese botón, que vuelve a calcularlo sin fiarse del
+     cliente. Aquí dentro sería una copia para cada uno. */
+  const borrador = borradorDe(
+    mensaje, cuentas, categoriasGasto, categoriasIngreso,
+    { tipo: tipoElegido, esPareja: comoPareja },
   )
+
+  const propuestaContraparte = borrador.contraparte
+  const descripcionPropuesta = borrador.descripcion
+  const completo = borrador.completa
+
+  const nombreCuenta = mensaje.cuenta_id
+    ? cuentas.find((c) => c.id === mensaje.cuenta_id)?.name ?? null
+    : null
+  const nombreContra = propuestaContraparte
+    ? contrapartes.find((c) => c.id === propuestaContraparte)?.name ?? null
+    : null
 
   const [editando, setEditando] = useState(false)
   const conFormulario = editando || !completo

@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/server'
 import { parsearCOP } from '@/lib/format'
 import { ladosDelMovimiento } from '@/lib/movimientos'
 import { revalidarLedger } from '@/lib/revalidar'
+import { cargarBandeja } from '@/lib/datos-bandeja'
+import { propuestaDe } from '@/lib/bandeja-propuesta'
 
 export type EstadoBandeja = { error?: string; ok?: string }
 
@@ -156,4 +158,89 @@ export async function revocarDispositivo(
 
   revalidarBandeja()
   return {}
+}
+
+/**
+ * Confirmar de una vez todas las que no hace falta preguntar.
+ *
+ * PARA QUÉ: si vuelves después de dos días hay seis esperando, y seis
+ * toques para seis movimientos que la app ya tenía resueltos es una
+ * tarea inventada.
+ *
+ * QUÉ ENTRA Y QUÉ NO. Solo los mensajes que la pantalla enseñaba como
+ * resueltos, y solo si el servidor vuelve a llegar a la misma
+ * conclusión. Las dos condiciones importan:
+ *
+ *   - La lista la manda el cliente porque tiene que ser lo que la
+ *     persona VIO. Si el servidor confirmara "todo lo completo que haya
+ *     ahora", un mensaje que llegó entre que se dibujó la pantalla y se
+ *     tocó el botón entraría al ledger sin que nadie lo mirara nunca.
+ *
+ *   - El servidor recalcula porque no se fía de la lista: que un id
+ *     venga marcado como completo no lo hace completo. Los montos y las
+ *     cuentas salen de la base, nunca del formulario.
+ *
+ * SE PARA EN EL PRIMER ERROR. Lo que ya se confirmó queda confirmado
+ * —cada uno es su propia transacción— y el resto se queda en la
+ * bandeja. Seguir adelante tras un fallo dejaría un hueco silencioso en
+ * mitad de la lista, que es peor que parar y decirlo.
+ */
+export async function confirmarTodas(
+  _previo: EstadoBandeja,
+  formData: FormData
+): Promise<EstadoBandeja> {
+  const pedidos = new Set(formData.getAll('ids').map(String))
+  if (pedidos.size === 0) return { error: 'No había nada que confirmar' }
+
+  const { mensajes, cuentas, categoriasGasto, categoriasIngreso } =
+    await cargarBandeja()
+
+  const supabase = await createClient()
+  let hechas = 0
+
+  for (const m of mensajes) {
+    if (!pedidos.has(m.id)) continue
+
+    const p = propuestaDe(m, cuentas, categoriasGasto, categoriasIngreso)
+    if (!p) continue   // ya no está completo: que lo mire una persona
+
+    const { origen, destino } = ladosDelMovimiento(p.tipo, p.cuenta, p.contraparte)
+
+    const { error } = p.esPareja
+      ? await supabase.rpc('confirmar_pareja_ingesta', {
+          p_id: m.id,
+          p_monto: p.monto,
+          p_cuenta_origen: origen,
+          p_cuenta_destino: destino,
+          p_descripcion: p.descripcion,
+        })
+      : await supabase.rpc('confirmar_ingesta', {
+          p_id: m.id,
+          p_tipo: p.tipo,
+          p_monto: p.monto,
+          p_cuenta_origen: origen,
+          p_cuenta_destino: destino,
+          p_descripcion: p.descripcion,
+        })
+
+    if (error) {
+      revalidarBandeja()
+      revalidarLedger()
+      return {
+        error: hechas === 0
+          ? traducir(error.message)
+          : `Se confirmaron ${hechas} y luego falló una: ${traducir(error.message)}`,
+      }
+    }
+
+    hechas++
+  }
+
+  revalidarBandeja()
+  revalidarLedger()
+
+  if (hechas === 0) {
+    return { error: 'Ninguna estaba lista; revísalas una por una' }
+  }
+  return { ok: String(hechas) }
 }

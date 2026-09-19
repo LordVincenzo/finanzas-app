@@ -3,6 +3,7 @@ import { cargarBandeja } from '@/lib/datos-bandeja'
 import { FilaBandeja } from '@/components/fila-bandeja'
 import { Conectar } from '@/components/conectar'
 import { SincronizarAviso } from '@/components/sincronizar-aviso'
+import { ConfirmarTodas } from '@/components/confirmar-todas'
 
 /**
  * La bandeja de entrada, en el celular.
@@ -51,7 +52,17 @@ export default async function BandejaPage() {
           </p>
         </div>
       ) : (
-        <div className="aparece mt-4 space-y-3"
+        <>
+          {/* Arriba y no abajo: si hay seis esperando, el atajo tiene
+              que verse antes de ponerse a bajar por ellas. */}
+          <ConfirmarTodas
+            mensajes={mensajes}
+            cuentas={cuentas}
+            categoriasGasto={categoriasGasto}
+            categoriasIngreso={categoriasIngreso}
+          />
+
+          <div className="aparece mt-4 space-y-3"
              style={{ '--retraso': '80ms' } as React.CSSProperties}>
           {mensajes.map((m) => (
             <FilaBandeja
@@ -62,7 +73,8 @@ export default async function BandejaPage() {
               categoriasIngreso={categoriasIngreso}
             />
           ))}
-        </div>
+          </div>
+        </>
       )}
 
       <div className="aparece mt-6"

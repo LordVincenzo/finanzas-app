@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# android (lo que genera la compilacion local)
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties

@@ -18,32 +18,67 @@ Ninguna dependencia de terceros: ni librería de red, ni de JSON, ni de
 interfaz. Solo el SDK de Android y lo que trae el JDK. En una app que ve
 tus notificaciones, cada librería es algo más que auditar.
 
-## Compilar SIN instalar nada (recomendado)
+## Compilar (recomendado)
 
-Android Studio pide unos 8 GB de RAM. Si tu PC no da, GitHub lo compila
-por ti:
+Android Studio pide unos 8 GB de RAM y este proyecto se desarrolla en un
+PC que tiene 8 GB en total. Pero **Android Studio pesa por el editor, no
+por el compilador**: con las herramientas de línea de comandos basta, y
+la compilación entera cabe en 2 GB.
 
-1. Sube la rama: `git push`
-2. En GitHub → pestaña **Actions** → **APK de Android** → **Run workflow**
-3. Cuando termine (unos 3 minutos), entra a la ejecución y descarga
-   **oyente-finanzas-apk** de la sección *Artifacts*
-4. Descomprime, pasa el `.apk` al celular e instálalo (te pedirá
-   permitir «orígenes desconocidos»)
+Se instala una sola vez, fuera del repositorio (en `~/Android/`):
 
-El mismo APK sirve para los dos teléfonos.
+- **JDK 17 o posterior.**
+- **SDK de Android**, con `sdkmanager` de las `cmdline-tools`:
+  `platform-tools`, `platforms;android-35` y `build-tools;35.0.0`.
+  Las licencias se aceptan a mano con `sdkmanager --licenses`: es un
+  acuerdo con Google y lo firma una persona, no un script.
+- **Gradle 8.11.1.** No hay wrapper en el repositorio a propósito: un
+  `.jar` binario dentro del código es justo lo que no se puede revisar
+  leyendo el código.
 
-## Compilar en tu PC (si tienes Android Studio)
+Con `ANDROID_HOME` apuntando al SDK, desde la carpeta `android/`:
 
-1. Abre **Android Studio** → *Open* → elige la carpeta `android/` de
-   este proyecto (no la raíz).
-2. La primera vez pedirá descargar el **SDK de Android**. Acepta.
-3. Conecta el celular por USB con la **depuración USB** activada
-   (Ajustes → Acerca del teléfono → toca 7 veces «Número de
-   compilación», y luego Opciones de desarrollador → Depuración USB).
-4. Dale al botón ▶ **Run**.
+```bash
+gradle assembleDebug
+```
 
-Para el segundo teléfono: *Build → Build APK*, y pasa el archivo
-`app/build/outputs/apk/debug/app-debug.apk` por WhatsApp o cable.
+El APK sale en `app/build/outputs/apk/debug/app-debug.apk`.
+
+La primera vez tarda unos 8 minutos, porque baja el plugin de Android y
+el compilador de Kotlin (~2 GB en `~/.gradle`). A partir de ahí, la
+misma compilación son segundos.
+
+El mismo APK sirve para los dos teléfonos: se pasa por cable o por
+WhatsApp y se instala permitiendo «orígenes desconocidos».
+
+## Compilar en GitHub (si tu cuenta lo permite)
+
+`.github/workflows/apk.yml` hace exactamente lo mismo en los servidores
+de GitHub: pestaña **Actions** → **APK de Android** → **Run workflow**,
+y el APK queda en *Artifacts*.
+
+Dos condiciones que no son obvias y que cuestan un rato descubrir:
+
+- **El workflow tiene que estar en la rama por defecto** para que
+  aparezca el botón «Run workflow». Si vive solo en una rama de trabajo,
+  el botón no sale por ningún lado y no hay mensaje que lo explique.
+- **La cuenta no puede estar bloqueada por facturación.** Si lo está, el
+  job muere en 2 segundos sin llegar a pedir máquina, y el motivo solo
+  se lee en *Annotations*: «the job was not started because your account
+  is locked due to a billing issue». Hacer público el repositorio **no**
+  lo levanta —los minutos son gratis en repos públicos, pero el bloqueo
+  es de la cuenta, no del repositorio— y tampoco sirve reintentar.
+
+Por eso la ruta recomendada es la de arriba: compilar en local no
+depende de nadie.
+
+## Compilar con Android Studio
+
+Si la máquina da para el IDE: *Open* → la carpeta `android/` (no la
+raíz), acepta la descarga del SDK, y ▶ **Run** con el teléfono conectado
+por USB y la depuración activada (Ajustes → Acerca del teléfono → toca 7
+veces «Número de compilación» → Opciones de desarrollador → Depuración
+USB).
 
 ## Configurar (una vez por teléfono)
 

@@ -13,10 +13,12 @@ const esUuid = (valor: string) => esquemaUuid.safeParse(valor).success
 export default async function MovimientosEscritorioPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tipo?: string; mes?: string; cuenta?: string; categoria?: string }>
+  searchParams: Promise<{
+    tipo?: string; mes?: string; cuenta?: string; categoria?: string; q?: string
+  }>
 }) {
   const {
-    tipo = '', mes = mesActualBogota(), cuenta = '', categoria = '',
+    tipo = '', mes = mesActualBogota(), cuenta = '', categoria = '', q = '',
   } = await searchParams
   const supabase = await createClient()
   const user = await requerirUsuario(supabase)
@@ -30,8 +32,28 @@ export default async function MovimientosEscritorioPage({
     .select('*')
     // Tu historial, no el de la pareja. Ver el comentario del celular.
     .eq('owner_id', user.id)
-    .gte('occurred_on', desde).lte('occurred_on', hasta)
     .order('occurred_at', { ascending: false })
+
+  /* Buscar IGNORA EL MES, igual que en el celular: si no recuerdas
+     cuándo fue, tampoco vas a acertar el mes.
+
+     El texto va entre comillas porque el `or` de PostgREST separa
+     condiciones por comas — "pan, leche" partiría la expresión — y
+     las comillas y barras del propio texto se quitan antes, que son
+     lo único que puede cerrar la comilla desde dentro. */
+  const busqueda = q.trim().slice(0, 60)
+  const buscando = busqueda.length > 0
+
+  if (buscando) {
+    const patron = `"%${busqueda.replace(/["\\]/g, '')}%"`
+    consulta = consulta.or(
+      `description.ilike.${patron},` +
+      `cuenta_origen.ilike.${patron},` +
+      `cuenta_destino.ilike.${patron}`
+    ).limit(200)
+  } else {
+    consulta = consulta.gte('occurred_on', desde).lte('occurred_on', hasta)
+  }
 
   if (tipo) consulta = consulta.eq('type', tipo)
 

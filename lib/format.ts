@@ -128,7 +128,11 @@ export function nombreDelMes(mes: string): string {
   const texto = new Intl.DateTimeFormat('es-CO', {
     month: 'long', timeZone: 'UTC',
   }).format(new Date(Date.UTC(anio, m - 1, 1)))
-  return `${texto} ${anio}`
+  /* La mayúscula la pone esta función y NO la clase CSS `capitalize`.
+     Esa pone mayúscula en cada palabra, y el formato largo del mes en
+     español lleva un "de" en medio: en el escritorio salía "Septiembre
+     De 2026". Aquí solo se toca la primera letra. */
+  return `${texto.charAt(0).toUpperCase()}${texto.slice(1)} ${anio}`
 }
 
 /** "2026-08" -> "agosto". Sin el año, para comparar con el mes vecino:

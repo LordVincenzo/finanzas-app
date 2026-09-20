@@ -18,7 +18,7 @@ export function SelectorMes({ mes, tipo }: { mes: string; tipo: string }) {
         <ChevronLeft className="size-4" />
       </Link>
 
-      <span className="min-w-[86px] text-center text-[12px] capitalize">
+      <span className="min-w-[86px] text-center text-[12px]">
         {nombreDelMes(mes)}
       </span>
 

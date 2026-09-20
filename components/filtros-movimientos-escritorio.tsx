@@ -1,7 +1,9 @@
 'use client'
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { nombreDelMes } from '@/lib/format'
+import { useState } from 'react'
+import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 
 const FILTROS_TIPO = [
   { valor: '', etiqueta: 'Todos' },
@@ -18,14 +20,6 @@ function moverMes(mes: string, delta: number): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
-/** "2026-08" -> "agosto 2026" */
-function nombreMes(mes: string): string {
-  const [anio, m] = mes.split('-').map(Number)
-  const texto = new Intl.DateTimeFormat('es-CO', {
-    month: 'long', year: 'numeric', timeZone: 'UTC',
-  }).format(new Date(Date.UTC(anio, m - 1, 1)))
-  return texto
-}
 
 /**
  * Cuatro filtros a la vez (mes, tipo, cuenta, categoría) — en el
@@ -52,6 +46,7 @@ export function FiltrosMovimientosEscritorio({
   const tipoActual = searchParams.get('tipo') ?? ''
   const cuentaActual = searchParams.get('cuenta') ?? ''
   const categoriaActual = searchParams.get('categoria') ?? ''
+  const busquedaActual = searchParams.get('q') ?? ''
 
   function irA(cambios: Record<string, string>) {
     const params = new URLSearchParams(searchParams.toString())
@@ -64,6 +59,10 @@ export function FiltrosMovimientosEscritorio({
 
   return (
     <div className="mt-6 flex flex-wrap items-center gap-3">
+      {/* Buscar va primero porque gana a todo lo demás: cuando hay
+          texto, el mes deja de aplicarse. */}
+      <Busqueda valor={busquedaActual} alBuscar={(v) => irA({ q: v })} />
+
       <div className="flex items-center gap-1 rounded-full border border-border/70 px-1">
         <button
           type="button" onClick={() => irA({ mes: moverMes(mes, -1) })}
@@ -73,8 +72,8 @@ export function FiltrosMovimientosEscritorio({
         >
           <ChevronLeft className="size-4" />
         </button>
-        <span className="min-w-[130px] text-center text-[13px] capitalize">
-          {nombreMes(mes)}
+        <span className="min-w-[130px] text-center text-[13px]">
+          {nombreDelMes(mes)}
         </span>
         <button
           type="button" onClick={() => irA({ mes: moverMes(mes, 1) })}
@@ -133,5 +132,57 @@ export function FiltrosMovimientosEscritorio({
         </select>
       </div>
     </div>
+  )
+}
+
+/**
+ * El campo de búsqueda.
+ *
+ * Con estado propio y submit, no con un push en cada tecla: cada
+ * pulsación sería una consulta a la base y una navegación, y aquí se
+ * escribe, se borra y se vuelve a escribir.
+ */
+function Busqueda({
+  valor, alBuscar,
+}: {
+  valor: string
+  alBuscar: (v: string) => void
+}) {
+  const [texto, setTexto] = useState(valor)
+
+  return (
+    <form
+      role="search"
+      onSubmit={(e) => { e.preventDefault(); alBuscar(texto.trim()) }}
+      className="relative"
+    >
+      <Search aria-hidden
+        className="pointer-events-none absolute left-3 top-1/2 size-4
+                   -translate-y-1/2 text-muted-foreground" />
+      <input
+        type="search"
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        placeholder="Buscar en todo el historial"
+        aria-label="Buscar movimientos"
+        maxLength={60}
+        className="h-9 w-64 rounded-full border border-border/70
+                   bg-transparent pl-9 pr-8 text-[13px]
+                   placeholder:text-muted-foreground/60
+                   focus:outline-none focus:ring-2 focus:ring-ring
+                   [&::-webkit-search-cancel-button]:hidden"
+      />
+      {texto && (
+        <button
+          type="button"
+          aria-label="Borrar la búsqueda"
+          onClick={() => { setTexto(''); alBuscar('') }}
+          className="absolute right-2 top-1/2 -translate-y-1/2
+                     text-muted-foreground transition hover:text-foreground"
+        >
+          <X className="size-3.5" />
+        </button>
+      )}
+    </form>
   )
 }

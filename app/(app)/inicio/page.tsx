@@ -102,7 +102,7 @@ export default async function InicioPage() {
       .select('categoria_id, categoria, tope, gastado, restante, porcentaje')
       .eq('owner_id', user.id).eq('mes', mes),
     supabase.from('categorias_mensuales')
-      .select('mes, categoria, monto')
+      .select('mes, categoria, categoria_id, monto')
       .eq('owner_id', user.id)
       .in('mes', [mes, mesPasado]),
     /* SIN owner_id a propósito: una meta conjunta pertenece a la pareja y
@@ -227,6 +227,13 @@ export default async function InicioPage() {
       .filter((x) => x.mes === delMes)
       .map((x) => [x.categoria as string, Number(x.monto)]))
 
+  /* El id de cada categoria, para poder entrar a ella. El nombre no
+     sirve de llave: dos personas pueden tener una "Alimentacion" y el
+     enlace tiene que ir a la tuya. */
+  const idCategoria = new Map((porCategoria ?? [])
+    .filter((x) => x.mes === mes)
+    .map((x) => [x.categoria as string, x.categoria_id as string]))
+
   const esteMes = gastoCategoria(mes)
   const mesAnterior = gastoCategoria(mesPasado)
 
@@ -234,6 +241,7 @@ export default async function InicioPage() {
     .map(([nombre, valor]) => ({
       nombre,
       valor,
+      id: idCategoria.get(nombre),
       antes: huboMesPasado ? (mesAnterior.get(nombre) ?? 0) : null,
     }))
     .sort((a, b) => b.valor - a.valor)

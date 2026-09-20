@@ -1,9 +1,13 @@
 import { formatearCOP } from '@/lib/format'
+import Link from 'next/link'
 import { Comparacion } from '@/components/comparacion'
 
 type Categoria = {
   nombre: string
   valor: number
+  /** Para poder entrar a ver qué hay dentro. Sin id, la fila es
+   *  una cifra que no lleva a ninguna parte. */
+  id?: string
   /** Lo mismo el mes pasado. null = no hay mes pasado con el que
    *  comparar; 0 sí lo hay y no se gastó nada en eso. */
   antes?: number | null
@@ -49,10 +53,10 @@ export function RepartoGastos({
   const resto = total - enLista
 
   const trozos = [
-    ...categorias.map((c) => ({ nombre: c.nombre, valor: c.valor, antes: c.antes })),
+    ...categorias.map((c) => ({ nombre: c.nombre, valor: c.valor, antes: c.antes, id: c.id })),
     // "Otras" no se compara: agrupa categorías distintas cada mes, así
     // que la diferencia no significaría nada.
-    ...(resto > 0 ? [{ nombre: 'Otras', valor: resto, antes: null }] : []),
+    ...(resto > 0 ? [{ nombre: 'Otras', valor: resto, antes: null, id: undefined }] : []),
   ].map((t, i) => ({
     ...t,
     pct: (t.valor * 100) / total,
@@ -84,7 +88,10 @@ export function RepartoGastos({
 
       <ul className="mt-3">
         {trozos.map((t, i) => (
-          <li key={t.nombre} className="py-1.5">
+          <li key={t.nombre}>
+            {/* "Otras" no lleva a ningún sitio: agrupa varias
+                categorías y no hay una sola que enseñar. */}
+            <Contenedor id={t.id}>
             <div className="flex items-baseline justify-between gap-2.5">
               <span className="min-w-0 flex-1 truncate text-[14px]">
                 {t.nombre}
@@ -120,9 +127,32 @@ export function RepartoGastos({
                 className="mt-1"
               />
             )}
+            </Contenedor>
           </li>
         ))}
       </ul>
     </div>
+  )
+}
+/**
+ * La fila de una categoría: un enlace si se puede entrar a ella, y
+ * un bloque normal si no.
+ *
+ * Se hace así y no con un <Link> siempre porque un enlace que no
+ * lleva a ninguna parte responde al toque igual que uno que sí, y eso
+ * enseña que tocar no sirve.
+ */
+function Contenedor({
+  id, children,
+}: {
+  id?: string
+  children: React.ReactNode
+}) {
+  if (!id) return <div className="py-1.5">{children}</div>
+  return (
+    <Link href={`/movimientos?cuenta=${id}`}
+          className="-mx-4 block px-4 py-1.5 transition active:bg-muted/60">
+      {children}
+    </Link>
   )
 }

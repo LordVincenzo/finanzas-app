@@ -1,3 +1,4 @@
+import Link from 'next/link'
 /**
  * Piezas de estructura compartidas.
  * La densidad se decide una sola vez, aquí.
@@ -49,15 +50,22 @@ export function Lista({ children }: { children: React.ReactNode }) {
  * de dos líneas se quedaban justas.
  */
 export function Fila({
-  titulo, detalle, valor, extra,
+  titulo, detalle, valor, extra, href,
 }: {
   titulo: string
   detalle?: string
   valor: React.ReactNode
   extra?: React.ReactNode
+  /** Si se pasa, la fila entera es tocable y lleva ahí.
+   *
+   *  Está en la primitiva y no en cada pantalla porque la altura
+   *  mínima, el padding y la reacción al toque tienen que ser los
+   *  mismos toque o no toque: dos filas que se ven iguales y se
+   *  comportan distinto es peor que una que no se pueda tocar. */
+  href?: string
 }) {
-  return (
-    <div className="flex min-h-14 items-center gap-3 px-4 py-3">
+  const dentro = (
+    <>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[15px] leading-tight">{titulo}</p>
         {detalle && (
@@ -71,8 +79,20 @@ export function Fila({
         {valor}
       </div>
       {extra}
-    </div>
+    </>
   )
+
+  const clases = 'flex min-h-14 items-center gap-3 px-4 py-3'
+
+  if (href) {
+    return (
+      <Link href={href} className={`${clases} transition active:bg-muted/60`}>
+        {dentro}
+      </Link>
+    )
+  }
+
+  return <div className={clases}>{dentro}</div>
 }
 
 /** Tarjeta compacta para bloques que no son listas. */

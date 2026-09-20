@@ -185,7 +185,12 @@ export default async function CuentasPage() {
                   const f = fechas.get(c.account_id)
                   return (
                     <div key={c.account_id}>
+                      {/* Tocable: entrar a una cuenta y ver qué entra y
+                          sale de ella es la pregunta siguiente a "cuánto
+                          tengo aquí". Sin esto, esta lista es un muro de
+                          números sin puertas. */}
                       <Fila
+                        href={`/movimientos?cuenta=${c.account_id}`}
                         titulo={nombreCorto(c.name, tipo)}
                         detalle={asignado > 0
                           ? `${formatearCOP(asignado)} en metas`

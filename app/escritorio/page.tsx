@@ -35,6 +35,8 @@ export default async function PanoramaPage() {
     { data: prestamos },
     { data: movs },
     { data: movsDelMes },
+    { data: tarjetas },
+    { data: topes },
   ] = await Promise.all([
     supabase.from('patrimonio_detalle')
       .select('por_cobrar, patrimonio, deudas')
@@ -72,7 +74,27 @@ export default async function PanoramaPage() {
       .eq('owner_id', user.id)
       .gte('occurred_on', desde).lte('occurred_on', hoy)
       .in('type', ['expense', 'income']),
+    /* Las dos cosas que AVISAN, y por eso estaban solo en el celular
+       hasta ahora. Un panorama que no las trae obliga a coger el
+       teléfono para saber si hay algo que hacer hoy, y entonces el
+       panorama no sirve de panorama. */
+    supabase.from('tarjetas_por_pagar')
+      .select('account_id, name, debes, proxima, dias')
+      .eq('owner_id', user.id).order('dias'),
+    supabase.from('presupuestos_del_mes')
+      .select('categoria_id, categoria, tope, gastado, restante, porcentaje')
+      .eq('owner_id', user.id).eq('mes', mes),
   ])
+
+  /* Las tarjetas que vencen pronto y los topes que van apretados.
+     Mismo criterio que en el celular —8 días, 75%— y a propósito:
+     que la misma situación se vea igual de urgente en las dos
+     pantallas es lo que hace que se pueda confiar en cualquiera de
+     las dos. Si cambia allí, cambia aquí. */
+  const porPagar = (tarjetas ?? []).filter((x) => Number(x.dias) <= 8)
+  const apretados = (topes ?? [])
+    .filter((x) => Number(x.porcentaje) >= 75)
+    .sort((a, b) => Number(b.porcentaje) - Number(a.porcentaje))
 
   const patrimonio = Number(patri?.patrimonio ?? 0)
   const porCobrarPatrimonio = Number(patri?.por_cobrar ?? 0)
@@ -173,6 +195,73 @@ export default async function PanoramaPage() {
               </TresRepartos>
             )}
           </TarjetaDestacada>
+
+          {/* Arriba de todo lo demás: es lo único del panorama que
+              pide hacer algo hoy. */}
+          {(porPagar.length > 0 || apretados.length > 0) && (
+            <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {porPagar.length > 0 && (
+                <SeccionPanorama titulo="Por pagar" href="/escritorio/cuentas">
+                  <div className="space-y-2.5">
+                    {porPagar.map((x) => {
+                      const dias = Number(x.dias)
+                      return (
+                        <div key={x.account_id as string}
+                             className="flex items-baseline justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-[14px]">{x.name as string}</p>
+                            <p className={`mt-0.5 text-[12px] ${
+                              dias <= 0 ? 'text-negativo' : 'text-muted-foreground'
+                            }`}>
+                              {dias < 0
+                                ? `Venció hace ${-dias} ${-dias === 1 ? 'día' : 'días'}`
+                                : dias === 0
+                                  ? 'Vence hoy'
+                                  : `En ${dias} ${dias === 1 ? 'día' : 'días'}`}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-[15px] font-semibold
+                                           tabular-nums">
+                            {formatearCOP(Number(x.debes))}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </SeccionPanorama>
+              )}
+
+              {apretados.length > 0 && (
+                <SeccionPanorama titulo="Topes apretados" href="/escritorio/presupuestos">
+                  <div className="space-y-3">
+                    {apretados.map((x) => {
+                      const restante = Number(x.restante)
+                      return (
+                        <div key={x.categoria_id as string}>
+                          <div className="flex items-baseline justify-between gap-3">
+                            <p className="min-w-0 truncate text-[14px]">
+                              {x.categoria as string}
+                            </p>
+                            <span className={`shrink-0 text-[13px] font-medium
+                                             tabular-nums ${restante < 0 ? 'text-negativo' : ''}`}>
+                              {restante < 0
+                                ? `${formatearCOP(-restante)} de más`
+                                : `Quedan ${formatearCOP(restante)}`}
+                            </span>
+                          </div>
+                          <div className="mt-1.5">
+                            <BarraProgreso
+                              progreso={Math.min(100, Number(x.porcentaje))}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </SeccionPanorama>
+              )}
+            </div>
+          )}
 
           <div className="mt-6">
             <SeccionPanorama

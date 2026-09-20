@@ -16,6 +16,7 @@ function revalidar() {
   revalidatePath('/presupuestos')
   revalidatePath('/inicio')
   revalidatePath('/escritorio')
+  revalidatePath('/escritorio/presupuestos')
 }
 
 const esquema = z.object({

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, BarChart3, ArrowLeftRight, Wallet, PiggyBank, HandCoins,
-  HeartHandshake, UserRound, Inbox, ChevronLeft,
+  HeartHandshake, UserRound, Inbox, ChevronLeft, Target,
 } from 'lucide-react'
 
 const ENLACES = [
@@ -12,6 +12,7 @@ const ENLACES = [
   { href: '/escritorio/estadisticas', etiqueta: 'Estadísticas', icono: BarChart3 },
   { href: '/escritorio/movimientos', etiqueta: 'Movimientos', icono: ArrowLeftRight },
   { href: '/escritorio/bandeja', etiqueta: 'Por confirmar', icono: Inbox },
+  { href: '/escritorio/presupuestos', etiqueta: 'Topes de gasto', icono: Target },
   { href: '/escritorio/cuentas', etiqueta: 'Cuentas', icono: Wallet },
   { href: '/escritorio/ahorros', etiqueta: 'Ahorros', icono: PiggyBank },
   { href: '/escritorio/prestamos', etiqueta: 'Préstamos', icono: HandCoins },

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { createClient, requerirUsuario } from '@/lib/supabase/server'
-import { formatearCOP } from '@/lib/format'
+import { formatearCOP, notaEnMetas } from '@/lib/format'
 import {
   ETIQUETAS_TIPO, ORDEN_TIPOS_CUENTA, cuentaVisible, esDeuda,
 } from '@/lib/tipos'
@@ -79,6 +79,11 @@ export default async function CuentasEscritorioPage() {
   const filas = resumen ?? []
   const disponible = filas.reduce((s, c) => s + Number(c.disponible), 0)
   const asignado = filas.reduce((s, c) => s + Number(c.asignado), 0)
+  /* El saldo BRUTO, solo para poder decir de cuanto sale el
+     disponible. Sin esa frase, "Disponible" y "Comprometido en
+     metas" uno al lado del otro se leen como si el segundo
+     estuviera dentro del primero. */
+  const enCuentas = filas.reduce((s, c) => s + Number(c.saldo), 0)
   const porCobrar = Number(patri?.por_cobrar ?? 0)
   const deudas = Number(patri?.deudas ?? 0)
   const asignadoPorCuenta = new Map(filas.map((c) => [c.account_id, Number(c.asignado)]))
@@ -137,7 +142,15 @@ export default async function CuentasEscritorioPage() {
               qué: patrimonio_detalle.deudas existía desde 0012 sin que
               ninguna pantalla lo pintara. */}
           <div className={`mt-6 grid gap-4 ${deudas !== 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
-            <TarjetaResumen etiqueta="Disponible" valor={formatearCOP(disponible)} />
+            {/* La nota es la que evita que "Disponible" y
+                "Comprometido en metas" se lean como si el segundo
+                estuviera dentro del primero. Estan al lado y no dentro:
+                disponible ya resto lo de metas. */}
+            <TarjetaResumen etiqueta="Disponible"
+                            valor={formatearCOP(disponible)}
+                            nota={asignado > 0
+                              ? `De ${formatearCOP(enCuentas)} en cuentas`
+                              : undefined} />
             <TarjetaResumen etiqueta="Comprometido en metas" valor={formatearCOP(asignado)} />
             <TarjetaResumen etiqueta="Por cobrar" valor={formatearCOP(porCobrar)} />
             {deudas !== 0 && (
@@ -243,7 +256,7 @@ function BloqueCuentas({
                     {enMetas > 0 && (
                       <p className="mt-1 truncate text-[12px]
                                     text-muted-foreground tabular-nums">
-                        {formatearCOP(enMetas)} en metas
+                        {notaEnMetas(enMetas)}
                       </p>
                     )}
                   </div>
@@ -269,11 +282,22 @@ function BloqueCuentas({
   )
 }
 
-function TarjetaResumen({ etiqueta, valor }: { etiqueta: string; valor: string }) {
+function TarjetaResumen({
+  etiqueta, valor, nota,
+}: {
+  etiqueta: string
+  valor: string
+  nota?: string
+}) {
   return (
     <div className="rounded-2xl bg-card p-4 shadow-card ring-1 ring-border/70">
       <p className="text-[12px] text-muted-foreground">{etiqueta}</p>
       <p className="mt-0.5 text-[20px] font-semibold tabular-nums">{valor}</p>
+      {nota && (
+        <p className="mt-1 text-[11px] text-muted-foreground tabular-nums">
+          {nota}
+        </p>
+      )}
     </div>
   )
 }

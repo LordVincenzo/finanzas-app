@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { createClient, requerirUsuario } from '@/lib/supabase/server'
-import { formatearCOP } from '@/lib/format'
+import { formatearCOP, notaEnMetas } from '@/lib/format'
 import { ETIQUETAS_TIPO, ORDEN_TIPOS_CUENTA, cuentaVisible } from '@/lib/tipos'
 import { Seccion, Lista, Fila, Monto } from '@/components/seccion'
 import { CifraAnimada } from '@/components/cifra-animada'
@@ -192,9 +192,7 @@ export default async function CuentasPage() {
                       <Fila
                         href={`/movimientos?cuenta=${c.account_id}`}
                         titulo={nombreCorto(c.name, tipo)}
-                        detalle={asignado > 0
-                          ? `${formatearCOP(asignado)} en metas`
-                          : undefined}
+                        detalle={notaEnMetas(asignado)}
                         valor={
                           <Monto
                             valor={disponibleCuenta}

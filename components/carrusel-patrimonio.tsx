@@ -6,7 +6,7 @@ import {
   Wallet, Landmark, PiggyBank, Banknote, TrendingUp, CircleDollarSign,
   Eye, EyeOff, ArrowLeftRight,
 } from 'lucide-react'
-import { formatearCOP } from '@/lib/format'
+import { formatearCOP, notaEnMetas } from '@/lib/format'
 import { useReducido, usePreferenciaLocal } from '@/lib/navegador'
 import { Monto } from '@/components/seccion'
 import { CifraAnimada } from '@/components/cifra-animada'
@@ -337,7 +337,7 @@ function TarjetaCuentaWallet({
                 aunque una meta ya se haya quedado con parte de él. */}
             {cuenta.asignado > 0 && (
               <p className="mt-0.5 text-[12px] text-secundaria-suave">
-                {formatearCOP(cuenta.asignado)} en metas
+                {notaEnMetas(cuenta.asignado)}
               </p>
             )}
           </>

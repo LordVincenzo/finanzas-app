@@ -143,3 +143,22 @@ export function soloNombreMes(mes: string): string {
     month: 'long', timeZone: 'UTC',
   }).format(new Date(Date.UTC(anio, m - 1, 1)))
 }
+
+/**
+ * La nota de "y además hay tanto en metas", bajo el saldo de una cuenta.
+ *
+ * POR QUÉ ES UNA FUNCIÓN Y NO TEXTO SUELTO. Esta frase estaba escrita
+ * en cuatro sitios con cuatro redacciones, y tres de ellas decían
+ * "$600.000 en metas" a secas debajo de un saldo. Eso se lee como que
+ * los 600.000 están DENTRO de la cifra de arriba, y están fuera: donde
+ * se muestra el saldo de una cuenta suelta se muestra el disponible,
+ * que ya los restó.
+ *
+ * El resultado era que alguien miraba su cuenta y creía tener 600.000
+ * menos de lo que puede gastar. El signo + es lo que arregla la frase:
+ * dice que eso se SUMA a lo de arriba, no que se descuente.
+ */
+export function notaEnMetas(asignado: number): string | undefined {
+  if (asignado <= 0) return undefined
+  return `+ ${formatearCOP(asignado)} guardados en metas`
+}

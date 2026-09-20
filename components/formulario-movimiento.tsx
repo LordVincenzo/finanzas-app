@@ -97,7 +97,7 @@ export function FormularioMovimiento({
      tarjeta no es "cuánto dinero hay" sino "cuánto debes". El número se
      escribe siempre en positivo; el signo lo pone el servidor, que
      consulta la clase en la base en vez de fiarse del formulario. */
-  const [cuentaId, setCuentaId] = useState(cuentas[0]?.id ?? '')
+  const [cuentaId, setCuentaId] = useState(edicion?.cuenta ?? cuentas[0]?.id ?? '')
   const esDeudaSeleccionada = esDeuda(
     cuentas.find((c) => c.id === cuentaId)?.type ?? ''
   )
@@ -173,6 +173,7 @@ export function FormularioMovimiento({
         etiqueta={tipo === 'income' ? 'Entra a' : esTransferencia ? 'Sale de' : 'Cuenta'}
       >
         <Selector id="cuenta" nombre="cuenta" opciones={cuentas}
+                  valorInicial={edicion?.cuenta}
                   onChange={setCuentaId} />
       </Campo>
 
@@ -182,9 +183,15 @@ export function FormularioMovimiento({
           id="contraparte"
           etiqueta={esTransferencia ? 'Entra a' : 'Categoría'}
         >
+          {/* La clave fuerza a redibujar al cambiar de tipo: sin ella
+              React conserva el valor elegido y una categoria de gasto
+              se quedaria seleccionada al pasar a transferencia, donde
+              ya no esta en la lista. */}
           <Selector
+            key={tipo}
             id="contraparte" nombre="contraparte"
             opciones={esTransferencia ? cuentas : categorias}
+            valorInicial={edicion?.contraparte}
           />
         </Campo>
       )}
@@ -300,18 +307,21 @@ function Campo({
  * en el celular y es accesible sin que tengamos que reimplementarlo.
  */
 function Selector({
-  id, nombre, opciones, onChange,
+  id, nombre, opciones, onChange, valorInicial,
 }: {
   id: string
   nombre: string
   opciones: Cuenta[]
   /** Solo lo usa el selector de cuenta, para saber si es una deuda. */
   onChange?: (valor: string) => void
+  /** Al corregir un movimiento, la cuenta que ya tenia. */
+  valorInicial?: string
 }) {
   return (
     <div className="relative">
       <select
         id={id} name={nombre} required
+        defaultValue={valorInicial}
         onChange={onChange ? (e) => onChange(e.target.value) : undefined}
         className="min-h-12 w-full appearance-none rounded-lg border
                    bg-transparent pl-3.5 pr-10 text-[15px]

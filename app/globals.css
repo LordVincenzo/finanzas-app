@@ -341,9 +341,27 @@
     transform: none !important;
   }
 
-  /* Que una tarjeta no se parta entre dos páginas. */
-  section,
-  dl > div {
+  /* Que una tarjeta no se parta entre dos páginas.
+     `section` NO entra aquí: el detalle del extracto es una sección de
+     setenta filas, más alta que una hoja. Pedirle al navegador que no
+     la parta lo obliga a empujarla entera a la página siguiente y luego
+     partirla igual, y lo que sale es media hoja en blanco seguida de la
+     tabla descolgada. Lo que no se debe partir es lo pequeño: una fila,
+     una cifra, un encabezado con su contenido detrás. */
+  dl > div,
+  tr {
     break-inside: avoid;
+  }
+
+  h1,
+  h2,
+  thead {
+    break-after: avoid;
+  }
+
+  /* El encabezado de la tabla se repite en cada hoja. Sin esto, a
+     partir de la segunda página son columnas de números sin nombre. */
+  thead {
+    display: table-header-group;
   }
 }

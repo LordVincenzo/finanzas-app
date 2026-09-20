@@ -1,18 +1,20 @@
 import { Download } from 'lucide-react'
-import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import {
-  formatearCOP, formatearFecha, formatearHora, mesActualBogota, moverMes,
-  nombreDelMes,
+  formatearCOP, formatearFecha, formatearHora, nombreDelMes,
 } from '@/lib/format'
+import { datosDelExtracto } from '@/lib/datos-extracto'
 import { SelectorMesExtracto } from '@/components/selector-mes-extracto'
 import { BotonImprimir } from '@/components/boton-imprimir'
+import { DetalleEnElPdf } from '@/components/detalle-en-el-pdf'
 
 /**
  * El extracto de un mes, en escritorio.
  *
- * Mismo contenido que en el celular con otra forma: aquí los
- * movimientos caben en una tabla con columnas, que es como se lee un
- * extracto bancario y como se imprime bien en una hoja A4.
+ * EL ORDEN ES EL MENSAJE. Primero el resumen —cuánto entró, cuánto
+ * salió, cómo quedó cada cuenta, en qué se fue— y solo después el
+ * detalle, que empieza en hoja aparte y se puede dejar fuera del PDF.
+ * Antes la hoja era la lista de movimientos y nada más: cuatro páginas
+ * de filas sin una sola conclusión.
  *
  * La impresión sale de aquí mejor que del teléfono, y es de lo poco que
  * de verdad se hace mejor sentado. Por eso el enlace de "Descargar
@@ -24,38 +26,9 @@ export default async function ExtractoEscritorioPage({
   searchParams: Promise<{ mes?: string }>
 }) {
   const { mes: mesPedido } = await searchParams
-  const supabase = await createClient()
-  const user = await requerirUsuario(supabase)
-
-  const mes = /^\d{4}-\d{2}$/.test(mesPedido ?? '')
-    ? mesPedido!
-    : moverMes(mesActualBogota(), -1)
-
-  const desde = `${mes}-01`
-  const [anio, m] = mes.split('-').map(Number)
-  const hasta = new Date(Date.UTC(anio, m, 0)).toISOString().slice(0, 10)
-
-  const [{ data: perfil }, { data: movs }, { data: categorias }] =
-    await Promise.all([
-      supabase.from('profiles').select('display_name').eq('id', user.id).single(),
-      supabase.from('movimientos_detalle')
-        .select('id, type, description, occurred_on, occurred_at, monto, cuenta_origen, cuenta_destino')
-        .eq('owner_id', user.id)
-        .gte('occurred_on', desde).lte('occurred_on', hasta)
-        .order('occurred_at', { ascending: true }),
-      supabase.from('categorias_mensuales')
-        .select('categoria, monto')
-        .eq('owner_id', user.id).eq('mes', mes)
-        .order('monto', { ascending: false }),
-    ])
-
-  const movimientos = movs ?? []
-  const ingresos = movimientos
-    .filter((x) => x.type === 'income')
-    .reduce((s, x) => s + Number(x.monto), 0)
-  const gastos = movimientos
-    .filter((x) => x.type === 'expense')
-    .reduce((s, x) => s + Number(x.monto), 0)
+  const {
+    mes, nombre, movimientos, dias, porCuenta, categorias, ingresos, gastos,
+  } = await datosDelExtracto(mesPedido)
 
   return (
     <div>
@@ -63,12 +36,12 @@ export default async function ExtractoEscritorioPage({
         <div>
           <h1 className="text-[26px] font-semibold tracking-tight">Extracto</h1>
           <p className="mt-1 text-[14px] text-muted-foreground">
-            {nombreDelMes(mes)} · {perfil?.display_name}
+            {nombreDelMes(mes)} · {nombre}
           </p>
         </div>
 
         <div className="solo-pantalla flex items-center gap-3">
-          <SelectorMesExtracto mes={mes} />
+          <SelectorMesExtracto mes={mes} origen="escritorio" />
         </div>
       </header>
 
@@ -85,83 +58,136 @@ export default async function ExtractoEscritorioPage({
                    tono={ingresos - gastos < 0 ? 'negativo' : 'positivo'} />
           </section>
 
-          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_2fr]">
-            {(categorias ?? []).length > 0 && (
-              <section>
-                <h2 className="text-[11px] font-semibold uppercase
-                               tracking-[0.09em] text-muted-foreground">
-                  En qué se fue
-                </h2>
-                <dl className="mt-2 divide-y divide-border/70 rounded-2xl
-                               bg-card px-5 shadow-card ring-1 ring-border/70
-                               print:shadow-none print:ring-0">
-                  {(categorias ?? []).map((c) => (
-                    <div key={c.categoria as string}
-                         className="flex items-baseline justify-between gap-3 py-3">
-                      <dt className="min-w-0 truncate text-[14px]">
-                        {c.categoria as string}
-                      </dt>
-                      <dd className="shrink-0 text-[14px] font-medium tabular-nums">
-                        {formatearCOP(Number(c.monto))}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </section>
-            )}
-
-            <section>
-              <h2 className="text-[11px] font-semibold uppercase
-                             tracking-[0.09em] text-muted-foreground">
-                Movimientos ({movimientos.length})
-              </h2>
-              {/* Tabla de verdad: en una hoja A4 y en un monitor hay
-                  ancho para columnas, y un extracto se lee así. */}
+          {porCuenta.length > 0 && (
+            <section className="mt-6">
+              <Titulo>Cómo quedó cada cuenta</Titulo>
               <div className="mt-2 overflow-hidden rounded-2xl bg-card
                               shadow-card ring-1 ring-border/70
                               print:shadow-none print:ring-0">
                 <table className="w-full text-[13px]">
-                  <thead className="text-left text-muted-foreground">
+                  <thead className="text-muted-foreground">
                     <tr className="border-b border-border/70">
-                      <th className="px-4 py-2.5 font-normal">Fecha</th>
-                      <th className="px-4 py-2.5 font-normal">Descripción</th>
-                      <th className="px-4 py-2.5 font-normal">Movimiento</th>
-                      <th className="px-4 py-2.5 text-right font-normal">Monto</th>
+                      <th className="px-4 py-2.5 text-left font-normal">Cuenta</th>
+                      <th className="px-4 py-2.5 text-right font-normal">Empezó con</th>
+                      <th className="px-4 py-2.5 text-right font-normal">Entró</th>
+                      <th className="px-4 py-2.5 text-right font-normal">Salió</th>
+                      <th className="px-4 py-2.5 text-right font-normal">Terminó con</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/70">
-                    {movimientos.map((x) => {
-                      const signo =
-                        x.type === 'expense' ? -1 : x.type === 'income' ? 1 : 0
-                      return (
-                        <tr key={x.id as string}>
-                          <td className="whitespace-nowrap px-4 py-2.5
-                                         text-muted-foreground tabular-nums">
-                            {formatearFecha(x.occurred_on as string)
-                              .replace(/ de \d{4}$/, '')}
-                            <span className="ml-1.5 text-[11px]">
-                              {formatearHora(x.occurred_at as string)}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2.5">{x.description as string}</td>
-                          <td className="px-4 py-2.5 text-muted-foreground">
-                            {x.cuenta_origen as string} → {x.cuenta_destino as string}
-                          </td>
-                          <td className={`whitespace-nowrap px-4 py-2.5 text-right
-                                          font-medium tabular-nums ${
-                            signo < 0 ? 'text-negativo'
-                              : signo > 0 ? 'text-positivo' : ''
-                          }`}>
-                            {signo === 0 ? '' : signo > 0 ? '+' : '−'}
-                            {formatearCOP(Number(x.monto))}
-                          </td>
-                        </tr>
-                      )
-                    })}
+                    {porCuenta.map((c) => (
+                      <tr key={c.cuenta}>
+                        <td className="px-4 py-2.5">{c.cuenta}</td>
+                        <td className="px-4 py-2.5 text-right tabular-nums
+                                       text-muted-foreground">
+                          {formatearCOP(c.saldo_inicial)}
+                        </td>
+                        <td className={`px-4 py-2.5 text-right tabular-nums ${
+                          c.entro === 0 ? 'text-muted-foreground' : 'text-positivo'
+                        }`}>
+                          {c.entro === 0 ? '—' : formatearCOP(c.entro)}
+                        </td>
+                        <td className={`px-4 py-2.5 text-right tabular-nums ${
+                          c.salio === 0 ? 'text-muted-foreground' : 'text-negativo'
+                        }`}>
+                          {c.salio === 0 ? '—' : formatearCOP(c.salio)}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-medium
+                                       tabular-nums">
+                          {formatearCOP(c.saldo_final)}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
+              <p className="mt-2 text-[12px] text-muted-foreground">
+                Aquí sí cuentan los traslados entre tus cuentas, por eso estos
+                números no suman igual que Entró y Salió.
+              </p>
             </section>
+          )}
+
+          {categorias.length > 0 && (
+            <section className="mt-6">
+              <Titulo>En qué se fue</Titulo>
+              <dl className="mt-2 grid grid-cols-2 gap-x-6 divide-y
+                             divide-border/70 rounded-2xl bg-card px-5
+                             shadow-card ring-1 ring-border/70
+                             print:shadow-none print:ring-0">
+                {categorias.map((c) => (
+                  <div key={c.categoria}
+                       className="flex items-baseline justify-between gap-3 py-3">
+                    <dt className="min-w-0 truncate text-[14px]">{c.categoria}</dt>
+                    <dd className="shrink-0 text-[14px] font-medium tabular-nums">
+                      {formatearCOP(c.monto)}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          )}
+
+          <div className="mt-6">
+            <DetalleEnElPdf titulo={`Movimientos (${movimientos.length})`}>
+              {/* Tabla de verdad: en una hoja A4 y en un monitor hay ancho
+                  para columnas, y un extracto se lee así. La fecha va una
+                  vez por día, en su propia fila. */}
+              <div className="mt-2 overflow-hidden rounded-2xl bg-card
+                              shadow-card ring-1 ring-border/70
+                              print:shadow-none print:ring-0">
+                <table className="w-full text-[13px] print:text-[10px]">
+                  <thead className="text-left text-muted-foreground">
+                    <tr className="border-b border-border/70">
+                      <th className="px-4 py-2.5 font-normal print:py-1">Hora</th>
+                      <th className="px-4 py-2.5 font-normal print:py-1">Descripción</th>
+                      <th className="px-4 py-2.5 font-normal print:py-1">Movimiento</th>
+                      <th className="px-4 py-2.5 text-right font-normal print:py-1">Monto</th>
+                    </tr>
+                  </thead>
+                  {dias.map((d) => (
+                    <tbody key={d.dia} className="divide-y divide-border/70">
+                      <tr className="bg-muted/40 print:bg-transparent">
+                        <td colSpan={4}
+                            className="px-4 py-1.5 text-[11px] font-semibold
+                                       print:py-0.5 print:text-[10px]">
+                          {formatearFecha(d.dia).replace(/ de \d{4}$/, '')}
+                        </td>
+                      </tr>
+                      {d.movimientos.map((x) => {
+                        const signo =
+                          x.type === 'expense' ? -1 : x.type === 'income' ? 1 : 0
+                        return (
+                          <tr key={x.id}>
+                            <td className="whitespace-nowrap px-4 py-2.5
+                                           text-[11px] text-muted-foreground
+                                           tabular-nums print:py-1">
+                              {formatearHora(x.occurred_at)}
+                            </td>
+                            <td className="px-4 py-2.5 print:py-1">
+                              {x.description}
+                            </td>
+                            <td className="px-4 py-2.5 text-muted-foreground
+                                           print:py-1">
+                              {x.cuenta_origen} → {x.cuenta_destino}
+                            </td>
+                            <td className={`whitespace-nowrap px-4 py-2.5
+                                            text-right font-medium tabular-nums
+                                            print:py-1 ${
+                              signo < 0 ? 'text-negativo'
+                                : signo > 0 ? 'text-positivo' : ''
+                            }`}>
+                              {signo === 0 ? '' : signo > 0 ? '+' : '−'}
+                              {formatearCOP(x.monto)}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  ))}
+                </table>
+              </div>
+            </DetalleEnElPdf>
           </div>
         </>
       )}
@@ -188,6 +214,15 @@ export default async function ExtractoEscritorioPage({
         </p>
       </section>
     </div>
+  )
+}
+
+function Titulo({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em]
+                   text-muted-foreground">
+      {children}
+    </h2>
   )
 }
 

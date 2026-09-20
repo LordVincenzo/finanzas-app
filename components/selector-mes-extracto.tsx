@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { moverMes, nombreDelMes, mesActualBogota } from '@/lib/format'
+import { rutaDe, type Origen } from '@/lib/interfaz'
 
 /**
  * De qué mes es el extracto.
@@ -12,8 +13,20 @@ import { moverMes, nombreDelMes, mesActualBogota } from '@/lib/format'
  * fallo. El mes en curso sí se puede ver —a veces uno quiere mirar cómo
  * va— pero el que se ofrece por defecto es el anterior, que es el único
  * que ya no va a cambiar.
+ *
+ * LA RUTA SALE DE `rutaDe`, NO DE UNA CADENA FIJA. Enlazaba siempre a
+ * /extracto, que es la ruta del celular: desde el escritorio, cambiar de
+ * mes te sacaba al layout de teléfono en un monitor de 1400px. Es justo
+ * lo que CLAUDE.md prohíbe, y pasó por escribir la ruta a mano en vez de
+ * preguntársela a la tabla.
  */
-export function SelectorMesExtracto({ mes }: { mes: string }) {
+export function SelectorMesExtracto({
+  mes, origen = 'celular',
+}: {
+  mes: string
+  origen?: Origen
+}) {
+  const base = rutaDe(origen, 'extracto')
   const actual = mesActualBogota()
   const anterior = moverMes(mes, -1)
   const siguiente = moverMes(mes, 1)
@@ -23,7 +36,7 @@ export function SelectorMesExtracto({ mes }: { mes: string }) {
     <div className="flex items-center justify-center gap-1 rounded-full border
                     py-0.5">
       <Link
-        href={`/extracto?mes=${anterior}`}
+        href={`${base}?mes=${anterior}`}
         aria-label="Mes anterior"
         className="flex size-11 items-center justify-center rounded-full
                    text-muted-foreground transition active:scale-95"
@@ -37,7 +50,7 @@ export function SelectorMesExtracto({ mes }: { mes: string }) {
 
       {puedeAvanzar ? (
         <Link
-          href={`/extracto?mes=${siguiente}`}
+          href={`${base}?mes=${siguiente}`}
           aria-label="Mes siguiente"
           className="flex size-11 items-center justify-center rounded-full
                      text-muted-foreground transition active:scale-95"

@@ -1,11 +1,10 @@
 import Link from 'next/link'
 import { ChevronLeft, Download } from 'lucide-react'
-import { createClient, requerirUsuario } from '@/lib/supabase/server'
-import {
-  formatearCOP, formatearFecha, mesActualBogota, moverMes, nombreDelMes,
-} from '@/lib/format'
+import { formatearCOP, formatearFecha, nombreDelMes } from '@/lib/format'
+import { datosDelExtracto } from '@/lib/datos-extracto'
 import { SelectorMesExtracto } from '@/components/selector-mes-extracto'
 import { BotonImprimir } from '@/components/boton-imprimir'
+import { DetalleEnElPdf } from '@/components/detalle-en-el-pdf'
 
 /**
  * El extracto de un mes.
@@ -13,6 +12,12 @@ import { BotonImprimir } from '@/components/boton-imprimir'
  * PARA QUÉ. Para leer un mes cerrado de un vistazo, y para guardarlo o
  * mandarlo. La app enseña el mes en curso por todas partes; esto es lo
  * que queda cuando el mes ya pasó.
+ *
+ * PRIMERO LAS CONCLUSIONES. Cuánto entró, cuánto salió, cómo quedó cada
+ * cuenta y en qué se fue. El detalle —setenta y pico de movimientos en
+ * un mes normal— va al final, empieza en hoja aparte y se puede dejar
+ * fuera del PDF. Antes la hoja era solo esa lista, y un muro de filas
+ * no es un extracto: es el ledger impreso.
  *
  * NO ES EL RESPALDO. Un extracto es un mes; el respaldo es todo, y vive
  * en /api/exportar. Confundirlos es quedarse sin agosto el día que haga
@@ -31,40 +36,9 @@ export default async function ExtractoPage({
   searchParams: Promise<{ mes?: string }>
 }) {
   const { mes: mesPedido } = await searchParams
-  const supabase = await createClient()
-  const user = await requerirUsuario(supabase)
-
-  /* El mes anterior por defecto, no el actual: un extracto es de algo
-     que ya terminó. El de este mes todavía está cambiando. */
-  const mes = /^\d{4}-\d{2}$/.test(mesPedido ?? '')
-    ? mesPedido!
-    : moverMes(mesActualBogota(), -1)
-
-  const desde = `${mes}-01`
-  const [anio, m] = mes.split('-').map(Number)
-  const hasta = new Date(Date.UTC(anio, m, 0)).toISOString().slice(0, 10)
-
-  const [{ data: perfil }, { data: movs }, { data: categorias }] =
-    await Promise.all([
-      supabase.from('profiles').select('display_name').eq('id', user.id).single(),
-      supabase.from('movimientos_detalle')
-        .select('id, type, description, occurred_on, occurred_at, monto, cuenta_origen, cuenta_destino')
-        .eq('owner_id', user.id)
-        .gte('occurred_on', desde).lte('occurred_on', hasta)
-        .order('occurred_at', { ascending: true }),
-      supabase.from('categorias_mensuales')
-        .select('categoria, monto')
-        .eq('owner_id', user.id).eq('mes', mes)
-        .order('monto', { ascending: false }),
-    ])
-
-  const movimientos = movs ?? []
-  const ingresos = movimientos
-    .filter((x) => x.type === 'income')
-    .reduce((s, x) => s + Number(x.monto), 0)
-  const gastos = movimientos
-    .filter((x) => x.type === 'expense')
-    .reduce((s, x) => s + Number(x.monto), 0)
+  const {
+    mes, nombre, movimientos, dias, porCuenta, categorias, ingresos, gastos,
+  } = await datosDelExtracto(mesPedido)
 
   const vacio = movimientos.length === 0
 
@@ -87,7 +61,7 @@ export default async function ExtractoPage({
             Extracto
           </h1>
           <p className="mt-0.5 text-[13px] text-muted-foreground">
-            {nombreDelMes(mes)} · {perfil?.display_name}
+            {nombreDelMes(mes)} · {nombre}
           </p>
         </div>
       </header>
@@ -110,24 +84,58 @@ export default async function ExtractoPage({
                    tono={ingresos - gastos < 0 ? 'negativo' : 'positivo'} />
           </section>
 
-          {/* En qué se fue */}
-          {(categorias ?? []).length > 0 && (
+          {/* Cómo quedó cada cuenta — lo que convierte una lista de
+              movimientos en un extracto de verdad. En 390px no cabe una
+              tabla de cinco columnas, así que cada cuenta es un bloque:
+              arriba el nombre y lo que quedó, abajo de dónde viene. */}
+          {porCuenta.length > 0 && (
             <section className="mt-6">
-              <h2 className="text-[11px] font-semibold uppercase
-                             tracking-[0.09em] text-muted-foreground">
-                En qué se fue
-              </h2>
+              <Titulo>Cómo quedó cada cuenta</Titulo>
+              <div className="mt-2 divide-y divide-border/70 rounded-xl bg-card
+                              px-4 shadow-card ring-1 ring-border/70
+                              print:shadow-none print:ring-0">
+                {porCuenta.map((c) => (
+                  <div key={c.cuenta} className="py-3">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="min-w-0 flex-1 truncate text-[14px]">
+                        {c.cuenta}
+                      </p>
+                      <span className="shrink-0 text-[14px] font-medium
+                                       tabular-nums">
+                        {formatearCOP(c.saldo_final)}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground
+                                  tabular-nums">
+                      Empezó con {formatearCOP(c.saldo_inicial)}
+                      {c.entro > 0 && <> · entró {formatearCOP(c.entro)}</>}
+                      {c.salio > 0 && <> · salió {formatearCOP(c.salio)}</>}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+                Aquí sí cuentan los traslados entre tus cuentas, por eso estos
+                números no suman igual que Entró y Salió.
+              </p>
+            </section>
+          )}
+
+          {/* En qué se fue */}
+          {categorias.length > 0 && (
+            <section className="mt-6">
+              <Titulo>En qué se fue</Titulo>
               <dl className="mt-2 divide-y divide-border/70 rounded-xl
                              bg-card px-4 shadow-card ring-1 ring-border/70
                              print:shadow-none print:ring-0">
-                {(categorias ?? []).map((c) => (
-                  <div key={c.categoria as string}
+                {categorias.map((c) => (
+                  <div key={c.categoria}
                        className="flex items-baseline justify-between gap-3 py-2.5">
                     <dt className="min-w-0 truncate text-[14px]">
-                      {c.categoria as string}
+                      {c.categoria}
                     </dt>
                     <dd className="shrink-0 text-[14px] font-medium tabular-nums">
-                      {formatearCOP(Number(c.monto))}
+                      {formatearCOP(c.monto)}
                     </dd>
                   </div>
                 ))}
@@ -135,43 +143,52 @@ export default async function ExtractoPage({
             </section>
           )}
 
-          {/* Todo, en orden */}
-          <section className="mt-6">
-            <h2 className="text-[11px] font-semibold uppercase
-                           tracking-[0.09em] text-muted-foreground">
-              Movimientos ({movimientos.length})
-            </h2>
-            <div className="mt-2 divide-y divide-border/70 rounded-xl bg-card
-                            px-4 shadow-card ring-1 ring-border/70
-                            print:shadow-none print:ring-0">
-              {movimientos.map((x) => {
-                const signo = x.type === 'expense' ? -1 : x.type === 'income' ? 1 : 0
-                return (
-                  <div key={x.id as string} className="py-2.5">
-                    <div className="flex items-baseline justify-between gap-3">
-                      <p className="min-w-0 flex-1 truncate text-[14px]">
-                        {x.description as string}
-                      </p>
-                      <span className={`shrink-0 text-[14px] font-medium
-                                        tabular-nums ${
-                        signo < 0 ? 'text-negativo'
-                          : signo > 0 ? 'text-positivo' : ''
-                      }`}>
-                        {signo === 0 ? '' : signo > 0 ? '+' : '−'}
-                        {formatearCOP(Number(x.monto))}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                      {formatearFecha(x.occurred_on as string)
-                        .replace(/ de \d{4}$/, '')}
-                      {' · '}
-                      {x.cuenta_origen as string} → {x.cuenta_destino as string}
+          {/* Todo, en orden, con la fecha una sola vez por día */}
+          <div className="mt-6">
+            <DetalleEnElPdf titulo={`Movimientos (${movimientos.length})`}>
+              <div className="mt-2 overflow-hidden rounded-xl bg-card
+                              shadow-card ring-1 ring-border/70
+                              print:shadow-none print:ring-0">
+                {dias.map((d) => (
+                  <div key={d.dia}>
+                    <p className="bg-muted/40 px-4 py-1.5 text-[11px]
+                                  font-semibold print:bg-transparent
+                                  print:py-0.5">
+                      {formatearFecha(d.dia).replace(/ de \d{4}$/, '')}
                     </p>
+                    <div className="divide-y divide-border/70 px-4">
+                      {d.movimientos.map((x) => {
+                        const signo =
+                          x.type === 'expense' ? -1 : x.type === 'income' ? 1 : 0
+                        return (
+                          <div key={x.id} className="py-2.5 print:py-1">
+                            <div className="flex items-baseline justify-between gap-3">
+                              <p className="min-w-0 flex-1 truncate text-[14px]
+                                            print:text-[11px]">
+                                {x.description}
+                              </p>
+                              <span className={`shrink-0 text-[14px] font-medium
+                                                tabular-nums print:text-[11px] ${
+                                signo < 0 ? 'text-negativo'
+                                  : signo > 0 ? 'text-positivo' : ''
+                              }`}>
+                                {signo === 0 ? '' : signo > 0 ? '+' : '−'}
+                                {formatearCOP(x.monto)}
+                              </span>
+                            </div>
+                            <p className="truncate text-[11px]
+                                          text-muted-foreground print:text-[9px]">
+                              {x.cuenta_origen} → {x.cuenta_destino}
+                            </p>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
-                )
-              })}
-            </div>
-          </section>
+                ))}
+              </div>
+            </DetalleEnElPdf>
+          </div>
         </>
       )}
 
@@ -198,6 +215,15 @@ export default async function ExtractoPage({
         </p>
       </section>
     </main>
+  )
+}
+
+function Titulo({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em]
+                   text-muted-foreground">
+      {children}
+    </h2>
   )
 }
 

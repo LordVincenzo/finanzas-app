@@ -22,6 +22,7 @@ export type Seccion =
   | 'ahorros'
   | 'prestamos'
   | 'pareja'
+  | 'extracto'
   | 'perfil'
 
 const RUTAS: Record<Origen, Record<Seccion, string>> = {
@@ -32,6 +33,7 @@ const RUTAS: Record<Origen, Record<Seccion, string>> = {
     ahorros:     '/ahorros',
     prestamos:   '/prestamos',
     pareja:      '/pareja',
+    extracto:    '/extracto',
     // En el celular los ajustes viven dentro de /mas, que además lleva
     // los atajos de navegación; en escritorio esa navegación la hace el
     // sidebar, así que la pantalla es solo el perfil.
@@ -44,6 +46,7 @@ const RUTAS: Record<Origen, Record<Seccion, string>> = {
     ahorros:     '/escritorio/ahorros',
     prestamos:   '/escritorio/prestamos',
     pareja:      '/escritorio/pareja',
+    extracto:    '/escritorio/extracto',
     perfil:      '/escritorio/perfil',
   },
 }

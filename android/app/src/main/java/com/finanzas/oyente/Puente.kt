@@ -76,6 +76,12 @@ class Puente(private val contexto: Context) {
     /** Lo pone MainActivity: abrir la pantalla de diagnóstico. */
     var alAbrirDiagnostico: (() -> Unit)? = null
 
+    /** Lo pone MainActivity: (está activo, lo permite este teléfono). */
+    var leerBloqueo: (() -> Pair<Boolean, Boolean>)? = null
+
+    /** Lo pone MainActivity: encender o apagar el bloqueo. */
+    var escribirBloqueo: ((Boolean) -> Unit)? = null
+
     /**
      * Las apps que han mandado notificaciones últimamente, la más
      * reciente primero. Solo paquete y hora — ver Vistas.kt.
@@ -149,6 +155,19 @@ class Puente(private val contexto: Context) {
 
             "vistas" -> responder(respuesta, id, JSONObject().put("vistas", vistas()))
 
+            "bloqueo" -> responder(respuesta, id, bloqueo())
+
+            /* Encender o apagar el bloqueo por huella.
+             *
+             * Se devuelve el estado LEÍDO después de escribir, no el que
+             * pidió la web: si el teléfono no tiene huella ni PIN, pedir
+             * que se encienda no lo enciende, y la pantalla tiene que
+             * enterarse en vez de dibujar un interruptor que miente. */
+            "ponerBloqueo" -> {
+                escribirBloqueo?.invoke(datos == "1")
+                responder(respuesta, id, bloqueo())
+            }
+
             /* Cuántas quedan por confirmar, según la página.
              *
              * El servidor ya lo dice cuando llega una notificación, pero
@@ -183,6 +202,14 @@ class Puente(private val contexto: Context) {
 
             else -> responderError(respuesta, id, "Acción desconocida: $accion")
         }
+    }
+
+    /** El bloqueo: si está puesto y si este teléfono puede ponerlo. */
+    private fun bloqueo(): JSONObject {
+        val (activo, disponible) = leerBloqueo?.invoke() ?: (false to false)
+        return JSONObject()
+            .put("activo", activo)
+            .put("disponible", disponible)
     }
 
     private fun estado(): JSONObject {

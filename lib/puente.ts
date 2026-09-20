@@ -138,6 +138,11 @@ export const puente = {
   pedirPermiso: () => preguntar<unknown>('pedirPermiso'),
   guardarToken: (token: string) => preguntar<EstadoPuente>('guardarToken', token),
   olvidarToken: () => preguntar<EstadoPuente>('olvidarToken'),
+  /** El bloqueo por huella: si esta puesto y si el telefono puede. */
+  bloqueo: () => preguntar<{ activo: boolean; disponible: boolean }>('bloqueo'),
+  ponerBloqueo: (quiere: boolean) =>
+    preguntar<{ activo: boolean; disponible: boolean }>(
+      'ponerBloqueo', quiere ? '1' : '0'),
   probar: () => preguntar<{ mensaje: string }>('probar'),
   vistas: () => preguntar<{ vistas: Vista[] }>('vistas'),
   abrirDiagnostico: () => preguntar<unknown>('abrirDiagnostico'),

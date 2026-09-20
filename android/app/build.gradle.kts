@@ -65,4 +65,10 @@ dependencies {
     // a un origen concreto: si la página no es la nuestra, window.Oyente
     // sencillamente no existe. Ver Puente.kt.
     implementation("androidx.webkit:webkit:1.12.1")
+
+    // La huella. Tambien de Google. BiometricPrompt es la unica forma
+    // de pedirla: el dialogo lo dibuja el SISTEMA y la app nunca ve la
+    // huella, solo un si o un no. Una app de finanzas no deberia poder
+    // ver ese dato aunque quisiera, y con esto no puede.
+    implementation("androidx.biometric:biometric:1.1.0")
 }

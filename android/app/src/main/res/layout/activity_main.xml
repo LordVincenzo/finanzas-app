@@ -60,4 +60,49 @@
             style="?attr/borderlessButtonStyle" />
 
     </LinearLayout>
+
+    <!--
+      La cortina del bloqueo.
+
+      Opaca y por ENCIMA de todo: mientras esta puesta no se ve ni un
+      peso. Una pantalla semitransparente dejaria leer los saldos de
+      fondo, que es justo lo que el bloqueo viene a evitar. Tambien
+      tapa lo que Android guarda para la vista de apps recientes.
+    -->
+    <LinearLayout
+        android:id="@+id/bloqueo"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="32dp"
+        android:background="?android:attr/colorBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/app_name"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="Bloqueada"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/desbloquear"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:minWidth="200dp"
+            android:text="Desbloquear" />
+
+    </LinearLayout>
 </FrameLayout>

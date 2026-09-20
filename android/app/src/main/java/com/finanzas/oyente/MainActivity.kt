@@ -19,6 +19,9 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
+import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import com.finanzas.oyente.databinding.ActivityMainBinding
 
@@ -49,6 +52,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var vista: ActivityMainBinding
     private lateinit var ajustes: Ajustes
     private lateinit var puente: Puente
+    private lateinit var bloqueo: Bloqueo
+
+    /** Para no abrir dos diálogos si onResume se dispara dos veces. */
+    private var preguntando = false
 
     /** El callback del selector de archivos que está esperando respuesta. */
     private var esperandoArchivos: ValueCallback<Array<Uri>>? = null
@@ -62,6 +69,14 @@ class MainActivity : AppCompatActivity() {
         setContentView(vista.root)
 
         ajustes = Ajustes(this)
+        bloqueo = Bloqueo(this)
+
+        /* La cortina se pone ANTES de cargar nada. Si se pusiera
+           después, habría un instante con los saldos a la vista —
+           corto, pero suficiente para una foto. */
+        if (bloqueo.hayQuePreguntar()) mostrarCortina(true)
+
+        vista.desbloquear.setOnClickListener { pedirHuella() }
 
         selectorArchivos = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
@@ -94,8 +109,28 @@ class MainActivity : AppCompatActivity() {
         cargar()
     }
 
+    /**
+     * Al salir se apunta la hora. Es onStop y no onPause porque
+     * onPause salta también al abrir el diálogo de la huella, y la app
+     * se estaría marcando como "salida" justo mientras intenta
+     * entrar.
+     */
+    override fun onStop() {
+        super.onStop()
+        bloqueo.alSalir()
+        if (bloqueo.activo) mostrarCortina(true)
+    }
+
     override fun onResume() {
         super.onResume()
+
+        if (bloqueo.hayQuePreguntar()) {
+            mostrarCortina(true)
+            pedirHuella()
+            return
+        }
+        mostrarCortina(false)
+
         // Al volver de los ajustes de Android —donde se concede el
         // acceso a notificaciones— la web tiene que enterarse de que
         // ahora sí lo tiene. Es la misma señal que usa el navegador al
@@ -132,6 +167,53 @@ class MainActivity : AppCompatActivity() {
         permisoAvisos.launch(permiso)
     }
 
+    private fun mostrarCortina(puesta: Boolean) {
+        vista.bloqueo.visibility = if (puesta) View.VISIBLE else View.GONE
+    }
+
+    /**
+     * Pide la huella, o el PIN del teléfono.
+     *
+     * Las dos cosas y no solo la huella: un dedo mojado o una pantalla
+     * sucia dejarían a alguien fuera de sus propias cuentas, y ese es
+     * el fallo que hace que la gente apague el bloqueo entero.
+     *
+     * Si se cancela, la cortina se queda puesta. No hay forma de
+     * pasar de largo: eso es lo que la hace un bloqueo y no un aviso.
+     */
+    private fun pedirHuella() {
+        if (preguntando) return
+        preguntando = true
+
+        val prompt = BiometricPrompt(
+            this,
+            ContextCompat.getMainExecutor(this),
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(
+                    resultado: BiometricPrompt.AuthenticationResult
+                ) {
+                    preguntando = false
+                    bloqueo.alEntrar()
+                    mostrarCortina(false)
+                }
+
+                override fun onAuthenticationError(codigo: Int, mensaje: CharSequence) {
+                    // Cancelar deja la cortina. El botón de la cortina
+                    // vuelve a abrir el diálogo cuando quiera.
+                    preguntando = false
+                }
+            }
+        )
+
+        prompt.authenticate(
+            BiometricPrompt.PromptInfo.Builder()
+                .setTitle("Finanzas")
+                .setSubtitle("Confirma que eres tú")
+                .setAllowedAuthenticators(BIOMETRIC_WEAK or DEVICE_CREDENTIAL)
+                .build()
+        )
+    }
+
     private fun configurarWeb() {
         val web = vista.web
 
@@ -159,6 +241,13 @@ class MainActivity : AppCompatActivity() {
             }
             alAbrirDiagnostico = {
                 startActivity(Intent(this@MainActivity, AjustesActivity::class.java))
+            }
+            leerBloqueo = { bloqueo.activo to bloqueo.disponible() }
+            escribirBloqueo = { quiere ->
+                bloqueo.activo = quiere
+                // Encenderlo no debe pedir la huella en ese mismo
+                // momento: acabas de estar dentro.
+                bloqueo.alEntrar()
             }
         }
         puente.instalar(web, ajustes.servidor)

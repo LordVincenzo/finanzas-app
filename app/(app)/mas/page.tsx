@@ -7,6 +7,7 @@ import { cerrarSesion } from '@/app/auth/actions'
 import { contarPendientes } from '@/lib/datos-bandeja'
 import { Seccion, Lista } from '@/components/seccion'
 import { SelectorTema } from '@/components/selector-tema'
+import { BloqueoHuella } from '@/components/bloqueo-huella'
 import { AvatarPerfil } from '@/components/avatar-perfil'
 
 export default async function MasPage() {
@@ -96,6 +97,17 @@ export default async function MasPage() {
               <ChevronRight className="size-4 shrink-0
                                        text-muted-foreground/60" />
             </Link>
+          </Lista>
+        </div>
+      </Seccion>
+
+      {/* Solo se dibuja dentro del APK: en un navegador no hay huella
+          que pedir, y el componente devuelve null. */}
+      <Seccion titulo="Seguridad">
+        <div className="aparece"
+             style={{ '--retraso': '110ms' } as React.CSSProperties}>
+          <Lista>
+            <BloqueoHuella />
           </Lista>
         </div>
       </Seccion>

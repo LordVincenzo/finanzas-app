@@ -131,7 +131,7 @@ export default async function CuentasPage() {
                 sitio sin decir nada. Antes no existía y una tarjeta de
                 crédito bajaba el patrimonio en silencio.
 
-                Con <Repartos> y no con <TresRepartos>: en un celular de
+                Con <Repartos> y no con columnas fijas: en un celular de
                 390px, tres columnas dejan 83px de texto y "$5.436.500"
                 necesita 95. Se recortaba a "$5.436.50" — un saldo mal
                 leído, que es el peor error que puede cometer esta app y

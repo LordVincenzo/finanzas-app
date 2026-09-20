@@ -144,8 +144,9 @@ export function Reparto({
  * Por eso aquí el número de columnas no se elige: son dos, y lo que
  * sobra baja a otra fila. Es más alto y cabe siempre.
  *
- * Las versiones de abajo con número fijo siguen existiendo para el
- * escritorio, donde hay 1200px y tres o cuatro columnas caben de verdad.
+ * En escritorio hay 1130px y tres o cuatro columnas caben de verdad, así
+ * que allí el Panorama arma su propia rejilla según cuántas partes haya.
+ * Aquí no: el ancho no da para elegir.
  */
 export function Repartos({ children }: { children: React.ReactNode[] }) {
   const partes = children.filter(Boolean)
@@ -174,25 +175,6 @@ export function Repartos({ children }: { children: React.ReactNode[] }) {
 export function DosRepartos({ children }: { children: React.ReactNode }) {
   return (
     <div className="grid grid-cols-2 divide-x divide-destacado">
-      {children}
-    </div>
-  )
-}
-
-/** Fila de tres repartos, con línea vertical entre ellos. */
-export function TresRepartos({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="grid grid-cols-3 divide-x divide-destacado">
-      {children}
-    </div>
-  )
-}
-
-/** Fila de cuatro repartos. Para pantallas anchas: cuatro cifras cortas
- *  caben en una sola línea sin duplicar la altura de la tarjeta. */
-export function CuatroRepartos({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="grid grid-cols-4 divide-x divide-destacado">
       {children}
     </div>
   )

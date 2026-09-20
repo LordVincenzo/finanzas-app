@@ -7,7 +7,7 @@ import {
 import { NOMBRE_TIPO, presentarMovimiento, type Movimiento } from '@/lib/movimientos'
 import { BarraProgreso } from '@/components/barra-progreso'
 import {
-  TarjetaDestacada, Reparto, TresRepartos, CuatroRepartos,
+  TarjetaDestacada, Reparto,
 } from '@/components/tarjeta-destacada'
 import { GraficaBarrasComparadas } from '@/components/grafica-barras-comparadas'
 
@@ -39,7 +39,7 @@ export default async function PanoramaPage() {
     { data: topes },
   ] = await Promise.all([
     supabase.from('patrimonio_detalle')
-      .select('por_cobrar, patrimonio, deudas')
+      .select('por_cobrar, patrimonio, deudas, otros')
       .eq('owner_id', user.id).maybeSingle(),
     supabase.from('cuentas_disponible')
       .select('saldo, asignado, disponible').eq('owner_id', user.id),
@@ -99,10 +99,18 @@ export default async function PanoramaPage() {
   const patrimonio = Number(patri?.patrimonio ?? 0)
   const porCobrarPatrimonio = Number(patri?.por_cobrar ?? 0)
   const deudas = Number(patri?.deudas ?? 0)
+  /* Lo que es tuyo y no encaja en las demás casillas: hoy, la cuenta
+     "Pendiente de ubicar". Sin esto las columnas no suman el total. */
+  const otros = Number(patri?.otros ?? 0)
 
   const filasCuentas = cuentas ?? []
   const disponible = filasCuentas.reduce((s, c) => s + Number(c.disponible), 0)
   const asignado = filasCuentas.reduce((s, c) => s + Number(c.asignado), 0)
+  /* El saldo BRUTO. Hace falta para poder decir de cuanto salen los
+     reservados: "Disponible 2.606.015" con "600.000 reservados en
+     metas" debajo se lee como que los 600.000 estan DENTRO de esa
+     cifra, y estan fuera — disponible ya los resto. */
+  const enCuentas = filasCuentas.reduce((s, c) => s + Number(c.saldo), 0)
 
   const listaMetas = metas ?? []
 
@@ -175,25 +183,35 @@ export default async function PanoramaPage() {
       ) : (
         <>
           <TarjetaDestacada etiqueta="Patrimonio" valor={formatearCOP(patrimonio)}>
-            {/* La cuarta columna solo aparece si debes algo. Hasta que
-                se pudieron crear tarjetas de crédito, patrimonio_detalle
-                .deudas existía desde 0012 sin que ninguna pantalla lo
-                pintara — y una deuda baja el patrimonio sin decir por
-                qué. Si no debes nada, una columna con $0 solo estorba. */}
-            {deudas !== 0 ? (
-              <CuatroRepartos>
-                <Reparto etiqueta="Disponible" valor={formatearCOP(disponible)} />
-                <Reparto etiqueta="En metas" valor={formatearCOP(asignado)} />
-                <Reparto etiqueta="Por cobrar" valor={formatearCOP(porCobrarPatrimonio)} />
-                <Reparto etiqueta="Debes" valor={formatearCOP(Math.abs(deudas))} />
-              </CuatroRepartos>
-            ) : (
-              <TresRepartos>
-                <Reparto etiqueta="Disponible" valor={formatearCOP(disponible)} />
-                <Reparto etiqueta="Comprometido en metas" valor={formatearCOP(asignado)} />
-                <Reparto etiqueta="Por cobrar" valor={formatearCOP(porCobrarPatrimonio)} />
-              </TresRepartos>
-            )}
+            {/* Las partes que no estén en cero, y ENTRE TODAS suman el
+                patrimonio de arriba. Antes eran tres o cuatro fijas y
+                `otros` no salía por ninguna parte: ahí vive "Pendiente
+                de ubicar", la cuenta de sistema de la 0021, así que
+                tras una liquidación el total dejaba de cuadrar con sus
+                propias columnas sin que nada lo explicara. Es el mismo
+                hueco que se tapó en el celular con la migración 0027. */}
+            <RepartosDinamicos>
+              {[
+                <Reparto key="disp" etiqueta="Disponible"
+                         valor={formatearCOP(disponible)} />,
+                asignado !== 0 ? (
+                  <Reparto key="metas" etiqueta="En metas"
+                           valor={formatearCOP(asignado)} />
+                ) : null,
+                porCobrarPatrimonio !== 0 ? (
+                  <Reparto key="cobrar" etiqueta="Por cobrar"
+                           valor={formatearCOP(porCobrarPatrimonio)} />
+                ) : null,
+                otros !== 0 ? (
+                  <Reparto key="otros" etiqueta="Por ubicar"
+                           valor={formatearCOP(otros)} />
+                ) : null,
+                deudas !== 0 ? (
+                  <Reparto key="debes" etiqueta="Debes"
+                           valor={formatearCOP(Math.abs(deudas))} />
+                ) : null,
+              ]}
+            </RepartosDinamicos>
           </TarjetaDestacada>
 
           {/* Arriba de todo lo demás: es lo único del panorama que pide
@@ -293,7 +311,8 @@ export default async function PanoramaPage() {
                 {formatearCOP(disponible)}
               </p>
               {asignado > 0 && (
-                <p className="mt-1 text-[12px] text-muted-foreground">
+                <p className="mt-1 text-[12px] text-muted-foreground tabular-nums">
+                  De {formatearCOP(enCuentas)} en cuentas,{' '}
                   {formatearCOP(asignado)} reservados en metas
                 </p>
               )}
@@ -433,5 +452,28 @@ function SeccionPanorama({
       </div>
       <div className="mt-4">{children}</div>
     </section>
+  )
+}
+
+/**
+ * Las partes del patrimonio, tantas como haya.
+ *
+ * Con número fijo de columnas —tres o cuatro, según hubiera deuda—
+ * añadir una quinta obligaba a otro caso. Aquí las columnas salen de
+ * cuántas partes hay, que es lo que de verdad manda.
+ */
+function RepartosDinamicos({ children }: { children: React.ReactNode[] }) {
+  const partes = children.filter(Boolean)
+  if (partes.length <= 1) return <>{partes}</>
+
+  // Hasta cuatro caben en una fila con holgura en 1130px; a partir de
+  // ahí, dos filas antes que columnas de 220px con cifras en pesos.
+  const cols = partes.length >= 5 ? 3 : partes.length
+  const clase = { 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4' }[cols]
+
+  return (
+    <div className={`grid ${clase} divide-x divide-destacado`}>
+      {partes}
+    </div>
   )
 }

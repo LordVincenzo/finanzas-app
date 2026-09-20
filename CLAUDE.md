@@ -20,6 +20,25 @@ el error apunta a un archivo generado y no dice nada útil.
 Las migraciones SQL se ejecutan a mano en Supabase → SQL Editor, en orden
 numérico. No hay CLI de Supabase en este proyecto.
 
+**Dos cosas del SQL Editor que hay que saber al escribir un
+`verificacion_*.sql`:**
+
+- **Solo enseña el resultado de la ÚLTIMA sentencia.** Un archivo con seis
+  `select` deja cinco resultados invisibles, y el que se ve dice OK: una
+  revisión que tranquiliza sin comprobar nada. Que sea **una sola consulta**,
+  con `union all` si hace falta.
+- **Corre como el rol `postgres`: no aplica RLS y `auth.uid()` es null.** Un
+  filtro `owner_id = auth.uid()` devuelve CERO filas ahí aunque funcione
+  perfectamente desde la app; y sin filtro salen también las cuentas de la
+  pareja, que parecen duplicados. En vez de filtrar por dueño, hacer `join
+  profiles` y ENSEÑARLO.
+
+Una migración que crea una vista termina con un `do $$ ... raise exception`
+que comprueba sus columnas, un `grant select` y `notify pgrst, 'reload
+schema'`. La 0027 se dio por aplicada sin estarlo: la app pidió una columna
+inexistente, PostgREST rechazó la consulta entera, el código cayó al `?? 0` y
+la pantalla enseñó el patrimonio en cero sin un solo error a la vista.
+
 ## Reglas que no se rompen
 
 **Partida doble.** Todo movimiento son dos tablas: `transactions` (cabecera) y
@@ -50,10 +69,23 @@ contable en Bogotá, por trigger). Sin el segundo, un gasto del 31 de agosto a
 las 8 PM caería en septiembre.
 
 **Toda escritura pasa por RPC de Postgres.** Ninguna pantalla inserta directo
-en `transactions` ni `transaction_entries`: `crear_movimiento`, `ajustar_saldo`,
-`crear_cuenta`, `crear_prestamo`, `registrar_pago_prestamo`, `aportar_meta`,
-`crear_gasto_compartido`, `liquidar_con_pareja`, `eliminar_movimiento`,
-`eliminar_meta`, `eliminar_liquidacion`.
+en `transactions` ni `transaction_entries`: `crear_movimiento`,
+`editar_movimiento`, `ajustar_saldo`, `crear_cuenta`, `crear_prestamo`,
+`registrar_pago_prestamo`, `aportar_meta`, `crear_gasto_compartido`,
+`liquidar_con_pareja`, `eliminar_movimiento`, `eliminar_meta`,
+`eliminar_liquidacion`, `poner_presupuesto`, `quitar_presupuesto`,
+`poner_fechas_tarjeta`, y las de la bandeja (`recibir_ingesta`,
+`confirmar_ingesta`, `ignorar_ingesta`, `crear_token_ingesta`,
+`revocar_token_ingesta`).
+
+**Un movimiento se edita en su sitio, no se borra y se rehace.**
+`editar_movimiento` (0030) actualiza la cabecera y reemplaza las líneas de
+esa misma transacción, así que el `id` sobrevive y nada que apunte a él se
+queda huérfano. Por eso mismo se niega a tocar lo que otra tabla sostiene
+—`loan_payments`, `shared_expenses`, `couple_settlements`— y los tipos
+`opening` y `adjustment`: ahí el movimiento no es el dato, es la
+consecuencia de otro. La validación vive en `validar_movimiento()`, que
+comparten crear y editar: eran las mismas veinte líneas de comprobaciones.
 
 **Una liquidación no puede torcer el patrimonio del otro.** `liquidar_con_pareja`
 escribe en los dos ledgers, y quien registra sabe de qué cuenta suya salió el
@@ -105,6 +137,27 @@ lugares. Antes de calcular algo, comprobar si ya existe una vista que lo haga:
   historial real: reconstruye el patrimonio de cada fin de mes sumando todo
   lo ocurrido hasta esa fecha, porque no existe ningún otro sitio que guarde
   saldos pasados.
+- `extracto_por_cuenta` (0031) — con cuánto empezó cada cuenta un mes, cuánto
+  entró, cuánto salió y con cuánto terminó. Es el segundo caso de
+  `patrimonio_mensual`: `cuentas_disponible` sabe el saldo de HOY, y el
+  cierre de un mes pasado no lo guarda nadie, así que hay que reconstruirlo.
+  `saldo_final` no se calcula como `saldo_inicial + entró − salió` sino con
+  la misma suma y otra fecha de corte, para que las dos puntas cuadren
+  siempre; `verificacion_0031.sql` comprueba justo eso. Devuelve `salio` en
+  POSITIVO —"salieron 692.600"— para que ninguna pantalla tenga que
+  acordarse del signo.
+- `presupuestos_del_mes` (0028) — tope, gastado y cuánto queda por categoría.
+  Un presupuesto es una fila por categoría que se repite todos los meses; lo
+  gastado sale de `categorias_mensuales`, no de otra suma.
+- `tarjetas_por_pagar` (0029) — día de corte y de pago de cada tarjeta, con
+  el día recortado al último del mes (`least(dia_pago, ...)`): un pago el 31
+  en febrero no existe.
+- `bandeja_pendiente` — lo que llegó por notificación y todavía no se ha
+  confirmado. La columna `oculta` marca el lado que no se enseña cuando una
+  transferencia entre la pareja llega por duplicado (a él le suena la salida,
+  a ella la entrada). Está en la vista y no en la pantalla porque el contador
+  de "por confirmar" es otra consulta: cuando el criterio vivía solo en
+  TypeScript, la app decía "2 por confirmar" y enseñaba una sola tarjeta.
 
 Si una función SQL necesita saber qué cuentas son "dinero gastable", que
 consulte `cuentas_disponible` en vez de copiar la lista de tipos.
@@ -135,15 +188,48 @@ Tokens en `app/globals.css`. Primitivas en `components/seccion.tsx`
   botón `+` sobresale de la barra.
 - Animación de entrada con la clase `aparece` y `--retraso` en milisegundos.
 
+## El papel
+
+El extracto (`/extracto` y `/escritorio/extracto`) se guarda como PDF con el
+diálogo del navegador. **No hay librería de PDF**: el propio diálogo ya trae
+"Guardar como PDF" y produce el mismo archivo, así que meter 300 KB de
+dependencia en una app que maneja dinero sería cambiar una descarga por una
+cosa más que auditar. Lo que sí hace falta es preparar la página:
+
+- **`.solo-pantalla`** en todo lo que no va al papel. En una hoja impresa un
+  botón es un rectángulo gris que no hace nada.
+- **Las animaciones se apagan.** `aparece` y `crece` dejan el contenido en
+  `opacity: 0` hasta que corren, y al imprimir no corren: la hoja saldría en
+  blanco.
+- **`break-inside: avoid` solo en lo pequeño** (una fila, una cifra). Puesto
+  sobre una `section` más alta que una hoja, el navegador la empuja entera a
+  la página siguiente y la parte igual: media hoja en blanco y la tabla
+  descolgada.
+- **`thead { display: table-header-group }`**, o a partir de la segunda hoja
+  son columnas de números sin nombre.
+- **Primero las conclusiones.** El resumen va delante y el detalle empieza en
+  hoja aparte, con un interruptor para dejarlo fuera del PDF. Un mes normal
+  son setenta y pico de movimientos: impresos en fila son cuatro hojas donde
+  ya nadie busca nada.
+
+El extracto es **un mes**; el respaldo es **todo** y vive en `/api/exportar`
+(CSV con BOM, y un `'` delante de lo que empiece por `= + - @`, que Excel
+ejecuta como fórmula). Confundirlos es quedarse sin agosto el día que haga
+falta. Dentro del APK la descarga necesita el `setDownloadListener` de
+`MainActivity.kt`: un WebView no descarga nada por su cuenta, y sin pasarle
+la cookie a `DownloadManager` lo que se baja es el JSON de "no has iniciado
+sesión" con nombre de CSV — un respaldo vacío, que es peor que ninguno.
+
 ## Estructura
 
 ```
 app/(app)/          app de celular (PWA); sesión y NavInferior en su layout
 app/escritorio/     vista de escritorio — Panorama (resumen de todo),
-                    Estadísticas, Movimientos, Cuentas, Ahorros,
-                    Préstamos, Pareja y Perfil, más las pantallas de
-                    creación (cuentas/nueva, ahorros/nueva,
-                    prestamos/nuevo, movimientos/nuevo). Ninguna enlaza
+                    Estadísticas, Movimientos, Por confirmar, Topes de
+                    gasto, Extracto, Cuentas, Ahorros, Préstamos, Pareja
+                    y Perfil, más las pantallas de creación
+                    (cuentas/nueva, ahorros/nueva, prestamos/nuevo,
+                    movimientos/nuevo). Ninguna enlaza
                     a rutas de (app): hacerlo te expulsa al layout de
                     celular en una pantalla de 1400px. Los formularios
                     van sin acordeones — los <details> del celular
@@ -164,7 +250,11 @@ lib/tipos.ts        tipos de cuenta, orden de sus grupos y cuándo ocultar
                     /escritorio/cuentas
 lib/interfaz.ts     las dos interfaces: tipo `Origen`, `leerOrigen()` y la
                     tabla blanca de rutas `rutaDe()`. Lo usan los
-                    formularios compartidos para saber a dónde volver
+                    formularios compartidos para saber a dónde volver, y
+                    cualquier componente compartido que enlace a una
+                    pantalla: el selector de mes del extracto tenía
+                    `/extracto` escrito a mano y desde el escritorio te
+                    sacaba al layout de teléfono en un monitor de 1400px
 lib/revalidar.ts    `revalidarLedger()` — la lista de pantallas cuyos
                     números salen del ledger, en un solo sitio. Antes
                     estaba copiada en cuatro archivos de acciones
@@ -177,6 +267,28 @@ lib/lectores.ts     leer el texto de una notificación bancaria, un lector
                     Se prueba contra los textos REALES con
                     `node scripts/probar-lectores.mts`
 lib/datos-bandeja.ts las consultas de la bandeja, para las dos interfaces
+lib/bandeja-propuesta.ts  qué propone la bandeja para un mensaje y cuándo
+                    está listo para confirmar de un toque. Lo usan la fila,
+                    el botón de confirmar varios y la acción de servidor:
+                    si "completo" se definiera en cada uno, el botón se
+                    habilitaría para mensajes que el servidor rechaza
+lib/datos-extracto.ts los datos del extracto de un mes, para las dos
+                    interfaces. Agrupa los movimientos por día y separa
+                    las DEUDAS del resto de cuentas: en el ledger una
+                    tarjeta es un saldo negativo, así que bajo los
+                    encabezados "Entró / Salió" se leía al revés — un
+                    abono parecía dinero que entró
+lib/prestamos.ts    agrupar los préstamos por persona. Cada préstamo crea
+                    su cuenta "Por cobrar: X", y prestarle tres veces a la
+                    misma persona daba "Jinete", "(2)" y "(3)" en la
+                    lista. Se agrupa lo que se ENSEÑA, nunca el ledger:
+                    fusionar préstamos en la base sería perder su fecha,
+                    su monto y sus cuotas. "Jinete" y "jinete" son la
+                    misma persona; "Tia moni" y "Tía Moni" no — adivinar
+                    que dos nombres parecidos son el mismo humano y
+                    juntarles el dinero enseña una deuda que no existe
+lib/metas.ts        el ritmo de una meta (`sin_fecha | lograda | vencida |
+                    en_curso`) y cuánto toca guardar por mes
 lib/navegador.ts    leer el navegador sin romper la hidratación:
                     `useHidratado`, `useReducido`, `usePreferenciaLocal`.
                     Con `useSyncExternalStore`, NO con setState dentro de

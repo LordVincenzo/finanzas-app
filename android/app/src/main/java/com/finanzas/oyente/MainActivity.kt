@@ -1,6 +1,10 @@
 package com.finanzas.oyente
 
 import android.Manifest
+import android.app.DownloadManager
+import android.os.Environment
+import android.webkit.URLUtil
+import android.widget.Toast
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -287,6 +291,52 @@ class MainActivity : AppCompatActivity() {
                 // Solo el marco principal: que falle una imagen no es
                 // motivo para tapar la app con una pantalla de error.
                 if (peticion.isForMainFrame) mostrarError(true)
+            }
+        }
+
+        /**
+         * Las descargas.
+         *
+         * UN WEBVIEW NO DESCARGA NADA POR SU CUENTA. Un enlace a un
+         * archivo —el respaldo del historial, por ejemplo— no hace
+         * absolutamente nada si no se le dice qué hacer: ni error, ni
+         * aviso. Se toca el botón y no pasa nada.
+         *
+         * LA COOKIE ES LO IMPORTANTE. DownloadManager hace su propia
+         * petición, fuera del WebView, así que no lleva la sesión. Sin
+         * pasársela a mano, lo que se descargaría es el JSON del "no
+         * has iniciado sesión" con nombre de CSV — un archivo que
+         * parece un respaldo y está vacío, que es peor que no tener
+         * respaldo, porque uno se confía.
+         */
+        web.setDownloadListener { url, agente, disposicion, tipo, _ ->
+            try {
+                val nombre = URLUtil.guessFileName(url, disposicion, tipo)
+                val peticion = DownloadManager.Request(Uri.parse(url)).apply {
+                    addRequestHeader("cookie",
+                        CookieManager.getInstance().getCookie(url) ?: "")
+                    addRequestHeader("User-Agent", agente)
+                    setMimeType(tipo)
+                    setTitle(nombre)
+                    setDescription("Finanzas")
+                    setNotificationVisibility(
+                        DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    // A la carpeta Descargas, que es donde la gente lo
+                    // busca. Guardarlo dentro de la app lo haría
+                    // invisible para el gestor de archivos, y un
+                    // respaldo que no se puede copiar a otro sitio no
+                    // es un respaldo.
+                    setDestinationInExternalPublicDir(
+                        Environment.DIRECTORY_DOWNLOADS, nombre)
+                }
+
+                val gestor = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+                gestor.enqueue(peticion)
+                Toast.makeText(this, "Descargando $nombre", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                // Si el sistema no puede, hay que DECIRLO. Una descarga
+                // que falla en silencio se da por hecha.
+                Toast.makeText(this, "No se pudo descargar", Toast.LENGTH_LONG).show()
             }
         }
 

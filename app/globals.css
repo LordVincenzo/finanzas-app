@@ -301,3 +301,49 @@
     }
   }
 }
+/* =====================================================================
+   IMPRESIÓN
+   =====================================================================
+   Solo la usa el extracto, que está hecho para guardarse como PDF con
+   el diálogo del navegador. Sin librería de PDF: el navegador produce
+   el mismo archivo, y 300 KB de dependencia en una app que maneja
+   dinero es una cosa más que auditar y que se desactualiza.
+
+   Lo que hace falta aquí es que el papel no herede cosas que solo
+   tienen sentido en una pantalla. */
+
+/* Elementos que existen para tocarse: botones, la barra de abajo, el
+   selector de mes. En una hoja impresa son rectángulos grises que no
+   hacen nada. */
+@media print {
+  .solo-pantalla,
+  nav {
+    display: none !important;
+  }
+
+  /* El fondo de la app es gris para que las tarjetas se despeguen de
+     él. En papel eso son litros de tinta para no decir nada. */
+  html,
+  body,
+  /* El contenedor del escritorio tambien lo lleva: sin esto, la hoja
+     sale con una plancha gris de borde a borde. */
+  .bg-background {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Las animaciones de entrada dejan el contenido en opacity: 0 hasta
+     que corren, y al imprimir no corren: la hoja saldría en blanco. */
+  .aparece,
+  .crece {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /* Que una tarjeta no se parta entre dos páginas. */
+  section,
+  dl > div {
+    break-inside: avoid;
+  }
+}

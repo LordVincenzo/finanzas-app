@@ -27,7 +27,8 @@ export default async function ExtractoEscritorioPage({
 }) {
   const { mes: mesPedido } = await searchParams
   const {
-    mes, nombre, movimientos, dias, porCuenta, categorias, ingresos, gastos,
+    mes, nombre, movimientos, dias, cuentas, deudas, categorias,
+    ingresos, gastos,
   } = await datosDelExtracto(mesPedido)
 
   return (
@@ -58,7 +59,7 @@ export default async function ExtractoEscritorioPage({
                    tono={ingresos - gastos < 0 ? 'negativo' : 'positivo'} />
           </section>
 
-          {porCuenta.length > 0 && (
+          {cuentas.length > 0 && (
             <section className="mt-6">
               <Titulo>Cómo quedó cada cuenta</Titulo>
               <div className="mt-2 overflow-hidden rounded-2xl bg-card
@@ -75,7 +76,7 @@ export default async function ExtractoEscritorioPage({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/70">
-                    {porCuenta.map((c) => (
+                    {cuentas.map((c) => (
                       <tr key={c.cuenta}>
                         <td className="px-4 py-2.5">{c.cuenta}</td>
                         <td className="px-4 py-2.5 text-right tabular-nums
@@ -105,6 +106,66 @@ export default async function ExtractoEscritorioPage({
                 Aquí sí cuentan los traslados entre tus cuentas, por eso estos
                 números no suman igual que Entró y Salió.
               </p>
+            </section>
+          )}
+
+          {/* Las deudas, aparte y con sus palabras. En el ledger una
+              tarjeta es un saldo negativo, así que bajo los encabezados
+              "Entró / Salió / Terminó con" se leían justo al revés. */}
+          {deudas.length > 0 && (
+            <section className="mt-6">
+              <Titulo>Lo que debes</Titulo>
+              <div className="mt-2 overflow-hidden rounded-2xl bg-card
+                              shadow-card ring-1 ring-border/70
+                              print:shadow-none print:ring-0">
+                <table className="w-full text-[13px]">
+                  <thead className="text-muted-foreground">
+                    <tr className="border-b border-border/70">
+                      <th className="px-4 py-2.5 text-left font-normal">Deuda</th>
+                      <th className="px-4 py-2.5 text-right font-normal">Debías</th>
+                      <th className="px-4 py-2.5 text-right font-normal">Abonaste</th>
+                      <th className="px-4 py-2.5 text-right font-normal">Se cargó</th>
+                      <th className="px-4 py-2.5 text-right font-normal">Debes ahora</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/70">
+                    {deudas.map((c) => {
+                      /* El signo se le da la vuelta una sola vez, aquí:
+                         -242.600 en el ledger es "debes 242.600". */
+                      const debias = -c.saldo_inicial
+                      const debes = -c.saldo_final
+                      return (
+                        <tr key={c.cuenta}>
+                          <td className="px-4 py-2.5">{c.cuenta}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums
+                                         text-muted-foreground">
+                            {formatearCOP(Math.max(debias, 0))}
+                          </td>
+                          <td className={`px-4 py-2.5 text-right tabular-nums ${
+                            c.entro === 0 ? 'text-muted-foreground' : 'text-positivo'
+                          }`}>
+                            {c.entro === 0 ? '—' : formatearCOP(c.entro)}
+                          </td>
+                          <td className={`px-4 py-2.5 text-right tabular-nums ${
+                            c.salio === 0 ? 'text-muted-foreground' : 'text-negativo'
+                          }`}>
+                            {c.salio === 0 ? '—' : formatearCOP(c.salio)}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-medium
+                                         tabular-nums">
+                            {/* Un saldo a favor en una tarjeta casi
+                                siempre es un movimiento metido al revés.
+                                Se dice, no se disfraza de cero. */}
+                            {debes < 0
+                              ? `A favor ${formatearCOP(-debes)}`
+                              : formatearCOP(debes)}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </section>
           )}
 

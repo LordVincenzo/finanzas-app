@@ -55,8 +55,31 @@ from extracto_por_cuenta
 where clase not in ('asset', 'liability');
 
 -- 6) Para mirarlo con los ojos: el mes pasado, cuenta por cuenta.
+--
+--    OJO CON EL FILTRO DE DUEÑO. Sin `owner_id = auth.uid()` salen
+--    también las cuentas de tu pareja que están compartidas —RLS te
+--    deja verlas— y entonces aparecen dos "Nequi" y dos "Davivienda"
+--    como si fueran duplicados tuyos. La pantalla del extracto sí
+--    filtra por dueño; esta consulta también debe hacerlo.
 select cuenta, saldo_inicial, entro, salio, saldo_final
 from extracto_por_cuenta
-where mes = to_char(
-  (now() at time zone 'America/Bogota') - interval '1 month', 'YYYY-MM')
+where owner_id = auth.uid()
+  and mes = to_char(
+    (now() at time zone 'America/Bogota') - interval '1 month', 'YYYY-MM')
 order by cuenta;
+
+-- 7) Señales de que algo se registró al revés. No es un fallo de la
+--    vista: es la vista haciendo su trabajo. Una cuenta de dinero en
+--    negativo o una deuda en positivo significan que hay un movimiento
+--    con el origen y el destino cambiados.
+select cuenta, tipo, saldo_final,
+       case
+         when clase = 'asset'     then 'Cuenta de dinero en NEGATIVO'
+         when clase = 'liability' then 'Deuda a FAVOR (en positivo)'
+       end as señal
+from extracto_por_cuenta
+where owner_id = auth.uid()
+  and mes = to_char((now() at time zone 'America/Bogota'), 'YYYY-MM')
+  and ((clase = 'asset' and saldo_final < 0)
+    or (clase = 'liability' and saldo_final > 0))
+order by abs(saldo_final) desc;

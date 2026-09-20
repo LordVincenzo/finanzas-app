@@ -37,7 +37,8 @@ export default async function ExtractoPage({
 }) {
   const { mes: mesPedido } = await searchParams
   const {
-    mes, nombre, movimientos, dias, porCuenta, categorias, ingresos, gastos,
+    mes, nombre, movimientos, dias, cuentas, deudas, categorias,
+    ingresos, gastos,
   } = await datosDelExtracto(mesPedido)
 
   const vacio = movimientos.length === 0
@@ -88,13 +89,13 @@ export default async function ExtractoPage({
               movimientos en un extracto de verdad. En 390px no cabe una
               tabla de cinco columnas, así que cada cuenta es un bloque:
               arriba el nombre y lo que quedó, abajo de dónde viene. */}
-          {porCuenta.length > 0 && (
+          {cuentas.length > 0 && (
             <section className="mt-6">
               <Titulo>Cómo quedó cada cuenta</Titulo>
               <div className="mt-2 divide-y divide-border/70 rounded-xl bg-card
                               px-4 shadow-card ring-1 ring-border/70
                               print:shadow-none print:ring-0">
-                {porCuenta.map((c) => (
+                {cuentas.map((c) => (
                   <div key={c.cuenta} className="py-3">
                     <div className="flex items-baseline justify-between gap-3">
                       <p className="min-w-0 flex-1 truncate text-[14px]">
@@ -118,6 +119,46 @@ export default async function ExtractoPage({
                 Aquí sí cuentan los traslados entre tus cuentas, por eso estos
                 números no suman igual que Entró y Salió.
               </p>
+            </section>
+          )}
+
+          {/* Las deudas, aparte y con sus palabras: en el ledger una
+              tarjeta es un saldo negativo, y bajo "entró / salió" se
+              leían al revés. El signo se voltea una sola vez, aquí. */}
+          {deudas.length > 0 && (
+            <section className="mt-6">
+              <Titulo>Lo que debes</Titulo>
+              <div className="mt-2 divide-y divide-border/70 rounded-xl bg-card
+                              px-4 shadow-card ring-1 ring-border/70
+                              print:shadow-none print:ring-0">
+                {deudas.map((c) => {
+                  const debias = Math.max(-c.saldo_inicial, 0)
+                  const debes = -c.saldo_final
+                  return (
+                    <div key={c.cuenta} className="py-3">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <p className="min-w-0 flex-1 truncate text-[14px]">
+                          {c.cuenta}
+                        </p>
+                        <span className="shrink-0 text-[14px] font-medium
+                                         tabular-nums">
+                          {/* Un saldo a favor en una tarjeta casi siempre
+                              es un movimiento metido al revés. Se dice. */}
+                          {debes < 0
+                            ? `A favor ${formatearCOP(-debes)}`
+                            : formatearCOP(debes)}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground
+                                    tabular-nums">
+                        Debías {formatearCOP(debias)}
+                        {c.entro > 0 && <> · abonaste {formatearCOP(c.entro)}</>}
+                        {c.salio > 0 && <> · se cargó {formatearCOP(c.salio)}</>}
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
             </section>
           )}
 

@@ -1,6 +1,6 @@
 import { createClient, requerirUsuario } from '@/lib/supabase/server'
 import { mesActualBogota, moverMes } from '@/lib/format'
-import { ORDEN_TIPOS_CUENTA, cuentaVisible } from '@/lib/tipos'
+import { ORDEN_TIPOS_CUENTA, cuentaVisible, esDeuda } from '@/lib/tipos'
 
 /**
  * Los datos del extracto de un mes, para las dos interfaces.
@@ -53,7 +53,7 @@ export async function datosDelExtracto(mesPedido?: string) {
   const [anio, m] = mes.split('-').map(Number)
   const hasta = new Date(Date.UTC(anio, m, 0)).toISOString().slice(0, 10)
 
-  const [{ data: perfil }, { data: movs }, { data: cats }, { data: cuentas }] =
+  const [{ data: perfil }, { data: movs }, { data: cats }, { data: filas }] =
     await Promise.all([
       supabase.from('profiles').select('display_name').eq('id', user.id).single(),
       supabase.from('movimientos_detalle')
@@ -87,7 +87,7 @@ export async function datosDelExtracto(mesPedido?: string) {
      con algo. Las que estuvieron en cero todo el mes solo alargan la
      hoja. `cuentaVisible` es la misma regla de /cuentas: una por cobrar
      saldada no se enseña. */
-  const porCuenta = ((cuentas ?? []) as unknown as (CuentaExtracto & {
+  const porCuenta = ((filas ?? []) as unknown as (CuentaExtracto & {
     es_pendiente_ubicar: boolean
   })[])
     .filter((c) =>
@@ -119,12 +119,26 @@ export async function datosDelExtracto(mesPedido?: string) {
     else dias.push({ dia: x.occurred_on, movimientos: [x] })
   }
 
+  /* LAS DEUDAS VAN APARTE, Y CON OTRAS PALABRAS. En el ledger una
+     tarjeta de crédito es un saldo negativo (regla de 0001), así que
+     "entró" en una tarjeta es un ABONO y "terminó con -242.600"
+     significa que debes 242.600. Meterlas en la misma tabla que Nu y
+     Nequi, bajo los encabezados "Entró / Salió / Terminó con", las
+     hacía leer justo al revés: una deuda pagada parecía dinero que
+     entró, y un saldo en positivo parecía normal cuando es una señal de
+     que algo se registró al contrario. Quién es deuda lo decide
+     esDeuda(), que es el único sitio con esa lista. */
+  const deudas = porCuenta.filter((c) => esDeuda(c.tipo))
+  const cuentas = porCuenta.filter((c) => !esDeuda(c.tipo))
+
   return {
     mes,
     nombre: perfil?.display_name as string | undefined,
     movimientos,
     dias,
     porCuenta,
+    cuentas,
+    deudas,
     categorias: (cats ?? []).map((c) => ({
       categoria: c.categoria as string,
       monto: Number(c.monto),

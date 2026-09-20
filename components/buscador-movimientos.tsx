@@ -71,7 +71,7 @@ export function BuscadorMovimientos({
           type="button"
           aria-label="Borrar la búsqueda"
           onClick={() => { setTexto(''); ir(''); campo.current?.focus() }}
-          className="absolute right-1 top-1/2 flex size-9 -translate-y-1/2
+          className="absolute right-0 top-1/2 flex size-11 -translate-y-1/2
                      items-center justify-center rounded-lg
                      text-muted-foreground transition active:scale-90"
         >

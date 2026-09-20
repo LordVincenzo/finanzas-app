@@ -51,7 +51,7 @@ export default async function PresupuestosPage() {
     <main className="px-4 pt-4 pb-[calc(8rem+env(safe-area-inset-bottom))]">
       <div className="aparece">
         <Link href="/mas"
-              className="-my-2.5 inline-flex items-center gap-1 px-1 py-2.5
+              className="-my-3 -ml-1 inline-flex items-center gap-1 px-2 py-3
                          text-[13px] text-muted-foreground">
           <ChevronLeft className="size-4" /> Más
         </Link>

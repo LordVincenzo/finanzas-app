@@ -59,7 +59,7 @@ export function FilaPresupuesto({
             type="button"
             onClick={() => setEditando(true)}
             aria-label={`Cambiar el tope de ${categoria}`}
-            className="-my-2 -mr-1 shrink-0 px-1 py-2 text-muted-foreground
+            className="-my-3.5 -mr-2 shrink-0 px-2 py-3.5 text-muted-foreground
                        transition active:scale-90"
           >
             <Pencil className="size-3.5" />

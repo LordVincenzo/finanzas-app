@@ -5,6 +5,7 @@ import { formatearCOP } from '@/lib/format'
 import { ETIQUETAS_TIPO, ORDEN_TIPOS_CUENTA, cuentaVisible } from '@/lib/tipos'
 import { Seccion, Lista, Fila, Monto } from '@/components/seccion'
 import { CifraAnimada } from '@/components/cifra-animada'
+import { FechasTarjeta } from '@/components/fechas-tarjeta'
 import {
   TarjetaDestacada, Reparto, Repartos,
 } from '@/components/tarjeta-destacada'
@@ -26,6 +27,7 @@ export default async function CuentasPage() {
     { data: resumen },
     { data: patri },
     { data: ctaPendiente },
+    { data: fechasDeuda },
   ] = await Promise.all([
     /* owner_id explícito. Sin él, esta lista traía también las cuentas
        shared_view de tu pareja, sin distinguirlas de las tuyas — y la
@@ -58,9 +60,23 @@ export default async function CuentasPage() {
       .select('id')
       .eq('owner_id', user.id).eq('is_pending_location', true)
       .maybeSingle(),
+    /* Las fechas de corte y pago de las tarjetas. Van aparte porque
+       account_balances es una vista de 0001 y no las expone, igual
+       que pasa con is_pending_location. Dentro del mismo
+       Promise.all, así que no añade espera. */
+    supabase.from('accounts')
+      .select('id, dia_corte, dia_pago')
+      .eq('owner_id', user.id).eq('class', 'liability').eq('is_active', true),
   ])
 
   const cuentas = (data ?? []) as CuentaFila[]
+
+  const fechas = new Map(
+    (fechasDeuda ?? []).map((f) => [
+      f.id as string,
+      { corte: f.dia_corte as number | null, pago: f.dia_pago as number | null },
+    ])
+  )
 
   const filas = resumen ?? []
   const enCuentas = filas.reduce((s, c) => s + Number(c.saldo), 0)
@@ -166,21 +182,34 @@ export default async function CuentasPage() {
                   // metas), no el saldo real: mostrar el saldo real hacía
                   // pensar que ese dinero también estaba libre para gastar.
                   const disponibleCuenta = Number(c.balance) - asignado
+                  const f = fechas.get(c.account_id)
                   return (
-                    <Fila
-                      key={c.account_id}
-                      titulo={nombreCorto(c.name, tipo)}
-                      detalle={asignado > 0
-                        ? `${formatearCOP(asignado)} en metas`
-                        : undefined}
-                      valor={
-                        <Monto
-                          valor={disponibleCuenta}
-                          tono={disponibleCuenta < 0 ? 'negativo' : 'neutro'}
-                          formato={formatearCOP}
+                    <div key={c.account_id}>
+                      <Fila
+                        titulo={nombreCorto(c.name, tipo)}
+                        detalle={asignado > 0
+                          ? `${formatearCOP(asignado)} en metas`
+                          : undefined}
+                        valor={
+                          <Monto
+                            valor={disponibleCuenta}
+                            tono={disponibleCuenta < 0 ? 'negativo' : 'neutro'}
+                            formato={formatearCOP}
+                          />
+                        }
+                      />
+                      {/* Solo las deudas tienen fecha de pago. Es el único
+                          dato de esta app cuyo olvido cuesta dinero: no
+                          pagar a tiempo cobra intereses de mora. */}
+                      {f && (
+                        <FechasTarjeta
+                          cuentaId={c.account_id}
+                          nombre={c.name}
+                          corte={f.corte}
+                          pago={f.pago}
                         />
-                      }
-                    />
+                      )}
+                    </div>
                   )
                 })}
               </Lista>

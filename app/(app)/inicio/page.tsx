@@ -14,6 +14,9 @@ import { TarjetaDestacadaVacia } from '@/components/tarjeta-destacada'
 import { contarPendientes } from '@/lib/datos-bandeja'
 import { Comparacion } from '@/components/comparacion'
 import { RitmoMeta } from '@/components/ritmo-meta'
+import {
+  AvisoTarjetas, type TarjetaPorPagar,
+} from '@/components/aviso-tarjetas'
 
 export default async function InicioPage() {
   const supabase = await createClient()
@@ -28,6 +31,7 @@ export default async function InicioPage() {
     { data: cuentas },
     { data: cuentasActivos },
     { data: mensual },
+    { data: tarjetas },
     { data: topes },
     { data: porCategoria },
     { data: metas },
@@ -88,6 +92,12 @@ export default async function InicioPage() {
     /* Los topes de este mes. Se piden aquí aunque solo se pinten los
        que van apretados: es una consulta más dentro del mismo
        Promise.all, así que no añade ni un milisegundo de espera. */
+    /* Las tarjetas con fecha de pago y deuda pendiente. Es el único
+       dato de esta app cuyo olvido cuesta dinero: no pagar a tiempo
+       no descuadra nada, cobra intereses de mora. */
+    supabase.from('tarjetas_por_pagar')
+      .select('account_id, name, debes, proxima, dias')
+      .eq('owner_id', user.id).order('dias'),
     supabase.from('presupuestos_del_mes')
       .select('categoria_id, categoria, tope, gastado, restante, porcentaje')
       .eq('owner_id', user.id).eq('mes', mes),
@@ -366,6 +376,9 @@ export default async function InicioPage() {
           )}
         </Seccion>
       )}
+
+      {/* Antes que los topes y que las metas: esto tiene fecha */}
+      <AvisoTarjetas tarjetas={(tarjetas ?? []) as TarjetaPorPagar[]} />
 
       {apretados.length > 0 && (
         <Seccion

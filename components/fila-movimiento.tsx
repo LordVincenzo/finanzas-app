@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useActionState, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { formatearCOP, formatearHora } from '@/lib/format'
@@ -117,14 +118,28 @@ export function FilaMovimiento({ mov }: { mov: Movimiento }) {
               </button>
             </form>
           ) : (
-            <button
-              type="button"
-              onClick={() => setConfirmando(true)}
-              className="mt-3 min-h-10 w-full rounded-xl border text-[13px]
-                         font-medium text-destructive"
-            >
-              Eliminar movimiento
-            </button>
+            <div className="mt-3 flex gap-2">
+              {/* Corregir antes que borrar, y con mas peso visual: con la
+                  bandeja proponiendo sola, equivocarse de categoria es mas
+                  frecuente que registrar algo que no existio. Borrar y
+                  rehacer para cambiar una palabra es trabajo inventado. */}
+              <Link
+                href={`/movimientos/${mov.id}/editar`}
+                className="flex min-h-11 flex-1 items-center justify-center
+                           rounded-xl border text-[13px] font-medium
+                           transition active:scale-[0.99]"
+              >
+                Corregir
+              </Link>
+              <button
+                type="button"
+                onClick={() => setConfirmando(true)}
+                className="min-h-11 shrink-0 rounded-xl px-4 text-[13px]
+                           font-medium text-destructive"
+              >
+                Eliminar
+              </button>
+            </div>
           )}
         </div>
       )}

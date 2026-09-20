@@ -2,11 +2,35 @@
 
 import { useActionState, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
-import { registrarMovimiento, type EstadoMovimiento } from '@/app/(app)/movimientos/actions'
+import {
+  registrarMovimiento, editarMovimiento, type EstadoMovimiento,
+} from '@/app/(app)/movimientos/actions'
 import type { Origen } from '@/lib/interfaz'
 import { esDeuda } from '@/lib/tipos'
 
 type Cuenta = { id: string; name: string; type?: string }
+
+/**
+ * Un movimiento que ya existe, para editarlo.
+ *
+ * El mismo formulario sirve para crear y para corregir: las reglas
+ * —qué cuenta puede ser origen de un gasto, cómo se lee "20k", que el
+ * signo lo ponga el servidor— son las mismas, y tenerlas en dos
+ * formularios distintos es pedir que se separen.
+ */
+export type MovimientoEditable = {
+  id: string
+  tipo: TipoMovimiento
+  monto: number
+  /** La cuenta de dinero: de donde sale, o a donde entra si es ingreso. */
+  cuenta: string
+  /** La categoría, o la otra cuenta si es un traslado. */
+  contraparte: string
+  descripcion: string
+  /** "2026-09-20T16:09", en hora de Bogotá. */
+  fecha: string
+  notas: string
+}
 
 const TIPOS = [
   { valor: 'expense',    etiqueta: 'Gasto' },
@@ -48,7 +72,7 @@ function resumenFecha(valor: string, ahora: string): string {
 
 export function FormularioMovimiento({
   cuentas, categoriasGasto, categoriasIngreso, ahora, tipoInicial,
-  origen = 'celular',
+  origen = 'celular', edicion,
 }: {
   cuentas: Cuenta[]
   categoriasGasto: Cuenta[]
@@ -56,11 +80,18 @@ export function FormularioMovimiento({
   ahora: string
   tipoInicial?: TipoMovimiento
   origen?: Origen
+  /** Si viene, se corrige ese movimiento en vez de crear uno. */
+  edicion?: MovimientoEditable
 }) {
-  const [tipo, setTipo] = useState<Tipo>(tipoInicial ?? 'expense')
-  const [fecha, setFecha] = useState(ahora)
-  const [editarFecha, setEditarFecha] = useState(false)
-  const [estado, accion, enviando] = useActionState(registrarMovimiento, estadoInicial)
+  const editando = Boolean(edicion)
+
+  const [tipo, setTipo] = useState<Tipo>(edicion?.tipo ?? tipoInicial ?? 'expense')
+  const [fecha, setFecha] = useState(edicion?.fecha ?? ahora)
+  // Editando, la fecha se enseña abierta: si estás corrigiendo algo,
+  // es de las cosas que puedes venir a corregir.
+  const [editarFecha, setEditarFecha] = useState(editando)
+  const [estado, accion, enviando] = useActionState(
+    editando ? editarMovimiento : registrarMovimiento, estadoInicial)
 
   /* Qué cuenta está elegida, para saber si es una deuda: ajustar una
      tarjeta no es "cuánto dinero hay" sino "cuánto debes". El número se
@@ -78,13 +109,16 @@ export function FormularioMovimiento({
   return (
     <form action={accion} className="mt-6 space-y-5">
       <input type="hidden" name="tipo" value={tipo} />
+      {edicion && <input type="hidden" name="id" value={edicion.id} />}
       {/* A qué lista volver al terminar. La acción lo traduce contra una
           tabla blanca, nunca lo usa tal cual en redirect(). */}
       <input type="hidden" name="origen" value={origen} />
 
       {/* Selector de tipo */}
-      <div className="grid grid-cols-4 gap-1 rounded-xl bg-muted p-1">
-        {TIPOS.map((t) => (
+      <div className={`grid gap-1 rounded-xl bg-muted p-1 ${
+        editando ? 'grid-cols-3' : 'grid-cols-4'
+      }`}>
+        {(editando ? TIPOS.filter((x) => x.valor !== 'adjustment') : TIPOS).map((t) => (
           <button
             key={t.valor}
             type="button"
@@ -115,6 +149,7 @@ export function FormularioMovimiento({
           </span>
           <input
             id="monto" name="monto" inputMode="numeric" required
+            defaultValue={edicion ? String(edicion.monto) : undefined}
             placeholder={esAjuste ? '1.500.000' : '20.000'}
             autoFocus
             className="min-h-14 w-full rounded-lg bg-transparent pl-1.5 pr-3.5
@@ -159,6 +194,7 @@ export function FormularioMovimiento({
         <Campo id="descripcion" etiqueta="Descripción">
           <input
             id="descripcion" name="descripcion" required maxLength={200}
+          defaultValue={edicion?.descripcion}
             placeholder="Almuerzo"
             className="min-h-12 w-full rounded-lg border bg-transparent px-3.5
                        text-[15px] placeholder:text-muted-foreground/50
@@ -216,6 +252,7 @@ export function FormularioMovimiento({
       >
         <textarea
           id="notas" name="notas" rows={2} maxLength={500}
+          defaultValue={edicion?.notas}
           className="w-full rounded-lg border bg-transparent px-3.5 py-3
                      text-[15px] focus:outline-none focus:ring-2 focus:ring-ring"
         />
@@ -231,7 +268,9 @@ export function FormularioMovimiento({
                    font-medium text-primary-foreground shadow-card
                    transition active:scale-[0.99] disabled:opacity-50"
       >
-        {enviando ? 'Registrando…' : 'Registrar'}
+        {enviando
+          ? (editando ? 'Guardando…' : 'Registrando…')
+          : (editando ? 'Guardar cambios' : 'Registrar')}
       </button>
     </form>
   )

@@ -155,3 +155,88 @@ export async function eliminarMovimiento(
   revalidarLedger()
   return {}
 }
+
+/**
+ * Corregir un movimiento que ya existe.
+ *
+ * MISMAS REGLAS QUE CREAR, y a propósito: el tipo, el parseo del monto
+ * y quién es origen y quién destino salen de los mismos sitios. Un
+ * formulario que valida distinto al editar es un formulario que deja
+ * entrar por la puerta de atrás lo que rechaza por la de delante.
+ *
+ * EL AJUSTE NO SE PUEDE EDITAR, ni convertir un movimiento en ajuste:
+ * un ajuste es una corrección de saldo que deja rastro, no un
+ * movimiento más. Por eso el tipo se valida contra los tres reales.
+ *
+ * Lo demás lo comprueba editar_movimiento() en la base: que sea tuyo,
+ * que no sea una apertura, y que no sea parte de un gasto compartido,
+ * un abono a un préstamo o una liquidación — esos tienen dos
+ * transacciones espejo y editar una sola dejaría los dos ledgers en
+ * desacuerdo.
+ */
+export async function editarMovimiento(
+  _previo: EstadoMovimiento,
+  formData: FormData
+): Promise<EstadoMovimiento> {
+  const origen = leerOrigen(formData.get('origen'))
+
+  const id = String(formData.get('id') ?? '')
+  if (!id) return { error: 'No se identificó el movimiento' }
+
+  const datos = esquema.safeParse({
+    tipo: formData.get('tipo'),
+    cuenta: formData.get('cuenta'),
+    contraparte: formData.get('contraparte') ?? '',
+    descripcion: formData.get('descripcion') ?? '',
+    fecha: formData.get('fecha'),
+    notas: formData.get('notas') ?? '',
+  })
+
+  if (!datos.success) return { error: datos.error.issues[0].message }
+
+  const { tipo, cuenta, contraparte, descripcion, fecha, notas } = datos.data
+
+  if (tipo === 'adjustment') {
+    return {
+      error: 'Un ajuste no se edita. Registra otro ajuste con el saldo correcto.',
+    }
+  }
+
+  const monto = parsearCOP(String(formData.get('monto') ?? ''))
+  if (monto === null || monto <= 0) {
+    return { error: 'El monto debe ser mayor que cero' }
+  }
+
+  if (!contraparte) {
+    return {
+      error: tipo === 'transfer'
+        ? 'Selecciona la cuenta de destino'
+        : 'Selecciona una categoría',
+    }
+  }
+  if (!descripcion) return { error: 'Escribe una descripción' }
+
+  if (tipo === 'transfer' && cuenta === contraparte) {
+    return { error: 'El origen y el destino no pueden ser la misma cuenta' }
+  }
+
+  const { origen: cuentaOrigen, destino: cuentaDestino } =
+    ladosDelMovimiento(tipo, cuenta, contraparte)
+
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('editar_movimiento', {
+    p_tx: id,
+    p_tipo: tipo,
+    p_monto: monto,
+    p_cuenta_origen: cuentaOrigen,
+    p_cuenta_destino: cuentaDestino,
+    p_descripcion: descripcion,
+    p_ocurrido_en: aInstanteBogota(fecha),
+    p_notas: notas || null,
+  })
+
+  if (error) return { error: traducir(error.message) }
+
+  revalidarLedger()
+  redirect(rutaDe(origen, 'movimientos'))
+}

@@ -15,7 +15,7 @@ export default async function PrestamosEscritorioPage() {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-[1400px] px-8 py-10">
+      <div>
         <h1 className="text-[26px] font-semibold tracking-tight">Préstamos</h1>
         <p className="mt-4 rounded-2xl bg-card p-4 text-[13px] text-destructive
                       shadow-card ring-1 ring-destructive/30">
@@ -31,7 +31,7 @@ export default async function PrestamosEscritorioPage() {
   const yaCobrado = prestamos.reduce((s, p) => s + Number(p.pagado), 0)
 
   return (
-    <div className="mx-auto max-w-[1400px] px-8 py-10">
+    <div>
       <div className="flex items-baseline justify-between gap-4">
         <div>
           <h1 className="text-[26px] font-semibold tracking-tight">Préstamos</h1>

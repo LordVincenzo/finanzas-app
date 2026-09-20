@@ -30,7 +30,7 @@ export default async function AhorrosEscritorioPage() {
   const disponible = filas.reduce((s, c) => s + Number(c.disponible), 0)
 
   return (
-    <div className="mx-auto max-w-[1400px] px-8 py-10">
+    <div>
       <div className="flex items-baseline justify-between gap-4">
         <div>
           <h1 className="text-[26px] font-semibold tracking-tight">Ahorros</h1>

@@ -17,7 +17,7 @@ export default async function BandejaEscritorioPage() {
     ?? 'http://localhost:3000'
 
   return (
-    <div className="mx-auto max-w-[1400px] px-8 py-10">
+    <div>
       <h1 className="text-[26px] font-semibold tracking-tight">Por confirmar</h1>
       <p className="mt-1 text-[13px] text-muted-foreground">
         Lo que leyeron tus bancos. Nada entra a tus cuentas hasta que lo

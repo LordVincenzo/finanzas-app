@@ -56,7 +56,7 @@ export default async function DetallePrestamoEscritorioPage({
   const activo = prestamo.status === 'active'
 
   return (
-    <div className="mx-auto max-w-[1400px] px-8 py-10">
+    <div>
       <Link href="/escritorio/prestamos"
             className="inline-flex items-center gap-1 text-[13px] text-muted-foreground
                        hover:text-foreground">

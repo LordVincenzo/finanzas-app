@@ -18,7 +18,7 @@ export default async function PerfilEscritorioPage() {
     .eq('id', user.id).single()
 
   return (
-    <div className="mx-auto max-w-[1400px] px-8 py-10">
+    <div>
       <div className="max-w-xl">
         <h1 className="text-[26px] font-semibold tracking-tight">Perfil</h1>
         <p className="mt-1 text-[13px] text-muted-foreground">

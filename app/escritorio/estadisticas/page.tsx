@@ -80,7 +80,7 @@ export default async function EstadisticasPage() {
   const sinDatos = (movs ?? []).length === 0 && (cats ?? []).length === 0
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
+    <div>
       <div className="flex items-baseline justify-between gap-4">
         <div>
           <h1 className="text-[26px] font-semibold tracking-tight">Estadísticas</h1>
@@ -133,6 +133,6 @@ export default async function EstadisticasPage() {
           </section>
         </div>
       )}
-    </main>
+    </div>
   )
 }

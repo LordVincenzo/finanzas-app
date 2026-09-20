@@ -158,7 +158,7 @@ export default async function PanoramaPage() {
     && movimientos.length === 0
 
   return (
-    <main className="mx-auto max-w-[1400px] px-8 py-10">
+    <div>
       <h1 className="text-[26px] font-semibold tracking-tight">Panorama</h1>
       <p className="mb-3 mt-1 text-[13px] text-muted-foreground">
         Todo de un vistazo. Entra a cualquier sección para ver el detalle.
@@ -196,10 +196,18 @@ export default async function PanoramaPage() {
             )}
           </TarjetaDestacada>
 
-          {/* Arriba de todo lo demás: es lo único del panorama que
-              pide hacer algo hoy. */}
+          {/* Arriba de todo lo demás: es lo único del panorama que pide
+              hacer algo hoy.
+
+              Dos columnas solo si hay dos tarjetas. Con una sola, un
+              grid de dos deja media fila vacía al lado, y eso se lee
+              como que falta algo — no como que no hay nada que avisar. */}
           {(porPagar.length > 0 || apretados.length > 0) && (
-            <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className={
+              porPagar.length > 0 && apretados.length > 0
+                ? 'mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2'
+                : 'mt-6'
+            }>
               {porPagar.length > 0 && (
                 <SeccionPanorama titulo="Por pagar" href="/escritorio/cuentas">
                   <div className="space-y-2.5">
@@ -401,7 +409,7 @@ export default async function PanoramaPage() {
           </div>
         </>
       )}
-    </main>
+    </div>
   )
 }
 

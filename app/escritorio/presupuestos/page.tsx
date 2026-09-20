@@ -43,7 +43,7 @@ export default async function PresupuestosEscritorioPage() {
   const queda = tope - gastado
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-8 py-8">
+    <div>
       <h1 className="text-[26px] font-semibold tracking-tight">
         Topes de gasto
       </h1>
